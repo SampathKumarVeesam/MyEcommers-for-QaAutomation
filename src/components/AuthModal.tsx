@@ -2,6 +2,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Eye,
+  EyeOff,
   Lock,
   Mail,
   Phone,
@@ -9,7 +11,7 @@ import {
   User,
   X
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 
 interface AuthModalProps {
@@ -31,6 +33,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
   const [loginGlobalError, setLoginGlobalError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -42,13 +45,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [regPhone, setRegPhone] = useState('');
   const [regErrors, setRegErrors] = useState<Record<string, string>>({});
   const [regGlobalError, setRegGlobalError] = useState('');
   const [regSuccessMessage, setRegSuccessMessage] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // Reset all forms cleanly
+  const resetForms = () => {
+    setLoginEmail('');
+    setLoginPassword('');
+    setShowLoginPassword(false);
+    setLoginErrors({});
+    setLoginGlobalError('');
+
+    setRegName('');
+    setRegEmail('');
+    setRegPassword('');
+    setShowRegPassword(false);
+    setRegPhone('');
+    setRegErrors({});
+    setRegGlobalError('');
+    setRegSuccessMessage('');
+  };
+
+  // Reset form inputs whenever modal is opened or initialTab changes
+  useEffect(() => {
+    if (isOpen) {
+      setTab(initialTab);
+      resetForms();
+    }
+  }, [isOpen, initialTab]);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    resetForms();
+    onClose();
+  };
+
+  const handleSwitchTab = (newTab: 'login' | 'register') => {
+    setTab(newTab);
+    resetForms();
+  };
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setIsOAuthLoading(provider);
@@ -59,6 +99,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsOAuthLoading(null);
 
     if (res.success) {
+      resetForms();
       onSuccess?.();
       onClose();
     } else {
@@ -86,6 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoggingIn(false);
 
     if (res.success) {
+      resetForms();
       onSuccess?.();
       onClose();
     } else {
@@ -128,6 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (res.success) {
       setRegSuccessMessage('Account registered successfully! Redirecting...');
       setTimeout(() => {
+        resetForms();
         onSuccess?.();
         onClose();
       }, 1000);
@@ -149,10 +192,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex bg-slate-200/80 p-1 rounded-xl">
             <button
-              onClick={() => {
-                setTab('login');
-                setLoginGlobalError('');
-              }}
+              onClick={() => handleSwitchTab('login')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 tab === 'login'
                   ? 'bg-white text-slate-900 shadow-xs'
@@ -162,10 +202,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Sign In
             </button>
             <button
-              onClick={() => {
-                setTab('register');
-                setRegGlobalError('');
-              }}
+              onClick={() => handleSwitchTab('register')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 tab === 'register'
                   ? 'bg-white text-slate-900 shadow-xs'
@@ -177,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -295,14 +332,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="password"
+                      type={showLoginPassword ? 'text' : 'password'}
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={e => setLoginPassword(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
+                      className={`w-full pl-9 pr-10 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
                         loginErrors.password ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
                       }`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                      title={showLoginPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showLoginPassword ? (
+                        <EyeOff className="w-4 h-4 text-slate-500" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-slate-400" />
+                      )}
+                    </button>
                   </div>
                   {loginErrors.password && (
                     <p className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.password}</p>
@@ -345,6 +394,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="button"
                     onClick={async () => {
                       await quickLogin('admin');
+                      resetForms();
                       onSuccess?.();
                       onClose();
                     }}
@@ -361,6 +411,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     type="button"
                     onClick={async () => {
                       await quickLogin('customer1');
+                      resetForms();
                       onSuccess?.();
                       onClose();
                     }}
@@ -438,14 +489,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="password"
+                      type={showRegPassword ? 'text' : 'password'}
                       placeholder="Minimum 6 characters"
                       value={regPassword}
                       onChange={e => setRegPassword(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
+                      className={`w-full pl-9 pr-10 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
                         regErrors.password ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
                       }`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                      title={showRegPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showRegPassword ? (
+                        <EyeOff className="w-4 h-4 text-slate-500" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-slate-400" />
+                      )}
+                    </button>
                   </div>
                   {regErrors.password && (
                     <p className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.password}</p>
