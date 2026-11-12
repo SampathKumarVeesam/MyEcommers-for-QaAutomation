@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: { name: string; email: string; password: string; phone?: string }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string> }>;
+  loginWithOAuth: (provider: 'google' | 'apple', profile?: { name?: string; email?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   quickLogin: (account: 'admin' | 'customer1' | 'customer2') => Promise<void>;
   updateUserAddress: (address: Address) => void;
@@ -124,6 +125,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithOAuth = async (
+    provider: 'google' | 'apple',
+    profile?: { name?: string; email?: string }
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await fetch('/api/users/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          name: profile?.name,
+          email: profile?.email,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setUser(json.data.user);
+        setToken(json.data.token);
+        localStorage.setItem(TOKEN_KEY, json.data.token);
+        localStorage.setItem(USER_KEY, JSON.stringify(json.data.user));
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        message: json.message || `Failed to authenticate with ${provider}`,
+      };
+    } catch (err: any) {
+      return { success: false, message: err.message || `Network error during ${provider} authentication` };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -158,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         register,
+        loginWithOAuth,
         logout,
         quickLogin,
         updateUserAddress,

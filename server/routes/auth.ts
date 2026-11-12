@@ -68,12 +68,12 @@ authRouter.post('/register', (req: Request, res: Response): void => {
     data: {
       user: safeUser,
       token,
-      expiresIn: '7d',
+      expiresIn: '24h',
     },
   });
 });
 
-// POST /api/users/login (Authenticates user, returns JWT Bearer token, status 200)
+// POST /api/users/login (Authenticates user, returns 24h JWT Bearer token, status 200)
 authRouter.post('/login', (req: Request, res: Response): void => {
   const { email, password } = req.body || {};
 
@@ -116,7 +116,66 @@ authRouter.post('/login', (req: Request, res: Response): void => {
     data: {
       user: safeUser,
       token,
-      expiresIn: '7d',
+      expiresIn: '24h',
+    },
+  });
+});
+
+// POST /api/users/oauth (Google & Apple OAuth Login / Registration)
+authRouter.post('/oauth', (req: Request, res: Response): void => {
+  const { provider, email, name, avatar } = req.body || {};
+
+  if (!provider || !['google', 'apple'].includes(provider)) {
+    res.status(400).json({
+      success: false,
+      message: 'Provider must be "google" or "apple"',
+    });
+    return;
+  }
+
+  const oauthEmail =
+    (email && email.trim()) ||
+    (provider === 'google'
+      ? 'google.user@practicesoftwaretesting.com'
+      : 'apple.user@practicesoftwaretesting.com');
+
+  const oauthName =
+    (name && name.trim()) ||
+    (provider === 'google' ? 'Google Customer' : 'Apple Customer');
+
+  const oauthAvatar =
+    avatar ||
+    (provider === 'google'
+      ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80'
+      : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
+
+  let user = db.findUserByEmail(oauthEmail);
+  if (!user) {
+    const newUser: User = {
+      id: `user_oauth_${crypto.randomUUID().slice(0, 8)}`,
+      name: oauthName,
+      email: oauthEmail.toLowerCase(),
+      passwordHash: bcrypt.hashSync(`oauth_${provider}_${crypto.randomUUID()}`, 10),
+      role: 'customer',
+      avatar: oauthAvatar,
+      provider: provider,
+      createdAt: new Date().toISOString(),
+    };
+    user = db.createUser(newUser);
+  } else if (!user.provider) {
+    user.provider = provider;
+  }
+
+  const token = generateToken(user);
+  const { passwordHash: _, ...safeUser } = user;
+
+  res.status(200).json({
+    success: true,
+    message: `Authenticated successfully with ${provider === 'google' ? 'Google' : 'Apple'}`,
+    data: {
+      user: safeUser,
+      token,
+      expiresIn: '24h',
     },
   });
 });

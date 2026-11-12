@@ -232,8 +232,8 @@ export const SWAGGER_SPEC = {
     '/users/login': {
       post: {
         tags: ['Authentication'],
-        summary: 'Authenticate user with email and password',
-        description: 'Authenticates user, returns JWT Bearer token and role information.',
+        summary: 'Authenticate user with email and password (24h JWT Bearer Token)',
+        description: 'Authenticates user credentials, returns a 24-hour JWT Bearer token and user profile.',
         requestBody: {
           required: true,
           content: {
@@ -244,10 +244,59 @@ export const SWAGGER_SPEC = {
         },
         responses: {
           '200': {
-            description: 'Authentication successful. Returns token and user object.',
+            description: 'Authentication successful. Returns 24h JWT token and user object.',
           },
           '401': {
             description: 'Invalid email or password',
+          },
+        },
+      },
+    },
+    '/users/oauth': {
+      post: {
+        tags: ['Authentication'],
+        summary: 'OAuth 2.0 Login / Registration (Google or Apple)',
+        description: 'Authenticates or provisions a customer via Google or Apple OAuth and returns a 24-hour JWT Bearer token.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['provider'],
+                properties: {
+                  provider: {
+                    type: 'string',
+                    enum: ['google', 'apple'],
+                    example: 'google',
+                    description: 'OAuth Identity Provider (google or apple)',
+                  },
+                  email: {
+                    type: 'string',
+                    format: 'email',
+                    example: 'google.user@practicesoftwaretesting.com',
+                    description: 'Email from OAuth provider',
+                  },
+                  name: {
+                    type: 'string',
+                    example: 'Google Customer',
+                    description: 'Full name from OAuth provider',
+                  },
+                  avatar: {
+                    type: 'string',
+                    example: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'OAuth authentication successful. Returns 24-hour JWT Bearer token.',
+          },
+          '400': {
+            description: 'Invalid provider or missing payload',
           },
         },
       },

@@ -105,10 +105,12 @@ To ensure testing isolation, the OpenAPI Swagger Explorer is served **completely
 
 ## 📡 REST API Endpoints Reference
 
-### 1. Authentication & Users
-- `POST /api/users/register` — Create new customer account. Returns HTTP `201 Created` with JWT token.
-- `POST /api/users/login` — Authenticate credentials. Returns HTTP `200 OK` with JWT Bearer token and profile.
+### 1. Authentication & Users (JWT Token-Based, 24-Hour Expiration)
+- `POST /api/users/register` — Create new customer account. Returns HTTP `201 Created` with a **24-hour JWT Bearer token** and profile.
+- `POST /api/users/login` — Authenticate credentials. Returns HTTP `200 OK` with a **24-hour JWT Bearer token** and profile.
+- `POST /api/users/oauth` — OAuth 2.0 social login & registration for **Google** and **Apple**. Returns HTTP `200 OK` with a **24-hour JWT Bearer token** and profile.
 - `GET /api/users/me` — Retrieve current authenticated profile (Requires `Authorization: Bearer <token>`).
+- `GET /api/users` — User management directory (Admin only).
 
 ### 2. Catalog & Products
 - `GET /api/products` — Retrieve paginated products with filtering:

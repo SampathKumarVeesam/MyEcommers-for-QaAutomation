@@ -9,6 +9,7 @@ export interface User {
   phone?: string;
   avatar?: string;
   address?: Address;
+  provider?: 'local' | 'google' | 'apple';
   createdAt: string;
 }
 

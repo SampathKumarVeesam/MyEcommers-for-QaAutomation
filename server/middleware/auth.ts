@@ -16,9 +16,10 @@ export function generateToken(user: User): string {
       email: user.email,
       role: user.role,
       name: user.name,
+      provider: user.provider || 'local',
     },
     JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '24h' } // 24-hour token expiration
   );
 }
 
