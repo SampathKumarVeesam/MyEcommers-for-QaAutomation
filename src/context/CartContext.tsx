@@ -33,58 +33,80 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize or fetch basket
-  const initOrFetchBasket = async () => {
-    let currentId = basketId || localStorage.getItem(BASKET_ID_KEY);
-
-    if (!currentId) {
-      try {
-        const res = await fetch('/api/carts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
+  // Safe helper to create a brand new basket
+  const createNewBasket = async (): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/carts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
         const json = await res.json();
         if (json.success && json.data?.basketId) {
-          const newBasketId = String(json.data.basketId);
-          currentId = newBasketId;
-          setBasketId(newBasketId);
-          localStorage.setItem(BASKET_ID_KEY, newBasketId);
-          setBasket(json.data.basket);
-          return newBasketId;
+          const newId = String(json.data.basketId);
+          setBasketId(newId);
+          localStorage.setItem(BASKET_ID_KEY, newId);
+          setBasket(
+            json.data.basket || {
+              id: newId,
+              items: [],
+              totalItemCount: 0,
+              subtotal: 0,
+              estimatedTax: 0,
+              shippingFee: 0,
+              grandTotal: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          );
+          return newId;
         }
-      } catch (err) {
-        console.error('Failed to initialize basket:', err);
       }
-    } else {
-      try {
-        const res = await fetch(`/api/carts/${currentId}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            setBasket({
-              id: currentId,
-              items: json.data.items || [],
-              totalItemCount: json.data.totalItemCount || 0,
-              subtotal: json.data.subtotal || 0,
-              estimatedTax: json.data.estimatedTax || 0,
-              shippingFee: json.data.shippingFee || 0,
-              grandTotal: json.data.grandTotal || 0,
-              createdAt: json.data.createdAt || new Date().toISOString(),
-              updatedAt: json.data.updatedAt || new Date().toISOString(),
-            });
-            return currentId;
-          }
-        } else if (res.status === 404) {
-          // Basket expired on server, create fresh one
-          localStorage.removeItem(BASKET_ID_KEY);
-          setBasketId(null);
-          return initOrFetchBasket();
-        }
-      } catch (err) {
-        console.error('Error fetching basket:', err);
-      }
+    } catch (err) {
+      console.error('Failed to create new basket:', err);
     }
-    return currentId;
+    return null;
+  };
+
+  // Initialize or fetch basket with ZERO recursion
+  const initOrFetchBasket = async () => {
+    const storedId = localStorage.getItem(BASKET_ID_KEY);
+
+    if (!storedId) {
+      return await createNewBasket();
+    }
+
+    try {
+      const res = await fetch(`/api/carts/${storedId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setBasketId(storedId);
+          setBasket({
+            id: storedId,
+            items: json.data.items || [],
+            totalItemCount: json.data.totalItemCount || 0,
+            subtotal: json.data.subtotal || 0,
+            estimatedTax: json.data.estimatedTax || 0,
+            shippingFee: json.data.shippingFee || 0,
+            grandTotal: json.data.grandTotal || 0,
+            createdAt: json.data.createdAt || new Date().toISOString(),
+            updatedAt: json.data.updatedAt || new Date().toISOString(),
+          });
+          return storedId;
+        }
+      }
+
+      // If status is 404, 403, or invalid: clean up stale storage and initialize fresh basket
+      localStorage.removeItem(BASKET_ID_KEY);
+      setBasketId(null);
+      return await createNewBasket();
+    } catch (err) {
+      console.error('Error fetching basket:', err);
+      localStorage.removeItem(BASKET_ID_KEY);
+      setBasketId(null);
+      return await createNewBasket();
+    }
   };
 
   useEffect(() => {
@@ -92,14 +114,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshBasket = async () => {
-    if (!basketId) return;
+    const currentId = basketId || localStorage.getItem(BASKET_ID_KEY);
+    if (!currentId) return;
     try {
-      const res = await fetch(`/api/carts/${basketId}`);
+      const res = await fetch(`/api/carts/${currentId}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
           setBasket({
-            id: basketId,
+            id: currentId,
             items: json.data.items || [],
             totalItemCount: json.data.totalItemCount || 0,
             subtotal: json.data.subtotal || 0,
@@ -110,6 +133,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             updatedAt: json.data.updatedAt || new Date().toISOString(),
           });
         }
+      } else if (res.status === 404 || res.status === 403) {
+        localStorage.removeItem(BASKET_ID_KEY);
+        setBasketId(null);
+        await createNewBasket();
       }
     } catch (err) {
       console.error('Failed to refresh basket:', err);

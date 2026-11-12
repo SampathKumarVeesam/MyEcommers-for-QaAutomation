@@ -306,8 +306,23 @@ class DatabaseStore {
     return { ...basket };
   }
 
-  public getBasket(basketId: string): Basket | undefined {
-    const basket = this.baskets.get(basketId);
+  public getBasket(basketId: string, autoCreate: boolean = true): Basket | undefined {
+    let basket = this.baskets.get(basketId);
+    if (!basket && autoCreate && basketId && basketId.startsWith('basket_')) {
+      const now = new Date().toISOString();
+      basket = {
+        id: basketId,
+        items: [],
+        totalItemCount: 0,
+        subtotal: 0,
+        estimatedTax: 0,
+        shippingFee: 0,
+        grandTotal: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this.baskets.set(basketId, basket);
+    }
     if (!basket) return undefined;
     this.recalculateBasket(basket);
     return { ...basket };
