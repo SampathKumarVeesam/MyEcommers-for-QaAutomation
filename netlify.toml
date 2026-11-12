@@ -1,0 +1,38 @@
+"$schema" = "https://open-api.netlify.com/netlify.schema.json"
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Route API endpoints to the Express serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+
+# Route Swagger documentation to the Express serverless function
+[[redirects]]
+  from = "/api-docs*"
+  to = "/.netlify/functions/api/api-docs:splat"
+  status = 200
+
+[[redirects]]
+  from = "/docs"
+  to = "/api-docs/"
+  status = 301
+
+[[redirects]]
+  from = "/swagger"
+  to = "/api-docs/"
+  status = 301
+
+# Single Page Application fallback rewrite for React Router / SPA navigation
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

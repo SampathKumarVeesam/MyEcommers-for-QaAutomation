@@ -1,0 +1,208 @@
+// This is the Prisma Schema definition for ShopSphere
+// Datasource: PostgreSQL (or MySQL / SQLite compatible)
+// Generator: prisma-client-js
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum ProductCategory {
+  FASHION
+  ELECTRONICS
+  AUDIO
+  BEAUTY
+}
+
+enum PaymentMethod {
+  UPI
+  CREDIT_CARD
+  NET_BANKING
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(CUSTOMER)
+  phone        String?
+  avatar       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  addresses    Address[]
+  baskets      Basket[]
+  orders       Order[]
+  sessions     Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  token        String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("sessions")
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  fullName   String
+  street     String
+  city       String
+  state      String
+  postalCode String
+  country    String   @default("United States")
+  phone      String
+  isDefault  Boolean  @default(false)
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@map("addresses")
+}
+
+model Product {
+  id             String          @id @default(uuid())
+  title          String
+  slug           String          @unique
+  category       ProductCategory
+  subcategory    String
+  price          Decimal         @db.Decimal(10, 2)
+  compareAtPrice Decimal?        @db.Decimal(10, 2)
+  stock          Int             @default(0)
+  rating         Float           @default(0.0)
+  reviewsCount   Int             @default(0)
+  images         String[]
+  description    String          @db.Text
+  tags           String[]
+  specifications Json            @default("{}")
+  variants       Json?           // Stores sizing, storage, color variant matrices
+  scentNotes     Json?           // Dedicated pyramid notes for fragrances: top, heart, base
+  featured       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  basketItems    BasketItem[]
+  orderItems     OrderItem[]
+
+  @@index([category])
+  @@index([price])
+  @@map("products")
+}
+
+model Basket {
+  id             String       @id @default(uuid())
+  userId         String?
+  sessionToken   String?      @unique
+  expiresAt      DateTime     @default(dbgenerated("NOW() + interval '7 days'"))
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items          BasketItem[]
+  orders         Order[]
+
+  @@index([sessionToken])
+  @@map("baskets")
+}
+
+model BasketItem {
+  id              String   @id @default(uuid())
+  basketId        String
+  productId       String
+  quantity        Int      @default(1)
+  unitPrice       Decimal  @db.Decimal(10, 2)
+  selectedVariant String?
+  selectedColor   String?
+  selectedSize    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  basket          Basket   @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([basketId, productId, selectedVariant])
+  @@map("basket_items")
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique
+  userId          String
+  basketId        String?
+  addressId       String
+  shippingMethod  String        @default("standard")
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(PENDING)
+  orderStatus     OrderStatus   @default(PENDING)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  tax             Decimal       @db.Decimal(10, 2)
+  shippingFee     Decimal       @db.Decimal(10, 2)
+  grandTotal      Decimal       @db.Decimal(10, 2)
+  trackingNumber  String        @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  basket          Basket?       @relation(fields: [basketId], references: [id], onDelete: SetNull)
+  shippingAddress Address       @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  productId       String
+  title           String
+  sku             String?
+  quantity        Int
+  unitPrice       Decimal  @db.Decimal(10, 2)
+  totalPrice      Decimal  @db.Decimal(10, 2)
+  selectedVariant String?
+  selectedColor   String?
+  selectedSize    String?
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("order_items")
+}

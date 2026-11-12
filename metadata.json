@@ -1,0 +1,6 @@
+{
+  "name": "ShopSphere - Multi-Category E-Commerce & QA Testing Platform",
+  "description": "Production-grade multi-category e-commerce web application with full REST API suite, OpenAPI/Swagger docs, DOT test execution visualizer, and authentic QA test accounts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
