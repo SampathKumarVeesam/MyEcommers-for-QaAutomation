@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { db } from './dbStore.js';
@@ -9,6 +10,13 @@ import { DOT_WORKFLOW_DEFINITION, SWAGGER_SPEC } from './swaggerDoc.js';
 
 export function createExpressApp() {
   const app = express();
+
+  // CORS Middleware for cross-origin requests from Netlify and other clients
+  app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'accept'],
+  }));
 
   // Basic Middlewares
   app.use(express.json({ limit: '10mb' }));
