@@ -47,6 +47,7 @@ export async function runSeed(): Promise<void> {
       const res = await client.query(
         `INSERT INTO store (name, address, phone)
          VALUES ($1, $2, $3)
+         ON CONFLICT (name) DO UPDATE SET address = EXCLUDED.address, phone = EXCLUDED.phone
          RETURNING id`,
         [s.name, s.address, s.phone]
       );
@@ -64,6 +65,7 @@ export async function runSeed(): Promise<void> {
            user_code, name, username, email, password, role, phone, avatar,
            address_line_1, address_city, address_state, address_postal_code, address_country, created_at
          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role
          RETURNING id`,
         [
           u.id,
@@ -96,6 +98,14 @@ export async function runSeed(): Promise<void> {
            description, image_url, images, variants, rating, reviews_count, stock,
            tags, specifications, color_options, size_options, scent_notes, featured
          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+         ON CONFLICT (product_code) DO UPDATE SET
+           name = EXCLUDED.name,
+           price = EXCLUDED.price,
+           category = EXCLUDED.category,
+           stock = EXCLUDED.stock,
+           image_url = EXCLUDED.image_url,
+           images = EXCLUDED.images,
+           variants = EXCLUDED.variants
          RETURNING id`,
         [
           p.id,
@@ -202,7 +212,8 @@ export async function runSeed(): Promise<void> {
       if (pId) {
         await client.query(
           `INSERT INTO product_reviews (review_code, product_id, user_name, user_email, rating, comment, verified_purchase, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, true, $7)`,
+           VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+           ON CONFLICT (review_code) DO NOTHING`,
           [r.reviewCode, pId, r.userName, r.userEmail, r.rating, r.comment, r.createdAt]
         );
       }
@@ -223,6 +234,7 @@ export async function runSeed(): Promise<void> {
          payment_method, payment_status, address_line_1, address_postal_code,
          address_city, address_state, address_country, created_at
        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+       ON CONFLICT (order_number) DO NOTHING
        RETURNING id`,
       [
         'ORD-782910-QA',
@@ -248,23 +260,25 @@ export async function runSeed(): Promise<void> {
       ]
     );
 
-    const insertedOrderId = orderRes.rows[0].id;
-    await client.query(
-      `INSERT INTO order_item (
-         order_id, product_id, user_id, price, quantity, selected_variant, selected_color, selected_size, created_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        insertedOrderId,
-        sampleProdId,
-        sampleCustId,
-        samplePrice,
-        1,
-        'Size: M / Color: Emerald Green',
-        'Emerald Green',
-        'M',
-        new Date(Date.now() - 86400000 * 3).toISOString(),
-      ]
-    );
+    if (orderRes.rows.length > 0) {
+      const insertedOrderId = orderRes.rows[0].id;
+      await client.query(
+        `INSERT INTO order_item (
+           order_id, product_id, user_id, price, quantity, selected_variant, selected_color, selected_size, created_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          insertedOrderId,
+          sampleProdId,
+          sampleCustId,
+          samplePrice,
+          1,
+          'Size: M / Color: Emerald Green',
+          'Emerald Green',
+          'M',
+          new Date(Date.now() - 86400000 * 3).toISOString(),
+        ]
+      );
+    }
 
     await client.query('COMMIT');
     console.log('[PostgreSQL 18 Seed] Database successfully seeded with 100% relational integrity!');

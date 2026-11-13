@@ -96,7 +96,7 @@ function ShopSphereMain() {
         if (json.success && json.data) {
           let list: Product[] = json.data;
           if (inStockOnly) {
-            list = list.filter(p => p.stock > 0);
+            list = list.filter(p => Number(p.stock ?? 0) > 0);
           }
           setProducts(list);
           if (json.pagination) {
@@ -104,6 +104,9 @@ function ShopSphereMain() {
             setTotalPages(json.pagination.totalPages);
           }
         }
+      } else {
+        const errJson = await res.json().catch(() => null);
+        console.warn('[Products Catalog Warning]: API returned status', res.status, errJson);
       }
     } catch (err) {
       console.error('Failed to fetch products:', err);

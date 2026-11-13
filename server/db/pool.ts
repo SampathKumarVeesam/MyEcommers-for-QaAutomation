@@ -6,15 +6,20 @@ dotenv.config();
 const { Pool } = pg;
 
 const connectionString = process.env.DATABASE_URL;
+const isRemoteDb = Boolean(
+  connectionString &&
+  !connectionString.includes('localhost') &&
+  !connectionString.includes('127.0.0.1')
+);
 
 export const pool = new Pool(
   connectionString
     ? {
         connectionString,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        ssl: isRemoteDb ? { rejectUnauthorized: false } : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false),
         max: 20,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 10000,
       }
     : {
         host: process.env.DB_HOST || 'localhost',
@@ -24,7 +29,7 @@ export const pool = new Pool(
         password: process.env.DB_PASSWORD || 'Sam@123',
         max: 20,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 10000,
       }
 );
 

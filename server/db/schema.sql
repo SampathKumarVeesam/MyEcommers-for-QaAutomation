@@ -3,19 +3,8 @@
 -- Relational Schema: 7 Core Tables + Product Reviews & Inventory
 -- ============================================================================
 
--- Drop tables if re-initializing (in reverse dependency order)
-DROP TABLE IF EXISTS wishlist CASCADE;
-DROP TABLE IF EXISTS product_reviews CASCADE;
-DROP TABLE IF EXISTS order_item CASCADE;
-DROP TABLE IF EXISTS "order" CASCADE;
-DROP TABLE IF EXISTS cart CASCADE;
-DROP TABLE IF EXISTS inventory CASCADE;
-DROP TABLE IF EXISTS store CASCADE;
-DROP TABLE IF EXISTS product CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-
 -- 1. USERS TABLE
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   user_code VARCHAR(64) UNIQUE,
   name VARCHAR(255) NOT NULL,
@@ -34,7 +23,7 @@ CREATE TABLE users (
 );
 
 -- 2. PRODUCT TABLE
-CREATE TABLE product (
+CREATE TABLE IF NOT EXISTS product (
   id SERIAL PRIMARY KEY,
   product_code VARCHAR(64) UNIQUE,
   name VARCHAR(255) NOT NULL,
@@ -60,16 +49,16 @@ CREATE TABLE product (
 );
 
 -- 3. STORE TABLE
-CREATE TABLE store (
+CREATE TABLE IF NOT EXISTS store (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL UNIQUE,
   address TEXT NOT NULL,
   phone VARCHAR(50),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. INVENTORY TABLE (Composite PK: product_id + store_id)
-CREATE TABLE inventory (
+CREATE TABLE IF NOT EXISTS inventory (
   product_id INTEGER NOT NULL REFERENCES product(id) ON DELETE CASCADE,
   store_id INTEGER NOT NULL REFERENCES store(id) ON DELETE CASCADE,
   stock_available INTEGER NOT NULL DEFAULT 0,
@@ -77,7 +66,7 @@ CREATE TABLE inventory (
 );
 
 -- 5. CART TABLE
-CREATE TABLE cart (
+CREATE TABLE IF NOT EXISTS cart (
   id SERIAL PRIMARY KEY,
   basket_id VARCHAR(100) NOT NULL,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -90,7 +79,7 @@ CREATE TABLE cart (
 );
 
 -- 6. "ORDER" TABLE (Quoted Identifier)
-CREATE TABLE "order" (
+CREATE TABLE IF NOT EXISTS "order" (
   id SERIAL PRIMARY KEY,
   order_number VARCHAR(100) UNIQUE NOT NULL,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -115,7 +104,7 @@ CREATE TABLE "order" (
 );
 
 -- 7. ORDER_ITEM TABLE
-CREATE TABLE order_item (
+CREATE TABLE IF NOT EXISTS order_item (
   id SERIAL PRIMARY KEY,
   order_id INTEGER NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
   product_id INTEGER NOT NULL REFERENCES product(id),
@@ -129,7 +118,7 @@ CREATE TABLE order_item (
 );
 
 -- 8. PRODUCT_REVIEWS TABLE (PDP Reviews Engine)
-CREATE TABLE product_reviews (
+CREATE TABLE IF NOT EXISTS product_reviews (
   id SERIAL PRIMARY KEY,
   review_code VARCHAR(64) UNIQUE,
   product_id INTEGER NOT NULL REFERENCES product(id) ON DELETE CASCADE,
@@ -143,7 +132,7 @@ CREATE TABLE product_reviews (
 );
 
 -- 9. WISHLIST TABLE (PostgreSQL Persistent Customer Wishlist)
-CREATE TABLE wishlist (
+CREATE TABLE IF NOT EXISTS wishlist (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   product_id INTEGER NOT NULL REFERENCES product(id) ON DELETE CASCADE,
@@ -152,17 +141,16 @@ CREATE TABLE wishlist (
 );
 
 -- Indexes for high-throughput queries
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_product_category ON product(category);
-CREATE INDEX idx_product_subcategory ON product(subcategory);
-CREATE INDEX idx_product_code ON product(product_code);
-CREATE INDEX idx_cart_basket_id ON cart(basket_id);
-CREATE INDEX idx_cart_user_id ON cart(user_id);
-CREATE INDEX idx_inventory_store_id ON inventory(store_id);
-CREATE INDEX idx_order_user_id ON "order"(user_id);
-CREATE INDEX idx_order_number ON "order"(order_number);
-CREATE INDEX idx_order_item_order_id ON order_item(order_id);
-CREATE INDEX idx_product_reviews_product_id ON product_reviews(product_id);
-CREATE INDEX idx_wishlist_user_id ON wishlist(user_id);
-
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_product_category ON product(category);
+CREATE INDEX IF NOT EXISTS idx_product_subcategory ON product(subcategory);
+CREATE INDEX IF NOT EXISTS idx_product_code ON product(product_code);
+CREATE INDEX IF NOT EXISTS idx_cart_basket_id ON cart(basket_id);
+CREATE INDEX IF NOT EXISTS idx_cart_user_id ON cart(user_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_store_id ON inventory(store_id);
+CREATE INDEX IF NOT EXISTS idx_order_user_id ON "order"(user_id);
+CREATE INDEX IF NOT EXISTS idx_order_number ON "order"(order_number);
+CREATE INDEX IF NOT EXISTS idx_order_item_order_id ON order_item(order_id);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);
