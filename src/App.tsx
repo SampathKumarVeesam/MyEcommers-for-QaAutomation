@@ -183,7 +183,7 @@ function ShopSphereMain() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Title & Count */}
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-extrabold text-slate-900 capitalize tracking-tight">
+              <h2 data-test="catalog-title" data-testid="catalog-title" className="text-lg font-extrabold text-slate-900 capitalize tracking-tight">
                 {selectedCategory === 'all'
                   ? 'Curated Products Catalog'
                   : selectedCategory === 'electronics'
@@ -196,11 +196,11 @@ function ShopSphereMain() {
                   ? 'Artisanal Perfumes & Fragrance'
                   : selectedCategory}
               </h2>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+              <span data-test="catalog-total-count" data-testid="catalog-total-count" className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
                 {totalProducts} {totalProducts === 1 ? 'item' : 'items'}
               </span>
               {searchQuery && (
-                <span className="text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
+                <span data-test="search-query-badge" data-testid="search-query-badge" className="text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
                   Results for &ldquo;<strong className="text-slate-900">{searchQuery}</strong>&rdquo;
                 </span>
               )}
@@ -210,6 +210,8 @@ function ShopSphereMain() {
             <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 type="button"
+                data-test="view-mode-grid"
+                data-testid="view-mode-grid"
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'grid'
@@ -222,6 +224,8 @@ function ShopSphereMain() {
               </button>
               <button
                 type="button"
+                data-test="view-mode-compact"
+                data-testid="view-mode-compact"
                 onClick={() => setViewMode('compact')}
                 className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'compact'
@@ -242,6 +246,8 @@ function ShopSphereMain() {
               <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80">
                 <span className="text-slate-500 font-semibold">Max Price:</span>
                 <input
+                  data-test="filter-price-slider"
+                  data-testid="filter-price-slider"
                   type="range"
                   min={50}
                   max={2000}
@@ -253,12 +259,14 @@ function ShopSphereMain() {
                   }}
                   className="w-24 sm:w-36 accent-indigo-600 cursor-pointer"
                 />
-                <span className="font-extrabold font-mono text-slate-900">${priceMax}</span>
+                <span data-test="filter-price-display" data-testid="filter-price-display" className="font-extrabold font-mono text-slate-900">${priceMax}</span>
               </div>
 
               {/* In Stock Only Checkbox */}
               <label className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100/70 px-3 py-2 rounded-xl border border-slate-200/80 cursor-pointer select-none transition-colors">
                 <input
+                  data-test="filter-in-stock-checkbox"
+                  data-testid="filter-in-stock-checkbox"
                   type="checkbox"
                   checked={inStockOnly}
                   onChange={e => setInStockOnly(e.target.checked)}
@@ -272,6 +280,8 @@ function ShopSphereMain() {
                 <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                 <span className="text-slate-500 font-semibold">Sort:</span>
                 <select
+                  data-test="sort-select"
+                  data-testid="sort-select"
                   value={sortBy}
                   onChange={e => {
                     setSortBy(e.target.value);
@@ -290,6 +300,8 @@ function ShopSphereMain() {
             {/* Reset Filters */}
             {(selectedCategory !== 'all' || searchQuery || priceMax < 2000 || inStockOnly || sortBy !== 'newest') && (
               <button
+                data-test="reset-filters-button"
+                data-testid="reset-filters-button"
                 onClick={() => {
                   setSelectedCategory('all');
                   setSearchQuery('');
@@ -309,18 +321,20 @@ function ShopSphereMain() {
 
         {/* Product Catalog Grid */}
         {loadingProducts ? (
-          <div className="py-24 text-center">
+          <div data-test="catalog-loading" data-testid="catalog-loading" className="py-24 text-center">
             <span className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block" />
             <p className="text-xs text-slate-500 mt-3 font-bold">Curating catalog collection...</p>
           </div>
         ) : products.length === 0 ? (
-          <div className="py-20 text-center bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs">
+          <div data-test="empty-catalog-message" data-testid="empty-catalog-message" className="py-20 text-center bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs">
             <Package className="w-12 h-12 stroke-1 mx-auto text-slate-300 mb-2" />
             <h3 className="text-base font-bold text-slate-900">No items match your selected filters</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
               Try broadening your price range, choosing all categories, or clearing search keywords.
             </p>
             <button
+              data-test="show-all-products-button"
+              data-testid="show-all-products-button"
               onClick={() => {
                 setSelectedCategory('all');
                 setSearchQuery('');
@@ -334,6 +348,8 @@ function ShopSphereMain() {
           </div>
         ) : (
           <div
+            data-test="product-catalog-grid"
+            data-testid="product-catalog-grid"
             className={`grid gap-5 ${
               viewMode === 'compact'
                 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
@@ -352,18 +368,22 @@ function ShopSphereMain() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="pt-4 flex items-center justify-center gap-2">
+          <div data-test="pagination-container" data-testid="pagination-container" className="pt-4 flex items-center justify-center gap-2">
             <button
+              data-test="pagination-prev"
+              data-testid="pagination-prev"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
               className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-white shadow-2xs transition-colors cursor-pointer"
             >
               Previous
             </button>
-            <span className="text-xs font-bold text-slate-700 px-3">
+            <span data-test="pagination-page-indicator" data-testid="pagination-page-indicator" className="text-xs font-bold text-slate-700 px-3">
               Page {page} of {totalPages}
             </span>
             <button
+              data-test="pagination-next"
+              data-testid="pagination-next"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold disabled:opacity-40 hover:bg-white shadow-2xs transition-colors cursor-pointer"
@@ -406,6 +426,8 @@ function ShopSphereMain() {
               <ul className="space-y-2 text-xs">
                 <li>
                   <button
+                    data-test="footer-track-orders"
+                    data-testid="footer-track-orders"
                     onClick={() => setIsOrdersOpen(true)}
                     className="hover:text-white transition-colors cursor-pointer"
                   >
@@ -508,6 +530,8 @@ function ShopSphereMain() {
                 <div className="pt-1">
                   <p className="text-[11px] text-slate-400">Backend API Testing Console:</p>
                   <a
+                    data-test="footer-swagger-link"
+                    data-testid="footer-swagger-link"
                     href="/api-docs"
                     target="_blank"
                     rel="noopener noreferrer"

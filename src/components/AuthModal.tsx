@@ -183,7 +183,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+    <div
+      data-test="auth-modal"
+      data-testid="auth-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+    >
       <div
         className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -192,6 +196,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex bg-slate-200/80 p-1 rounded-xl">
             <button
+              data-test="auth-tab-login"
+              data-testid="auth-tab-login"
               onClick={() => handleSwitchTab('login')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 tab === 'login'
@@ -202,6 +208,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Sign In
             </button>
             <button
+              data-test="auth-tab-register"
+              data-testid="auth-tab-register"
               onClick={() => handleSwitchTab('register')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 tab === 'register'
@@ -214,6 +222,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           <button
+            data-test="auth-close-button"
+            data-testid="auth-close-button"
             onClick={handleClose}
             className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
           >
@@ -240,6 +250,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* Google OAuth */}
             <button
               type="button"
+              data-test="oauth-google-button"
+              data-testid="oauth-google-button"
               onClick={() => handleOAuthLogin('google')}
               disabled={isOAuthLoading !== null}
               className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2.5 shadow-2xs transition-all active:scale-98 cursor-pointer disabled:opacity-50"
@@ -272,6 +284,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* Apple OAuth */}
             <button
               type="button"
+              data-test="oauth-apple-button"
+              data-testid="oauth-apple-button"
               onClick={() => handleOAuthLogin('apple')}
               disabled={isOAuthLoading !== null}
               className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-900 border border-black text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2.5 shadow-2xs transition-all active:scale-98 cursor-pointer disabled:opacity-50"
@@ -301,7 +315,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {tab === 'login' && (
             <div className="space-y-4">
               {loginGlobalError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+                <div data-test="login-error-message" data-testid="login-error-message" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
                   <span>{loginGlobalError}</span>
                 </div>
@@ -314,6 +328,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
+                      data-test="login-email-input"
+                      data-testid="login-email-input"
                       placeholder="admin@practicesoftwaretesting.com"
                       value={loginEmail}
                       onChange={e => setLoginEmail(e.target.value)}
@@ -323,7 +339,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                   </div>
                   {loginErrors.email && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.email}</p>
+                    <p data-test="login-email-error" data-testid="login-email-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.email}</p>
                   )}
                 </div>
 
@@ -333,6 +349,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type={showLoginPassword ? 'text' : 'password'}
+                      data-test="login-password-input"
+                      data-testid="login-password-input"
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={e => setLoginPassword(e.target.value)}
@@ -342,6 +360,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                     <button
                       type="button"
+                      data-test="login-password-toggle"
+                      data-testid="login-password-toggle"
                       onClick={() => setShowLoginPassword(!showLoginPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                       title={showLoginPassword ? 'Hide password' : 'Show password'}
@@ -354,7 +374,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </button>
                   </div>
                   {loginErrors.password && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.password}</p>
+                    <p data-test="login-password-error" data-testid="login-password-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.password}</p>
                   )}
                 </div>
 
@@ -372,6 +392,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <button
                   type="submit"
+                  data-test="login-submit-button"
+                  data-testid="login-submit-button"
                   disabled={isLoggingIn}
                   className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
@@ -392,6 +414,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="space-y-1.5">
                   <button
                     type="button"
+                    data-test="quick-login-admin"
+                    data-testid="quick-login-admin"
                     onClick={async () => {
                       await quickLogin('admin');
                       resetForms();
@@ -409,6 +433,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <button
                     type="button"
+                    data-test="quick-login-customer1"
+                    data-testid="quick-login-customer1"
                     onClick={async () => {
                       await quickLogin('customer1');
                       resetForms();
@@ -432,14 +458,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {tab === 'register' && (
             <div className="space-y-4">
               {regGlobalError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+                <div data-test="register-error-message" data-testid="register-error-message" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
                   <span>{regGlobalError}</span>
                 </div>
               )}
 
               {regSuccessMessage && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium flex items-center gap-2">
+                <div data-test="register-success-message" data-testid="register-success-message" className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
                   <span>{regSuccessMessage}</span>
                 </div>
@@ -452,6 +478,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
+                      data-test="register-name-input"
+                      data-testid="register-name-input"
                       placeholder="Jane Doe"
                       value={regName}
                       onChange={e => setRegName(e.target.value)}
@@ -461,7 +489,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                   </div>
                   {regErrors.name && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.name}</p>
+                    <p data-test="register-name-error" data-testid="register-name-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.name}</p>
                   )}
                 </div>
 
@@ -471,6 +499,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
+                      data-test="register-email-input"
+                      data-testid="register-email-input"
                       placeholder="user@example.com"
                       value={regEmail}
                       onChange={e => setRegEmail(e.target.value)}
@@ -480,7 +510,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                   </div>
                   {regErrors.email && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.email}</p>
+                    <p data-test="register-email-error" data-testid="register-email-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.email}</p>
                   )}
                 </div>
 
@@ -490,6 +520,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type={showRegPassword ? 'text' : 'password'}
+                      data-test="register-password-input"
+                      data-testid="register-password-input"
                       placeholder="Minimum 6 characters"
                       value={regPassword}
                       onChange={e => setRegPassword(e.target.value)}
@@ -499,6 +531,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                     <button
                       type="button"
+                      data-test="register-password-toggle"
+                      data-testid="register-password-toggle"
                       onClick={() => setShowRegPassword(!showRegPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                       title={showRegPassword ? 'Hide password' : 'Show password'}
@@ -511,7 +545,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </button>
                   </div>
                   {regErrors.password && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.password}</p>
+                    <p data-test="register-password-error" data-testid="register-password-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.password}</p>
                   )}
                 </div>
 
@@ -521,6 +555,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
+                      data-test="register-phone-input"
+                      data-testid="register-phone-input"
                       placeholder="+1 (555) 000-0000"
                       value={regPhone}
                       onChange={e => setRegPhone(e.target.value)}
@@ -536,6 +572,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 <button
                   type="submit"
+                  data-test="register-submit-button"
+                  data-testid="register-submit-button"
                   disabled={isRegistering}
                   className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >

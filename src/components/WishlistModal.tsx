@@ -31,8 +31,14 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+    <div
+      data-test="wishlist-drawer-overlay"
+      data-testid="wishlist-drawer-overlay"
+      className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
+    >
       <div
+        data-test="wishlist-modal"
+        data-testid="wishlist-modal"
         className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 border-l border-slate-200"
         onClick={e => e.stopPropagation()}
       >
@@ -44,7 +50,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">Your Wishlist</h2>
-              <p className="text-xs text-slate-500">
+              <p data-test="wishlist-total-count" data-testid="wishlist-total-count" className="text-xs text-slate-500">
                 {wishlist.length} {wishlist.length === 1 ? 'saved item' : 'saved items'}
               </p>
             </div>
@@ -53,13 +59,17 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
           <div className="flex items-center gap-2">
             {wishlist.length > 0 && (
               <button
+                data-test="wishlist-clear-all"
+                data-testid="wishlist-clear-all"
                 onClick={clearWishlist}
-                className="text-xs text-slate-400 hover:text-rose-600 transition-colors px-2 py-1"
+                className="text-xs text-slate-400 hover:text-rose-600 transition-colors px-2 py-1 cursor-pointer"
               >
                 Clear All
               </button>
             )}
             <button
+              data-test="wishlist-close-button"
+              data-testid="wishlist-close-button"
               onClick={closeWishlist}
               className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
             >
@@ -71,7 +81,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
         {/* Wishlist Items List */}
         <div className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-slate-100">
           {wishlist.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+            <div data-test="wishlist-empty-message" data-testid="wishlist-empty-message" className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
               <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mb-3">
                 <Heart className="w-8 h-8" />
               </div>
@@ -80,6 +90,8 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
                 Tap the heart icon on any product to save your favorite items and track their price.
               </p>
               <button
+                data-test="wishlist-explore-button"
+                data-testid="wishlist-explore-button"
                 onClick={closeWishlist}
                 className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs cursor-pointer"
               >
@@ -90,6 +102,8 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
             wishlist.map(product => (
               <div
                 key={product.id}
+                data-test={`wishlist-item-${product.id}`}
+                data-testid={`wishlist-item-${product.id}`}
                 onClick={() => {
                   closeWishlist();
                   onSelectProduct(product);
@@ -111,11 +125,13 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
                         {product.subcategory}
                       </span>
                       <button
+                        data-test={`wishlist-remove-${product.id}`}
+                        data-testid={`wishlist-remove-${product.id}`}
                         onClick={e => {
                           e.stopPropagation();
                           removeFromWishlist(product.id);
                         }}
-                        className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                        className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
                         title="Remove from wishlist"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -139,6 +155,8 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({ onSelectProduct })
                   </div>
 
                   <button
+                    data-test={`wishlist-move-to-cart-${product.id}`}
+                    data-testid={`wishlist-move-to-cart-${product.id}`}
                     onClick={e => handleMoveToCart(product, e)}
                     className="mt-2 w-full py-1.5 px-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >

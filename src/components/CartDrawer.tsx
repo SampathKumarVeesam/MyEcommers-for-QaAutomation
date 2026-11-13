@@ -83,8 +83,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+    <div
+      data-test="cart-drawer-overlay"
+      data-testid="cart-drawer-overlay"
+      className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
+    >
       <div
+        data-test="cart-drawer"
+        data-testid="cart-drawer"
         className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300 border-l border-slate-200"
         onClick={e => e.stopPropagation()}
       >
@@ -96,7 +102,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">Your Shopping Basket</h2>
-              <p className="text-xs text-slate-500">
+              <p data-test="cart-total-items" data-testid="cart-total-items" className="text-xs text-slate-500">
                 {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'} in cart
               </p>
             </div>
@@ -105,6 +111,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
           <div className="flex items-center gap-2">
             {items.length > 0 && (
               <button
+                data-test="cart-clear-button"
+                data-testid="cart-clear-button"
                 onClick={clearCart}
                 className="text-xs text-slate-400 hover:text-rose-600 transition-colors px-2 py-1 cursor-pointer"
                 title="Empty basket"
@@ -113,6 +121,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
               </button>
             )}
             <button
+              data-test="cart-close-button"
+              data-testid="cart-close-button"
               onClick={closeCart}
               className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
             >
@@ -145,9 +155,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
         </div>
 
         {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-slate-100">
+        <div data-test="cart-items-container" data-testid="cart-items-container" className="flex-1 overflow-y-auto px-6 py-4 divide-y divide-slate-100">
           {items.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+            <div data-test="cart-empty-message" data-testid="cart-empty-message" className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
               <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                 <ShoppingBag className="w-8 h-8 stroke-1" />
               </div>
@@ -156,6 +166,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                 Explore our collections of dresses, smartphones, audio devices, and fragrances.
               </p>
               <button
+                data-test="cart-empty-browse-button"
+                data-testid="cart-empty-browse-button"
                 onClick={closeCart}
                 className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs cursor-pointer"
               >
@@ -164,7 +176,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
             </div>
           ) : (
             items.map(item => (
-              <div key={item.id} className="py-4 flex gap-3 group">
+              <div
+                key={item.id}
+                data-test={`cart-item-${item.productId}`}
+                data-testid={`cart-item-${item.productId}`}
+                className="py-4 flex gap-3 group"
+              >
                 {/* Thumbnail */}
                 <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
                   <img
@@ -178,10 +195,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-xs font-bold text-slate-900 line-clamp-1">
+                      <h4 data-test={`cart-item-title-${item.productId}`} data-testid={`cart-item-title-${item.productId}`} className="text-xs font-bold text-slate-900 line-clamp-1">
                         {item.product.title}
                       </h4>
                       <button
+                        data-test={`cart-item-remove-${item.productId}`}
+                        data-testid={`cart-item-remove-${item.productId}`}
                         onClick={() => removeItem(item.productId, item.selectedVariant)}
                         className="text-slate-400 hover:text-rose-600 transition-colors p-0.5 cursor-pointer"
                         title="Remove item"
@@ -215,6 +234,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-1.5 py-0.5">
                       <button
                         type="button"
+                        data-test={`cart-item-decrease-${item.productId}`}
+                        data-testid={`cart-item-decrease-${item.productId}`}
                         onClick={() =>
                           updateQuantity(item.productId, item.quantity - 1, {
                             selectedVariant: item.selectedVariant,
@@ -226,11 +247,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="w-7 text-center font-bold text-xs text-slate-800">
+                      <span
+                        data-test={`cart-item-quantity-${item.productId}`}
+                        data-testid={`cart-item-quantity-${item.productId}`}
+                        className="w-7 text-center font-bold text-xs text-slate-800"
+                      >
                         {item.quantity}
                       </span>
                       <button
                         type="button"
+                        data-test={`cart-item-increase-${item.productId}`}
+                        data-testid={`cart-item-increase-${item.productId}`}
                         onClick={() =>
                           updateQuantity(item.productId, item.quantity + 1, {
                             selectedVariant: item.selectedVariant,
@@ -245,7 +272,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                     </div>
 
                     <div className="text-right">
-                      <span className="text-xs font-bold text-slate-900">
+                      <span
+                        data-test={`cart-item-price-${item.productId}`}
+                        data-testid={`cart-item-price-${item.productId}`}
+                        className="text-xs font-bold text-slate-900"
+                      >
                         ${item.totalPrice.toFixed(2)}
                       </span>
                       {item.quantity > 1 && (
@@ -285,6 +316,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                 <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
+                  data-test="cart-coupon-input"
+                  data-testid="cart-coupon-input"
                   placeholder="Coupon code (e.g. SPHERE20, SUMMER50)"
                   value={promoCode}
                   onChange={e => setPromoCode(e.target.value)}
@@ -295,6 +328,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
               {appliedPromo ? (
                 <button
                   type="button"
+                  data-test="cart-remove-coupon"
+                  data-testid="cart-remove-coupon"
                   onClick={() => {
                     setAppliedPromo(null);
                     setPromoCode('');
@@ -306,6 +341,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
               ) : (
                 <button
                   type="submit"
+                  data-test="cart-apply-coupon"
+                  data-testid="cart-apply-coupon"
                   disabled={!promoCode.trim()}
                   className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                 >
@@ -314,33 +351,33 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
               )}
             </form>
             {appliedPromo && (
-              <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+              <p data-test="cart-applied-promo-badge" data-testid="cart-applied-promo-badge" className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                 <Sparkles className="w-3 h-3" /> Coupon {appliedPromo.code} applied ({appliedPromo.percent}% discount)
               </p>
             )}
             {promoError && (
-              <p className="text-[11px] text-rose-600 font-medium">{promoError}</p>
+              <p data-test="cart-coupon-error" data-testid="cart-coupon-error" className="text-[11px] text-rose-600 font-medium">{promoError}</p>
             )}
 
             {/* Calculations Breakdown */}
             <div className="space-y-1.5 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span>Subtotal ({totalItemCount} items)</span>
-                <span className="font-semibold text-slate-900">${subtotal.toFixed(2)}</span>
+                <span data-test="cart-subtotal" data-testid="cart-subtotal" className="font-semibold text-slate-900">${subtotal.toFixed(2)}</span>
               </div>
               {appliedPromo && discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-medium">
                   <span>Coupon Discount ({appliedPromo.percent}%)</span>
-                  <span>-${discountAmount.toFixed(2)}</span>
+                  <span data-test="cart-discount" data-testid="cart-discount">-${discountAmount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span>Estimated Tax (8.25%)</span>
-                <span>${estimatedTax.toFixed(2)}</span>
+                <span data-test="cart-tax" data-testid="cart-tax">${estimatedTax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <span>
+                <span data-test="cart-shipping" data-testid="cart-shipping">
                   {diffToFree === 0 || appliedPromo?.freeShipping ? (
                     <strong className="text-emerald-600">FREE</strong>
                   ) : (
@@ -350,12 +387,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
               </div>
               <div className="pt-2 border-t border-slate-200 flex justify-between text-sm font-bold text-slate-900">
                 <span>Grand Total</span>
-                <span className="text-base text-indigo-700">${finalGrandTotal.toFixed(2)}</span>
+                <span data-test="cart-grand-total" data-testid="cart-grand-total" className="text-base text-indigo-700">${finalGrandTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Checkout Action */}
             <button
+              data-test="cart-checkout-button"
+              data-testid="cart-checkout-button"
               onClick={() => {
                 closeCart();
                 onProceedToCheckout();

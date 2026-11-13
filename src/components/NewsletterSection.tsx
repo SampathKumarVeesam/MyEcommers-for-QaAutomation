@@ -61,7 +61,11 @@ export const NewsletterSection: React.FC = () => {
           </p>
 
           {subscribed ? (
-            <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs max-w-md mx-auto text-center animate-in fade-in duration-300">
+            <div
+              data-test="newsletter-success-message"
+              data-testid="newsletter-success-message"
+              className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs max-w-md mx-auto text-center animate-in fade-in duration-300"
+            >
               <p className="font-bold text-sm flex items-center justify-center gap-1.5">
                 <Check className="w-4 h-4 text-emerald-400" /> You're on the VIP list!
               </p>
@@ -75,6 +79,8 @@ export const NewsletterSection: React.FC = () => {
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
+                  data-test="newsletter-email-input"
+                  data-testid="newsletter-email-input"
                   placeholder="Enter your email address..."
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -84,6 +90,8 @@ export const NewsletterSection: React.FC = () => {
               </div>
               <button
                 type="submit"
+                data-test="newsletter-submit-button"
+                data-testid="newsletter-submit-button"
                 className="px-6 py-3 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Subscribe</span>
@@ -119,9 +127,16 @@ export const NewsletterSection: React.FC = () => {
           {faqs.map((faq, index) => {
             const isOpen = openFaq === index;
             return (
-              <div key={index} className="py-3.5">
+              <div
+                key={index}
+                data-test={`faq-item-${index}`}
+                data-testid={`faq-item-${index}`}
+                className="py-3.5"
+              >
                 <button
                   type="button"
+                  data-test={`faq-button-${index}`}
+                  data-testid={`faq-button-${index}`}
                   onClick={() => setOpenFaq(isOpen ? null : index)}
                   className="w-full flex items-center justify-between text-left text-xs sm:text-sm font-bold text-slate-900 hover:text-indigo-600 transition-colors cursor-pointer"
                 >
@@ -133,7 +148,11 @@ export const NewsletterSection: React.FC = () => {
                   />
                 </button>
                 {isOpen && (
-                  <p className="mt-2 text-xs text-slate-600 leading-relaxed pr-6 animate-in fade-in duration-150">
+                  <p
+                    data-test={`faq-answer-${index}`}
+                    data-testid={`faq-answer-${index}`}
+                    className="mt-2 text-xs text-slate-600 leading-relaxed pr-6 animate-in fade-in duration-150"
+                  >
                     {faq.a}
                   </p>
                 )}

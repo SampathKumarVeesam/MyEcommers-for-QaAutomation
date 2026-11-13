@@ -263,7 +263,11 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200">
+    <div
+      data-test="dot-workflow-modal"
+      data-testid="dot-workflow-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200"
+    >
       <div
         className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -292,6 +296,9 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
           <div className="flex items-center gap-2">
             <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
               <button
+                type="button"
+                data-test="dot-tab-visual"
+                data-testid="dot-tab-visual"
                 onClick={() => setActiveTab('visual')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'visual' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
@@ -300,6 +307,9 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
                 Visual Flow
               </button>
               <button
+                type="button"
+                data-test="dot-tab-runner"
+                data-testid="dot-tab-runner"
                 onClick={() => setActiveTab('e2e_runner')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'e2e_runner' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
@@ -308,6 +318,9 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
                 E2E Test Runner
               </button>
               <button
+                type="button"
+                data-test="dot-tab-code"
+                data-testid="dot-tab-code"
                 onClick={() => setActiveTab('dot')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'dot' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
@@ -318,6 +331,9 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
             </div>
 
             <button
+              type="button"
+              data-test="dot-workflow-close-button"
+              data-testid="dot-workflow-close-button"
               onClick={onClose}
               className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
             >

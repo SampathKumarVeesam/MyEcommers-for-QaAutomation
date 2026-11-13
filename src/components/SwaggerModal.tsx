@@ -366,7 +366,11 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200">
+    <div
+      data-test="swagger-modal"
+      data-testid="swagger-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200"
+    >
       <div
         className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -393,6 +397,9 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
           <div className="flex items-center gap-2">
             <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
               <button
+                type="button"
+                data-test="swagger-tab-ui"
+                data-testid="swagger-tab-ui"
                 onClick={() => setActiveTab('ui')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'ui' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
@@ -401,6 +408,9 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
                 Interactive Explorer
               </button>
               <button
+                type="button"
+                data-test="swagger-tab-json"
+                data-testid="swagger-tab-json"
                 onClick={() => setActiveTab('json')}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'json' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
@@ -411,6 +421,9 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
             </div>
 
             <button
+              type="button"
+              data-test="swagger-close-button"
+              data-testid="swagger-close-button"
               onClick={onClose}
               className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
             >
@@ -426,6 +439,8 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
             <span className="text-slate-300 font-semibold shrink-0">Bearer Token:</span>
             <input
               type="text"
+              data-test="swagger-token-input"
+              data-testid="swagger-token-input"
               placeholder="Paste JWT token here or login via POST /api/users/login..."
               value={tokenInput}
               onChange={e => setTokenInput(e.target.value)}

@@ -60,7 +60,11 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200">
+    <div
+      data-test="orders-modal"
+      data-testid="orders-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200"
+    >
       <div
         className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -78,8 +82,10 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
           </div>
 
           <button
+            data-test="orders-close-button"
+            data-testid="orders-close-button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -88,12 +94,12 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="py-20 text-center">
+            <div data-test="orders-loading" data-testid="orders-loading" className="py-20 text-center">
               <span className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block" />
               <p className="text-xs text-slate-500 mt-2 font-medium">Fetching order records...</p>
             </div>
           ) : orders.length === 0 ? (
-            <div className="py-20 text-center text-slate-400">
+            <div data-test="orders-empty-message" data-testid="orders-empty-message" className="py-20 text-center text-slate-400">
               <Package className="w-12 h-12 stroke-1 mx-auto text-slate-300 mb-2" />
               <h3 className="text-sm font-bold text-slate-700">No orders placed yet</h3>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
@@ -103,10 +109,12 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Order List Column */}
-              <div className="md:col-span-1 space-y-2.5 max-h-[65vh] overflow-y-auto pr-1">
+              <div data-test="orders-list" data-testid="orders-list" className="md:col-span-1 space-y-2.5 max-h-[65vh] overflow-y-auto pr-1">
                 {orders.map(o => (
                   <div
                     key={o.id}
+                    data-test={`order-card-${o.orderNumber}`}
+                    data-testid={`order-card-${o.orderNumber}`}
                     onClick={() => setSelectedOrder(o)}
                     className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all ${
                       selectedOrder?.id === o.id
@@ -137,7 +145,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
 
               {/* Order Detail & Invoice Card */}
               {selectedOrder && (
-                <div className="md:col-span-2 p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-4">
+                <div data-test="selected-order-details" data-testid="selected-order-details" className="md:col-span-2 p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-4">
                   {/* Summary Bar */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
                     <div>
@@ -149,7 +157,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
 
                     <div className="text-right">
                       <span className="text-[11px] text-slate-500">Tracking Number</span>
-                      <p className="font-mono text-xs font-bold text-indigo-700">
+                      <p data-test="order-detail-tracking-number" data-testid="order-detail-tracking-number" className="font-mono text-xs font-bold text-indigo-700">
                         {selectedOrder.trackingNumber}
                       </p>
                     </div>
@@ -238,7 +246,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                       </div>
                       <div className="pt-2 border-t border-slate-100 flex justify-between font-bold text-slate-900 text-sm">
                         <span>Grand Total:</span>
-                        <span className="text-indigo-700">${selectedOrder.grandTotal.toFixed(2)}</span>
+                        <span data-test="order-detail-grand-total" data-testid="order-detail-grand-total" className="text-indigo-700">${selectedOrder.grandTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

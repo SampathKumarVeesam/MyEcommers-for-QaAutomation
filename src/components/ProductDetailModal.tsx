@@ -350,6 +350,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   return (
     <>
       <div
+        data-test="pdp-modal"
+        data-testid="pdp-modal"
         className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200"
         onClick={onClose}
       >
@@ -371,6 +373,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Interactive Share Button */}
               <button
                 type="button"
+                data-test="pdp-share-button"
+                data-testid="pdp-share-button"
                 onClick={() => setIsShareOpen(true)}
                 className="p-2 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                 title="Share this product"
@@ -381,6 +385,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               <button
                 type="button"
+                data-test="pdp-close-button"
+                data-testid="pdp-close-button"
                 onClick={onClose}
                 className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
                 aria-label="Close modal"
@@ -397,6 +403,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Primary High-Res Stage */}
               <div className="relative aspect-square w-full rounded-2xl bg-slate-100 overflow-hidden border border-slate-200 group shadow-inner">
                 <img
+                  data-test="pdp-main-image"
+                  data-testid="pdp-main-image"
                   src={images[selectedImage] || images[0]}
                   alt={product.title}
                   className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
@@ -422,6 +430,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {/* Wishlist toggle button */}
                 <button
                   type="button"
+                  data-test="pdp-wishlist-toggle"
+                  data-testid="pdp-wishlist-toggle"
                   onClick={() => toggleWishlist(product)}
                   className={`absolute top-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     isFavorited
@@ -441,6 +451,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     <button
                       key={idx}
                       type="button"
+                      data-test={`pdp-thumbnail-${idx}`}
+                      data-testid={`pdp-thumbnail-${idx}`}
                       onClick={() => setSelectedImage(idx)}
                       className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
                         selectedImage === idx
@@ -479,18 +491,28 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="lg:col-span-7 flex flex-col justify-between">
               <div>
                 {/* Product Title */}
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                <h1
+                  data-test="pdp-title"
+                  data-testid="pdp-title"
+                  className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug"
+                >
                   {product.title}
                 </h1>
 
                 {/* Rating, Reviews count & Stock Pill */}
                 <div className="flex flex-wrap items-center gap-3 mt-2.5">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold">
+                  <div
+                    data-test="pdp-rating"
+                    data-testid="pdp-rating"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold"
+                  >
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span>{product.rating.toFixed(1)}</span>
                   </div>
 
                   <button
+                    data-test="pdp-reviews-count-link"
+                    data-testid="pdp-reviews-count-link"
                     onClick={() => setActiveTab('reviews')}
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold underline underline-offset-2 cursor-pointer"
                   >
@@ -500,13 +522,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span className="text-slate-300">•</span>
 
                   {/* Stock status indicator */}
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    product.stock > 5
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : product.stock > 0
-                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                      : 'bg-rose-50 text-rose-700 border border-rose-200'
-                  }`}>
+                  <span
+                    data-test="pdp-stock-badge"
+                    data-testid="pdp-stock-badge"
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      product.stock > 5
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : product.stock > 0
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}
+                  >
                     <span className={`w-1.5 h-1.5 rounded-full ${product.stock > 5 ? 'bg-emerald-500' : product.stock > 0 ? 'bg-amber-500' : 'bg-rose-500'}`} />
                     {product.stock > 5
                       ? `${product.stock} in stock`
@@ -518,12 +544,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 {/* Pricing Box */}
                 <div className="mt-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-wrap items-baseline gap-3">
-                  <span className="text-3xl font-black text-slate-900">
+                  <span
+                    data-test="pdp-price"
+                    data-testid="pdp-price"
+                    className="text-3xl font-black text-slate-900"
+                  >
                     ${product.price.toFixed(2)}
                   </span>
                   {product.compareAtPrice && product.compareAtPrice > product.price && (
                     <>
-                      <span className="text-lg text-slate-400 line-through">
+                      <span
+                        data-test="pdp-compare-price"
+                        data-testid="pdp-compare-price"
+                        className="text-lg text-slate-400 line-through"
+                      >
                         ${product.compareAtPrice.toFixed(2)}
                       </span>
                       <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
@@ -545,6 +579,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <div className="mt-5 flex border-b border-slate-200">
                   <button
                     type="button"
+                    data-test="pdp-tab-details"
+                    data-testid="pdp-tab-details"
                     onClick={() => setActiveTab('details')}
                     className={`pb-2.5 px-3.5 text-xs font-bold transition-all cursor-pointer border-b-2 ${
                       activeTab === 'details'
@@ -556,6 +592,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </button>
                   <button
                     type="button"
+                    data-test="pdp-tab-stock"
+                    data-testid="pdp-tab-stock"
                     onClick={() => setActiveTab('stock')}
                     className={`pb-2.5 px-3.5 text-xs font-bold transition-all cursor-pointer border-b-2 flex items-center gap-1.5 ${
                       activeTab === 'stock'
@@ -568,6 +606,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </button>
                   <button
                     type="button"
+                    data-test="pdp-tab-reviews"
+                    data-testid="pdp-tab-reviews"
                     onClick={() => setActiveTab('reviews')}
                     className={`pb-2.5 px-3.5 text-xs font-bold transition-all cursor-pointer border-b-2 flex items-center gap-1.5 ${
                       activeTab === 'reviews'
@@ -602,6 +642,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             <button
                               key={sz}
                               type="button"
+                              data-test={`pdp-size-${sz}`}
+                              data-testid={`pdp-size-${sz}`}
                               onClick={() => setSelectedSize(sz)}
                               className={`min-w-11 h-10 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                                 selectedSize === sz
@@ -627,6 +669,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             <button
                               key={clr.name}
                               type="button"
+                              data-test={`pdp-color-${clr.name}`}
+                              data-testid={`pdp-color-${clr.name}`}
                               onClick={() => setSelectedColor(clr.name)}
                               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
                                 selectedColor === clr.name
@@ -656,6 +700,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             <button
                               key={v.id}
                               type="button"
+                              data-test={`pdp-variant-${v.id}`}
+                              data-testid={`pdp-variant-${v.id}`}
                               onClick={() => setSelectedVariant(v.name)}
                               className={`text-left p-3 rounded-xl border text-xs flex items-center justify-between transition-all cursor-pointer ${
                                 selectedVariant === v.name
@@ -744,6 +790,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         {storeInventory.map((st) => (
                           <div
                             key={st.storeId}
+                            data-test={`pdp-store-stock-${st.storeId}`}
+                            data-testid={`pdp-store-stock-${st.storeId}`}
                             className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between"
                           >
                             <div className="flex items-center gap-3">
@@ -778,10 +826,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {activeTab === 'reviews' && (
                   <div className="mt-4 space-y-4">
                     {/* Write a Review Form */}
-                    <form onSubmit={handleReviewSubmit} className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                    <form
+                      data-test="review-form"
+                      data-testid="review-form"
+                      onSubmit={handleReviewSubmit}
+                      className="p-4 rounded-2xl bg-slate-50 border border-slate-200"
+                    >
                       <h4 className="text-xs font-bold text-slate-900 mb-2">Write a Customer Review</h4>
                       {reviewSuccessMessage && (
-                        <div className="mb-3 p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl flex items-center gap-1.5">
+                        <div
+                          data-test="review-success-message"
+                          data-testid="review-success-message"
+                          className="mb-3 p-2.5 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl flex items-center gap-1.5"
+                        >
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
                           <span>{reviewSuccessMessage}</span>
                         </div>
@@ -794,6 +851,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                               <button
                                 type="button"
                                 key={star}
+                                data-test={`review-rating-star-${star}`}
+                                data-testid={`review-rating-star-${star}`}
                                 onClick={() => setReviewRating(star)}
                                 className="text-amber-400 hover:scale-110 transition-transform cursor-pointer"
                               >
@@ -809,6 +868,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                         <input
                           type="text"
+                          data-test="review-name-input"
+                          data-testid="review-name-input"
                           placeholder="Your Name (e.g. Jane D.)"
                           value={reviewName}
                           onChange={e => setReviewName(e.target.value)}
@@ -818,6 +879,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                         <textarea
                           rows={2}
+                          data-test="review-comment-input"
+                          data-testid="review-comment-input"
                           placeholder="Share details of your experience with this item..."
                           value={reviewComment}
                           onChange={e => setReviewComment(e.target.value)}
@@ -827,6 +890,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                         <button
                           type="submit"
+                          data-test="review-submit-button"
+                          data-testid="review-submit-button"
                           disabled={submittingReview}
                           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
@@ -846,7 +911,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     ) : (
                       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                         {reviews.map(rev => (
-                          <div key={rev.id} className="p-3.5 rounded-xl border border-slate-100 bg-white">
+                          <div
+                            key={rev.id}
+                            data-test={`review-item-${rev.id}`}
+                            data-testid={`review-item-${rev.id}`}
+                            className="p-3.5 rounded-xl border border-slate-100 bg-white"
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center text-[10px] font-bold">
@@ -888,17 +958,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-2 py-1 w-full sm:w-auto justify-between sm:justify-start">
                   <button
                     type="button"
+                    data-test="pdp-qty-decrease"
+                    data-testid="pdp-qty-decrease"
                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
                     className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-white transition-colors cursor-pointer"
                     title="Decrease quantity"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-10 text-center font-extrabold text-sm text-slate-900">
+                  <span
+                    data-test="pdp-qty-display"
+                    data-testid="pdp-qty-display"
+                    className="w-10 text-center font-extrabold text-sm text-slate-900"
+                  >
                     {quantity}
                   </span>
                   <button
                     type="button"
+                    data-test="pdp-qty-increase"
+                    data-testid="pdp-qty-increase"
                     onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
                     className="p-2 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-white transition-colors cursor-pointer"
                     title="Increase quantity"
@@ -910,6 +988,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {/* Add to Basket Button */}
                 <button
                   type="button"
+                  data-test="pdp-add-to-cart"
+                  data-testid="pdp-add-to-cart"
                   onClick={handleAddToCart}
                   disabled={isAdding || product.stock <= 0}
                   className={`flex-1 w-full sm:w-auto py-3 px-5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
@@ -941,6 +1021,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {/* Buy Now Button (1-Click Instant Checkout) */}
                 <button
                   type="button"
+                  data-test="pdp-buy-now"
+                  data-testid="pdp-buy-now"
                   onClick={handleBuyNow}
                   disabled={isBuyingNow || product.stock <= 0}
                   className="w-full sm:w-auto py-3 px-6 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-md shadow-indigo-600/30 flex items-center justify-center gap-1.5 transition-all active:scale-98 cursor-pointer"
@@ -957,6 +1039,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       {/* DEDICATED SOCIAL MEDIA SHARE MODAL */}
       {isShareOpen && (
         <div
+          data-test="share-modal"
+          data-testid="share-modal"
           className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={() => setIsShareOpen(false)}
         >
@@ -977,6 +1061,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
               <button
                 type="button"
+                data-test="share-modal-close"
+                data-testid="share-modal-close"
                 onClick={() => setIsShareOpen(false)}
                 className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
               >
@@ -1010,6 +1096,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <button
                     key={platform.name}
                     type="button"
+                    data-test={`share-platform-${platform.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                    data-testid={`share-platform-${platform.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                     onClick={() => {
                       window.open(platform.url, '_blank', 'noopener,noreferrer');
                     }}
@@ -1037,12 +1125,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <div className="flex items-center gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
                 <input
                   type="text"
+                  data-test="share-link-input"
+                  data-testid="share-link-input"
                   readOnly
                   value={productUrl}
                   className="flex-1 bg-transparent px-2 text-xs text-slate-700 outline-none truncate font-mono select-all"
                 />
                 <button
                   type="button"
+                  data-test="share-copy-button"
+                  data-testid="share-copy-button"
                   onClick={handleCopyLink}
                   className={`px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
                     copiedLink

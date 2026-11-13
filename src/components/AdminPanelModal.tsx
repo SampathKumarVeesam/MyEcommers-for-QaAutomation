@@ -93,7 +93,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200">
+    <div
+      data-test="admin-modal"
+      data-testid="admin-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 md:p-6 animate-in fade-in duration-200"
+    >
       <div
         className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -120,16 +124,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
           <div className="flex items-center gap-2">
             <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
               <button
+                data-test="admin-tab-inventory"
+                data-testid="admin-tab-inventory"
                 onClick={() => setActiveTab('inventory')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === 'inventory' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Inventory ({products.length})
               </button>
               <button
+                data-test="admin-tab-orders"
+                data-testid="admin-tab-orders"
                 onClick={() => setActiveTab('orders')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeTab === 'orders' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -138,8 +146,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
             </div>
 
             <button
+              data-test="admin-close-button"
+              data-testid="admin-close-button"
               onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -206,6 +216,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
+                    data-test="admin-product-search-input"
+                    data-testid="admin-product-search-input"
                     placeholder="Filter products..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
@@ -214,8 +226,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                 </div>
 
                 <button
+                  type="button"
+                  data-test="admin-refresh-button"
+                  data-testid="admin-refresh-button"
                   onClick={fetchData}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
                   <span>Refresh</span>
@@ -256,6 +271,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                           <div className="flex items-center gap-1.5">
                             <input
                               type="number"
+                              data-test={`admin-stock-input-${p.id}`}
+                              data-testid={`admin-stock-input-${p.id}`}
                               min={0}
                               value={p.stock}
                               onChange={e => handleUpdateStock(p.id, parseInt(e.target.value, 10) || 0)}
@@ -296,7 +313,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {orders.map(o => (
-                      <tr key={o.id} className="hover:bg-slate-50/50">
+                      <tr
+                        key={o.id}
+                        data-test={`admin-order-row-${o.orderNumber}`}
+                        data-testid={`admin-order-row-${o.orderNumber}`}
+                        className="hover:bg-slate-50/50"
+                      >
                         <td className="p-3 font-mono font-bold text-indigo-700">
                           {o.orderNumber}
                         </td>

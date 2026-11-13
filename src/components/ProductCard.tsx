@@ -56,6 +56,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
 
   return (
     <div
+      data-test={`product-card-${product.id}`}
+      data-testid={`product-card-${product.id}`}
       onClick={() => onSelect(product)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -93,6 +95,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
         {/* Wishlist Heart Toggle */}
         <button
           type="button"
+          data-test={`product-wishlist-${product.id}`}
+          data-testid={`product-wishlist-${product.id}`}
           onClick={handleToggleWishlist}
           className={`absolute top-3 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
             isFavorited
@@ -106,7 +110,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
 
         {/* Quick View Button on Hover */}
         <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/95 text-slate-900 text-xs font-semibold shadow-md backdrop-blur-xs">
+          <span
+            data-test={`product-quickview-${product.id}`}
+            data-testid={`product-quickview-${product.id}`}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/95 text-slate-900 text-xs font-semibold shadow-md backdrop-blur-xs"
+          >
             <Eye className="w-3.5 h-3.5 text-indigo-600" /> Quick View
           </span>
         </div>
@@ -117,19 +125,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
         <div>
           {/* Rating & Stock */}
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <div className="flex items-center gap-1 text-amber-500 font-semibold">
+            <div
+              data-test={`product-rating-${product.id}`}
+              data-testid={`product-rating-${product.id}`}
+              className="flex items-center gap-1 text-amber-500 font-semibold"
+            >
               <Star className="w-3.5 h-3.5 fill-amber-400 stroke-amber-400" />
               <span>{product.rating.toFixed(1)}</span>
               <span className="text-slate-400 font-normal">({product.reviewsCount})</span>
             </div>
 
-            <span className={`text-[11px] font-semibold ${product.stock <= 5 ? 'text-amber-600' : 'text-emerald-600'}`}>
+            <span
+              data-test={`product-stock-${product.id}`}
+              data-testid={`product-stock-${product.id}`}
+              className={`text-[11px] font-semibold ${product.stock <= 5 ? 'text-amber-600' : 'text-emerald-600'}`}
+            >
               {product.stock <= 5 ? `Only ${product.stock} left!` : 'In Stock'}
             </span>
           </div>
 
           {/* Title */}
-          <h3 className="font-semibold text-slate-900 text-sm line-clamp-2 group-hover:text-indigo-600 transition-colors">
+          <h3
+            data-test={`product-title-${product.id}`}
+            data-testid={`product-title-${product.id}`}
+            className="font-semibold text-slate-900 text-sm line-clamp-2 group-hover:text-indigo-600 transition-colors"
+          >
             {product.title}
           </h3>
 
@@ -168,11 +188,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base font-extrabold text-slate-900">
+              <span
+                data-test={`product-price-${product.id}`}
+                data-testid={`product-price-${product.id}`}
+                className="text-base font-extrabold text-slate-900"
+              >
                 ${product.price.toFixed(2)}
               </span>
               {product.compareAtPrice && (
-                <span className="text-xs text-slate-400 line-through">
+                <span
+                  data-test={`product-compare-price-${product.id}`}
+                  data-testid={`product-compare-price-${product.id}`}
+                  className="text-xs text-slate-400 line-through"
+                >
                   ${product.compareAtPrice.toFixed(2)}
                 </span>
               )}
@@ -185,6 +213,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
           </div>
 
           <button
+            data-test={`product-add-to-cart-${product.id}`}
+            data-testid={`product-add-to-cart-${product.id}`}
             onClick={handleQuickAdd}
             disabled={adding}
             className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${

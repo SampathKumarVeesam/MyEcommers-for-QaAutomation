@@ -134,6 +134,8 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-1 text-slate-400 hover:text-white cursor-pointer">
               <Globe className="w-3 h-3" />
               <select
+                data-test="currency-selector"
+                data-testid="currency-selector"
                 value={currency}
                 onChange={e => setCurrency(e.target.value)}
                 className="bg-transparent text-slate-300 font-semibold outline-none cursor-pointer text-[11px]"
@@ -146,6 +148,8 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Track Orders shortcut */}
             <button
+              data-test="nav-track-order"
+              data-testid="nav-track-order"
               onClick={onOpenOrders}
               className="text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
@@ -161,6 +165,8 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand Logo */}
           <div className="flex items-center gap-3">
             <button
+              data-test="nav-logo"
+              data-testid="nav-logo"
               onClick={() => onSelectCategory('all')}
               className="flex items-center gap-2.5 text-left group cursor-pointer"
             >
@@ -184,6 +190,8 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
+                data-test="search-input"
+                data-testid="search-input"
                 type="text"
                 placeholder="Search dresses, smartphones, audio devices, perfumes..."
                 value={searchQuery}
@@ -193,6 +201,8 @@ export const Header: React.FC<HeaderProps> = ({
               />
               {searchQuery && (
                 <button
+                  data-test="search-clear"
+                  data-testid="search-clear"
                   onClick={() => {
                     onSearchChange('');
                     setSearchPreviewResults([]);
@@ -206,7 +216,11 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Live Autocomplete Search Results Dropdown */}
             {isSearchFocused && searchPreviewResults.length > 0 && (
-              <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div
+                data-test="search-preview-dropdown"
+                data-testid="search-preview-dropdown"
+                className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150"
+              >
                 <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
                   <span>Quick Results</span>
                   <span>{searchPreviewResults.length} matches</span>
@@ -215,6 +229,8 @@ export const Header: React.FC<HeaderProps> = ({
                   {searchPreviewResults.map(p => (
                     <div
                       key={p.id}
+                      data-test={`search-preview-item-${p.id}`}
+                      data-testid={`search-preview-item-${p.id}`}
                       onClick={() => {
                         setIsSearchFocused(false);
                         if (onSelectProduct) onSelectProduct(p);
@@ -245,6 +261,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Demo Accounts Switcher Pill */}
             <div className="relative">
               <button
+                data-test="demo-accounts-menu"
+                data-testid="demo-accounts-menu"
                 onClick={() => setIsDemoMenuOpen(!isDemoMenuOpen)}
                 className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
                 title="Switch demo customer or admin accounts"
@@ -256,6 +274,8 @@ export const Header: React.FC<HeaderProps> = ({
 
               {isDemoMenuOpen && (
                 <div
+                  data-test="demo-accounts-dropdown"
+                  data-testid="demo-accounts-dropdown"
                   className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onMouseLeave={() => setIsDemoMenuOpen(false)}
                 >
@@ -266,6 +286,8 @@ export const Header: React.FC<HeaderProps> = ({
 
                   <div className="py-1 space-y-1">
                     <button
+                      data-test="demo-account-customer1"
+                      data-testid="demo-account-customer1"
                       onClick={async () => {
                         await quickLogin('customer1');
                         setIsDemoMenuOpen(false);
@@ -282,6 +304,8 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
 
                     <button
+                      data-test="demo-account-customer2"
+                      data-testid="demo-account-customer2"
                       onClick={async () => {
                         await quickLogin('customer2');
                         setIsDemoMenuOpen(false);
@@ -298,6 +322,8 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
 
                     <button
+                      data-test="demo-account-admin"
+                      data-testid="demo-account-admin"
                       onClick={async () => {
                         await quickLogin('admin');
                         setIsDemoMenuOpen(false);
@@ -319,13 +345,19 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Wishlist Button */}
             <button
+              data-test="nav-wishlist"
+              data-testid="nav-wishlist"
               onClick={openWishlist}
               className="relative p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"
               title="View Wishlist"
             >
               <Heart className="w-4 h-4 text-rose-500" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                <span
+                  data-test="wishlist-count"
+                  data-testid="wishlist-count"
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse"
+                >
                   {wishlistCount}
                 </span>
               )}
@@ -333,18 +365,28 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Shopping Cart Drawer Trigger */}
             <button
+              data-test="nav-cart"
+              data-testid="nav-cart"
               onClick={openCart}
               className="relative inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 hover:bg-indigo-600 text-white font-semibold text-xs shadow-md shadow-slate-950/15 transition-all active:scale-95 cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4" />
               <span className="hidden sm:inline font-bold">Cart</span>
               {totalItemCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-extrabold">
+                <span
+                  data-test="cart-count"
+                  data-testid="cart-count"
+                  className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-extrabold"
+                >
                   {totalItemCount}
                 </span>
               )}
               {subtotal > 0 && (
-                <span className="hidden md:inline font-mono border-l border-white/20 pl-1.5">
+                <span
+                  data-test="cart-nav-subtotal"
+                  data-testid="cart-nav-subtotal"
+                  className="hidden md:inline font-mono border-l border-white/20 pl-1.5"
+                >
                   ${subtotal.toFixed(2)}
                 </span>
               )}
@@ -355,6 +397,8 @@ export const Header: React.FC<HeaderProps> = ({
               {isAuthenticated ? (
                 <div>
                   <button
+                    data-test="user-menu-button"
+                    data-testid="user-menu-button"
                     onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
                     className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 transition-colors cursor-pointer"
                   >
@@ -373,14 +417,16 @@ export const Header: React.FC<HeaderProps> = ({
 
                   {isAccountMenuOpen && (
                     <div
+                      data-test="user-menu-dropdown"
+                      data-testid="user-menu-dropdown"
                       className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                       onMouseLeave={() => setIsAccountMenuOpen(false)}
                     >
                       <div className="px-3 py-2 border-b border-slate-100">
-                        <p className="text-xs font-bold text-slate-900 truncate">{user?.name}</p>
-                        <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+                        <p data-test="user-profile-name" data-testid="user-profile-name" className="text-xs font-bold text-slate-900 truncate">{user?.name}</p>
+                        <p data-test="user-profile-email" data-testid="user-profile-email" className="text-[11px] text-slate-500 truncate">{user?.email}</p>
                         {isAdmin && (
-                          <span className="mt-1 inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                          <span data-test="user-role-badge" data-testid="user-role-badge" className="mt-1 inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
                             Administrator
                           </span>
                         )}
@@ -388,6 +434,8 @@ export const Header: React.FC<HeaderProps> = ({
 
                       <div className="py-1">
                         <button
+                          data-test="user-orders-link"
+                          data-testid="user-orders-link"
                           onClick={() => {
                             setIsAccountMenuOpen(false);
                             onOpenOrders();
@@ -399,6 +447,8 @@ export const Header: React.FC<HeaderProps> = ({
                         </button>
 
                         <button
+                          data-test="user-wishlist-link"
+                          data-testid="user-wishlist-link"
                           onClick={() => {
                             setIsAccountMenuOpen(false);
                             openWishlist();
@@ -411,6 +461,8 @@ export const Header: React.FC<HeaderProps> = ({
 
                         {isAdmin && (
                           <button
+                            data-test="user-admin-link"
+                            data-testid="user-admin-link"
                             onClick={() => {
                               setIsAccountMenuOpen(false);
                               onOpenAdmin();
@@ -425,6 +477,8 @@ export const Header: React.FC<HeaderProps> = ({
                         <div className="my-1 border-t border-slate-100" />
 
                         <button
+                          data-test="user-logout-button"
+                          data-testid="user-logout-button"
                           onClick={() => {
                             setIsAccountMenuOpen(false);
                             logout();
@@ -441,12 +495,16 @@ export const Header: React.FC<HeaderProps> = ({
               ) : (
                 <div className="flex items-center gap-1.5">
                   <button
+                    data-test="nav-signin"
+                    data-testid="nav-signin"
                     onClick={() => onOpenAuth('login')}
                     className="px-3 py-2 text-xs font-bold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"
                   >
                     Sign In
                   </button>
                   <button
+                    data-test="nav-register"
+                    data-testid="nav-register"
                     onClick={() => onOpenAuth('register')}
                     className="px-3 py-2 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer hidden sm:inline-block"
                   >
@@ -468,6 +526,8 @@ export const Header: React.FC<HeaderProps> = ({
             return (
               <button
                 key={cat.id}
+                data-test={`category-${cat.id}`}
+                data-testid={`category-${cat.id}`}
                 onClick={() => onSelectCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
                   isActive

@@ -122,6 +122,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onSelectCategory }) => {
 
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
+                data-test="hero-shop-cta"
+                data-testid="hero-shop-cta"
                 onClick={() => onSelectCategory(activeSlide.category)}
                 className="px-6 py-3 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-white/10 flex items-center gap-2 transition-transform active:scale-95 cursor-pointer"
               >
@@ -130,6 +132,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onSelectCategory }) => {
               </button>
 
               <button
+                data-test="hero-full-catalog"
+                data-testid="hero-full-catalog"
                 onClick={() => onSelectCategory('all')}
                 className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-xl border border-white/20 backdrop-blur-xs transition-colors cursor-pointer"
               >
