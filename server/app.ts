@@ -1,7 +1,10 @@
 import cors from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { db } from './dbStore.js';
+import { pool, verifyConnection } from './db/pool.js';
+import { runSeed } from './db/seed.js';
+import { inventoryRepo } from './repositories/inventoryRepo.js';
+import { storeRepo } from './repositories/storeRepo.js';
 import { authRouter } from './routes/auth.js';
 import { cartsRouter } from './routes/carts.js';
 import { ordersRouter } from './routes/orders.js';
@@ -40,6 +43,25 @@ export function createExpressApp() {
   app.use('/api/carts', cartsRouter);
   app.use('/api/orders', ordersRouter);
 
+  // Store & Inventory Relational Endpoints
+  app.get('/api/stores', async (_req, res) => {
+    try {
+      const stores = await storeRepo.getAllStores();
+      res.status(200).json({ success: true, data: stores });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'Failed to retrieve stores' });
+    }
+  });
+
+  app.get('/api/inventory/:productId', async (req, res) => {
+    try {
+      const items = await inventoryRepo.getInventoryByProduct(req.params.productId);
+      res.status(200).json({ success: true, data: items });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: 'Failed to retrieve inventory' });
+    }
+  });
+
   // OpenAPI Swagger Specification & DOT Workflow Graph
   app.get('/api/swagger.json', (_req, res) => {
     res.json(SWAGGER_SPEC);
@@ -60,36 +82,42 @@ export function createExpressApp() {
       .swagger-ui .info { margin: 20px 0; }
       .swagger-ui .info .title { font-size: 28px; color: #0f172a; }
     `,
-    customSiteTitle: 'ShopSphere REST API - Swagger UI Documentation',
+    customSiteTitle: 'ShopSphere REST API - Swagger UI Documentation (PostgreSQL 18)',
   };
 
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(SWAGGER_SPEC, swaggerCustomOptions));
   app.get('/docs', (_req, res) => res.redirect('/api-docs/'));
   app.get('/swagger', (_req, res) => res.redirect('/api-docs/'));
 
-  // Database Seed Reset
-  app.post('/api/seed/reset', (_req, res) => {
-    db.resetSeedData();
-    res.status(200).json({
-      success: true,
-      message: 'Database reset to initial seed accounts and product catalog successfully.',
-      accounts: {
-        admin: 'admin@practicesoftwaretesting.com / welcome01',
-        customer1: 'customer@practicesoftwaretesting.com / User01',
-        customer2: 'customer2@practicesoftwaretesting.com / User02',
-      },
-    });
+  // Database Seed Reset (Runs DDL schema and re-populates PostgreSQL 18)
+  app.post('/api/seed/reset', async (_req, res) => {
+    try {
+      await runSeed();
+      res.status(200).json({
+        success: true,
+        message: 'PostgreSQL 18 database (DataBase_for_SamEcommers) successfully reset and re-seeded.',
+        accounts: {
+          admin: 'admin@practicesoftwaretesting.com / welcome01',
+          customer1: 'customer@practicesoftwaretesting.com / User01',
+          customer2: 'customer2@practicesoftwaretesting.com / User02',
+        },
+      });
+    } catch (err: any) {
+      console.error('[Seed Reset Error]:', err);
+      res.status(500).json({ success: false, message: 'Failed to reset PostgreSQL database', error: err.message });
+    }
   });
 
   // Health check
-  app.get('/api/health', (_req, res) => {
+  app.get('/api/health', async (_req, res) => {
+    const isDbConnected = await verifyConnection();
     res.json({
-      status: 'healthy',
+      status: isDbConnected ? 'healthy' : 'database_unreachable',
       app: 'ShopSphere API',
+      database: 'PostgreSQL 18 (DataBase_for_SamEcommers)',
       timestamp: new Date().toISOString(),
     });
   });
 
   return app;
 }
-

@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../../src/types.js';
-import { db } from '../dbStore.js';
+import { userRepo } from '../repositories/userRepo.js';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'shopsphere_dev_jwt_secret_key_84920';
+export const JWT_SECRET = process.env.JWT_SECRET || 'my-super-secret-jwt-key-24h-qa-testing-2026';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
@@ -23,7 +23,7 @@ export function generateToken(user: User): string {
   );
 }
 
-export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({
@@ -36,7 +36,7 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   const token = authHeader.split(' ')[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-    const user = db.findUserById(payload.id);
+    const user = await userRepo.findById(payload.id);
     if (!user) {
       res.status(401).json({ success: false, message: 'Invalid or expired token user session' });
       return;
@@ -49,8 +49,8 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
 }
 
-export function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
-  requireAuth(req, res, () => {
+export async function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  await requireAuth(req, res, () => {
     if (req.user?.role !== 'admin') {
       res.status(403).json({
         success: false,

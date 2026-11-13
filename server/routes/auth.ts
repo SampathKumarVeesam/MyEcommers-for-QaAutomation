@@ -1,183 +1,189 @@
 import bcrypt from 'bcryptjs';
 import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
-import { User } from '../../src/types.js';
-import { db } from '../dbStore.js';
 import { AuthenticatedRequest, generateToken, requireAuth } from '../middleware/auth.js';
+import { userRepo } from '../repositories/userRepo.js';
 
 export const authRouter = Router();
 
-// POST /api/users/register (Creates new user, returns status 201)
-authRouter.post('/register', (req: Request, res: Response): void => {
-  const { name, email, password, phone, role } = req.body || {};
+// POST /api/users/register (Creates new user in PostgreSQL, returns status 201)
+authRouter.post('/register', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email, password, phone, role } = req.body || {};
 
-  const errors: Record<string, string> = {};
-  if (!name || !name.trim()) {
-    errors.name = 'Required field';
-  }
-  if (!email || !email.trim()) {
-    errors.email = 'Required field';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    errors.email = 'Invalid email address format';
-  }
-  if (!password || !password.trim()) {
-    errors.password = 'Required field';
-  } else if (password.trim().length < 6) {
-    errors.password = 'Password must be at least 6 characters';
-  }
+    const errors: Record<string, string> = {};
+    if (!name || !name.trim()) {
+      errors.name = 'Required field';
+    }
+    if (!email || !email.trim()) {
+      errors.email = 'Required field';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = 'Invalid email address format';
+    }
+    if (!password || !password.trim()) {
+      errors.password = 'Required field';
+    } else if (password.trim().length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
 
-  if (Object.keys(errors).length > 0) {
-    res.status(400).json({
-      success: false,
-      message: 'Validation failed. Please correct the highlighted errors.',
-      errors,
+    if (Object.keys(errors).length > 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation failed. Please correct the highlighted errors.',
+        errors,
+      });
+      return;
+    }
+
+    const existing = await userRepo.findByEmail(email);
+    if (existing) {
+      res.status(400).json({
+        success: false,
+        message: 'Email is already registered. Please login instead.',
+        errors: { email: 'Email address already in use' },
+      });
+      return;
+    }
+
+    const created = await userRepo.create({
+      id: `user_${crypto.randomUUID().slice(0, 10)}`,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      passwordHash: bcrypt.hashSync(password.trim(), 10),
+      role: role === 'admin' ? 'admin' : 'customer',
+      phone: phone ? phone.trim() : undefined,
+      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80`,
     });
-    return;
-  }
 
-  const existing = db.findUserByEmail(email);
-  if (existing) {
-    res.status(400).json({
-      success: false,
-      message: 'Email is already registered. Please login instead.',
-      errors: { email: 'Email address already in use' },
-    });
-    return;
-  }
+    const token = generateToken(created);
+    const { passwordHash: _, ...safeUser } = created;
 
-  const newUser: User = {
-    id: `user_${crypto.randomUUID().slice(0, 10)}`,
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    passwordHash: bcrypt.hashSync(password.trim(), 10),
-    role: role === 'admin' ? 'admin' : 'customer',
-    phone: phone ? phone.trim() : undefined,
-    avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80`,
-    createdAt: new Date().toISOString(),
-  };
-
-  const created = db.createUser(newUser);
-  const token = generateToken(created);
-
-  // Exclude password hash from response
-  const { passwordHash: _, ...safeUser } = created;
-
-  res.status(201).json({
-    success: true,
-    message: 'User account created successfully',
-    data: {
-      user: safeUser,
-      token,
-      expiresIn: '24h',
-    },
-  });
-});
-
-// POST /api/users/login (Authenticates user, returns 24h JWT Bearer token, status 200)
-authRouter.post('/login', (req: Request, res: Response): void => {
-  const { email, password } = req.body || {};
-
-  if (!email || !password) {
-    res.status(400).json({
-      success: false,
-      message: 'Email and password are required',
-      errors: {
-        email: !email ? 'Required field' : undefined,
-        password: !password ? 'Required field' : undefined,
+    res.status(201).json({
+      success: true,
+      message: 'User account created successfully in PostgreSQL',
+      data: {
+        user: safeUser,
+        token,
+        expiresIn: '24h',
       },
     });
-    return;
+  } catch (error: any) {
+    console.error('[Register Error]:', error);
+    res.status(500).json({ success: false, message: 'Internal server error during registration' });
   }
-
-  const user = db.findUserByEmail(email);
-  if (!user) {
-    res.status(401).json({
-      success: false,
-      message: 'Invalid email or password',
-    });
-    return;
-  }
-
-  const isMatch = bcrypt.compareSync(password, user.passwordHash);
-  if (!isMatch) {
-    res.status(401).json({
-      success: false,
-      message: 'Invalid email or password',
-    });
-    return;
-  }
-
-  const token = generateToken(user);
-  const { passwordHash: _, ...safeUser } = user;
-
-  res.status(200).json({
-    success: true,
-    message: 'Authentication successful',
-    data: {
-      user: safeUser,
-      token,
-      expiresIn: '24h',
-    },
-  });
 });
 
-// POST /api/users/oauth (Google & Apple OAuth Login / Registration)
-authRouter.post('/oauth', (req: Request, res: Response): void => {
-  const { provider, email, name, avatar } = req.body || {};
+// POST /api/users/login (Authenticates user from PostgreSQL, returns 24h JWT Bearer token, status 200)
+authRouter.post('/login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body || {};
 
-  if (!provider || !['google', 'apple'].includes(provider)) {
-    res.status(400).json({
-      success: false,
-      message: 'Provider must be "google" or "apple"',
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+        errors: {
+          email: !email ? 'Required field' : undefined,
+          password: !password ? 'Required field' : undefined,
+        },
+      });
+      return;
+    }
+
+    const user = await userRepo.findByEmail(email);
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+      });
+      return;
+    }
+
+    const isMatch = bcrypt.compareSync(password, user.passwordHash);
+    if (!isMatch) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+      });
+      return;
+    }
+
+    const token = generateToken(user);
+    const { passwordHash: _, ...safeUser } = user;
+
+    res.status(200).json({
+      success: true,
+      message: 'Authentication successful',
+      data: {
+        user: safeUser,
+        token,
+        expiresIn: '24h',
+      },
     });
-    return;
+  } catch (error: any) {
+    console.error('[Login Error]:', error);
+    res.status(500).json({ success: false, message: 'Internal server error during login' });
   }
+});
 
-  const oauthEmail =
-    (email && email.trim()) ||
-    (provider === 'google'
-      ? 'google.user@practicesoftwaretesting.com'
-      : 'apple.user@practicesoftwaretesting.com');
+// POST /api/users/oauth (Google & Apple OAuth Login / Registration into PostgreSQL)
+authRouter.post('/oauth', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { provider, email, name, avatar } = req.body || {};
 
-  const oauthName =
-    (name && name.trim()) ||
-    (provider === 'google' ? 'Google Customer' : 'Apple Customer');
+    if (!provider || !['google', 'apple'].includes(provider)) {
+      res.status(400).json({
+        success: false,
+        message: 'Provider must be "google" or "apple"',
+      });
+      return;
+    }
 
-  const oauthAvatar =
-    avatar ||
-    (provider === 'google'
-      ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80'
-      : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
+    const oauthEmail =
+      (email && email.trim()) ||
+      (provider === 'google'
+        ? 'google.user@practicesoftwaretesting.com'
+        : 'apple.user@practicesoftwaretesting.com');
 
-  let user = db.findUserByEmail(oauthEmail);
-  if (!user) {
-    const newUser: User = {
-      id: `user_oauth_${crypto.randomUUID().slice(0, 8)}`,
-      name: oauthName,
-      email: oauthEmail.toLowerCase(),
-      passwordHash: bcrypt.hashSync(`oauth_${provider}_${crypto.randomUUID()}`, 10),
-      role: 'customer',
-      avatar: oauthAvatar,
-      provider: provider,
-      createdAt: new Date().toISOString(),
-    };
-    user = db.createUser(newUser);
-  } else if (!user.provider) {
+    const oauthName =
+      (name && name.trim()) ||
+      (provider === 'google' ? 'Google Customer' : 'Apple Customer');
+
+    const oauthAvatar =
+      avatar ||
+      (provider === 'google'
+        ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80'
+        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
+
+    let user = await userRepo.findByEmail(oauthEmail);
+    if (!user) {
+      user = await userRepo.create({
+        id: `user_oauth_${crypto.randomUUID().slice(0, 8)}`,
+        name: oauthName,
+        email: oauthEmail.toLowerCase(),
+        passwordHash: bcrypt.hashSync(`oauth_${provider}_${crypto.randomUUID()}`, 10),
+        role: 'customer',
+        avatar: oauthAvatar,
+      });
+    }
+
     user.provider = provider;
+    const token = generateToken(user);
+    const { passwordHash: _, ...safeUser } = user;
+
+    res.status(200).json({
+      success: true,
+      message: `Authenticated successfully with ${provider === 'google' ? 'Google' : 'Apple'}`,
+      data: {
+        user: safeUser,
+        token,
+        expiresIn: '24h',
+      },
+    });
+  } catch (error: any) {
+    console.error('[OAuth Error]:', error);
+    res.status(500).json({ success: false, message: 'Internal server error during OAuth' });
   }
-
-  const token = generateToken(user);
-  const { passwordHash: _, ...safeUser } = user;
-
-  res.status(200).json({
-    success: true,
-    message: `Authenticated successfully with ${provider === 'google' ? 'Google' : 'Apple'}`,
-    data: {
-      user: safeUser,
-      token,
-      expiresIn: '24h',
-    },
-  });
 });
 
 // GET /api/users/me (Returns authenticated user profile details)
@@ -194,11 +200,17 @@ authRouter.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response): v
   });
 });
 
-// GET /api/users (Admin only, user management)
-authRouter.get('/', (req: Request, res: Response): void => {
-  const users = db.listUsers().map(({ passwordHash: _, ...u }) => u);
-  res.status(200).json({
-    success: true,
-    data: users,
-  });
+// GET /api/users (User management listing)
+authRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const users = await userRepo.listAll();
+    const safeUsers = users.map(({ passwordHash: _, ...u }) => u);
+    res.status(200).json({
+      success: true,
+      data: safeUsers,
+    });
+  } catch (error: any) {
+    console.error('[List Users Error]:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving users' });
+  }
 });

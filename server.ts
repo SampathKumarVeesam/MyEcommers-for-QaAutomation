@@ -1,11 +1,15 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyConnection } from './server/db/pool.js';
 import { createExpressApp } from './server/app.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
+  console.log('🔄 Checking PostgreSQL 18 connection...');
+  await verifyConnection();
+
   const app = createExpressApp();
   const PORT = Number(process.env.PORT) || 3000;
 
@@ -31,8 +35,9 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 ShopSphere Full-Stack App running at http://0.0.0.0:${PORT}`);
-    console.log(`📑 Standalone Swagger UI: http://localhost:${PORT}/api-docs`);
+    console.log(`🚀 ShopSphere PostgreSQL Full-Stack App running at http://localhost:${PORT}`);
+    console.log(`📑 PostgreSQL Swagger UI Documentation: http://localhost:${PORT}/api-docs`);
+    console.log(`🗄️ Database: PostgreSQL 18 on port 5433 (DataBase_for_SamEcommers)`);
   });
 }
 

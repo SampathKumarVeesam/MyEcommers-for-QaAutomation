@@ -6,7 +6,7 @@ digraph ShopSphere_E2E_ECommerce_Flow {
 
   // --- Subgraph: User Authentication ---
   subgraph cluster_auth {
-    label = "1. Authentication & RBAC Layer";
+    label = "1. Authentication & RBAC Layer (PostgreSQL users table)";
     style = "filled,rounded";
     color = "#e2e8f0";
     fillcolor = "#f8fafc";
@@ -14,14 +14,15 @@ digraph ShopSphere_E2E_ECommerce_Flow {
     fontsize = 13;
 
     Start [label="START\\nQA Test Session", shape=ellipse, fillcolor="#3b82f6", fontcolor="#ffffff"];
-    Register [label="POST /api/users/register\\nCreate Customer Profile\\n(Status: 201)", fillcolor="#eff6ff", color="#3b82f6"];
-    Login [label="POST /api/users/login\\nAuth Credentials\\n(Status: 200 -> JWT Bearer)", fillcolor="#eff6ff", color="#3b82f6"];
+    Register [label="POST /api/users/register\\nCreate Customer Profile in PostgreSQL\\n(Status: 201)", fillcolor="#eff6ff", color="#3b82f6"];
+    Login [label="POST /api/users/login\\nAuth Credentials\\n(Status: 200 -> 24h JWT Bearer)", fillcolor="#eff6ff", color="#3b82f6"];
+    OAuth [label="POST /api/users/oauth\\nGoogle / Apple OAuth\\n(Status: 200 -> 24h JWT Bearer)", fillcolor="#eff6ff", color="#3b82f6"];
     GetMe [label="GET /api/users/me\\nAuthorize Session & Verify Role\\n(Customer / Admin)", fillcolor="#eff6ff", color="#3b82f6"];
   }
 
-  // --- Subgraph: Multi-Category Catalog ---
+  // --- Subgraph: Multi-Category Catalog & Inventory ---
   subgraph cluster_catalog {
-    label = "2. Catalog Browsing & Search";
+    label = "2. Catalog Browsing & Multi-Store Inventory (product, store, inventory tables)";
     style = "filled,rounded";
     color = "#e2e8f0";
     fillcolor = "#f8fafc";
@@ -30,13 +31,14 @@ digraph ShopSphere_E2E_ECommerce_Flow {
 
     BrowseCatalog [label="GET /api/products\\nBrowse Multi-Category Storefront", fillcolor="#f0fdf4", color="#22c55e"];
     FilterCategory [label="GET /api/products?category={cat}&page=1\\n(Dresses, Mobiles, Audio, Perfumes)", fillcolor="#f0fdf4", color="#22c55e"];
+    StoreStock [label="GET /api/stores & /api/inventory/:productId\\nMulti-Store Physical Availability", fillcolor="#f0fdf4", color="#22c55e"];
     SearchFilter [label="Filter Price Range & Sort\\n(Low to High, High to Low, Rating)", fillcolor="#f0fdf4", color="#22c55e"];
     ViewPDP [label="GET /api/products/:id\\nInspect PDP (Specs, Sizing, Colors, Notes)", fillcolor="#f0fdf4", color="#22c55e"];
   }
 
   // --- Subgraph: Cart & Basket Management ---
   subgraph cluster_cart {
-    label = "3. Basket & Cart Management";
+    label = "3. Basket & Cart Management (cart table in PostgreSQL)";
     style = "filled,rounded";
     color = "#e2e8f0";
     fillcolor = "#f8fafc";
@@ -51,7 +53,7 @@ digraph ShopSphere_E2E_ECommerce_Flow {
 
   // --- Subgraph: Multi-Step Checkout & Payment ---
   subgraph cluster_checkout {
-    label = "4. Checkout & Payment Gateway";
+    label = "4. Checkout & Payment Gateway (order & order_item tables with SQL transactions)";
     style = "filled,rounded";
     color = "#e2e8f0";
     fillcolor = "#f8fafc";
@@ -62,7 +64,7 @@ digraph ShopSphere_E2E_ECommerce_Flow {
     ShippingMethod [label="2. Delivery Method Selection\\n(Standard $0 / Express $14.99)", fillcolor="#faf5ff", color="#a855f7"];
     PaymentStep [label="3. Payment Method Selection\\n(UPI, Credit/Debit Card, Net Banking, COD)", fillcolor="#faf5ff", color="#a855f7"];
     OTPStep [label="4. OTP Verification Gate\\n(Simulated OTP: 123456)", fillcolor="#faf5ff", color="#a855f7"];
-    PlaceOrder [label="POST /api/orders\\nPlace Order & Decrement Stock\\n(Status: 201 -> Order ID, Tracking #)", fillcolor="#faf5ff", color="#a855f7"];
+    PlaceOrder [label="POST /api/orders\\nPlace Order (SQL BEGIN/COMMIT, Stock Decrement)\\n(Status: 201 -> Order ID, Tracking #)", fillcolor="#faf5ff", color="#a855f7"];
   }
 
   // --- Subgraph: Post Purchase & Admin ---
@@ -74,20 +76,23 @@ digraph ShopSphere_E2E_ECommerce_Flow {
     fontname = "Plus Jakarta Sans";
     fontsize = 13;
 
-    ViewOrders [label="GET /api/orders\\nFetch Order History & Tracking", fillcolor="#ecfdf5", color="#10b981"];
+    ViewOrders [label="GET /api/orders\\nFetch Order History & Tracking from PostgreSQL", fillcolor="#ecfdf5", color="#10b981"];
     AdminPanel [label="Admin Inventory & Orders Dashboard\\n(Sampath Kumar - admin@practicesoftwaretesting.com)", fillcolor="#fff1f2", color="#f43f5e"];
-    ResetDB [label="POST /api/seed/reset\\nReset DB to Pristine Seed State\\n(Pristine QA Test Run)", fillcolor="#f1f5f9", color="#64748b"];
+    ResetDB [label="POST /api/seed/reset\\nRe-run PostgreSQL 18 Migration & Seed DDL\\n(Pristine QA Test Run)", fillcolor="#f1f5f9", color="#64748b"];
   }
 
   // Flow Connections
   Start -> Register [label="New User"];
-  Start -> Login [label="Existing / Seed Account"];
+  Start -> Login [label="Existing Account"];
+  Start -> OAuth [label="Google / Apple"];
   Register -> Login [label="Redirect"];
   Login -> GetMe [label="Bearer JWT"];
+  OAuth -> GetMe [label="Bearer JWT"];
   GetMe -> BrowseCatalog;
 
   BrowseCatalog -> FilterCategory;
-  FilterCategory -> SearchFilter;
+  FilterCategory -> StoreStock;
+  StoreStock -> SearchFilter;
   SearchFilter -> ViewPDP;
 
   ViewPDP -> InitBasket [label="Select Variant"];
@@ -111,18 +116,18 @@ digraph ShopSphere_E2E_ECommerce_Flow {
 export const SWAGGER_SPEC = {
   openapi: '3.0.3',
   info: {
-    title: 'ShopSphere Multi-Category E-Commerce & QA Testing API',
-    version: '1.0.0',
-    description: `Production-ready REST API for ShopSphere, a multi-category e-commerce platform inspired by practice software testing platforms. Features authentication, product filtering, session baskets, multi-step checkout, and QA seed resets.`,
+    title: 'ShopSphere PostgreSQL 18 Multi-Category E-Commerce & QA API',
+    version: '2.0.0',
+    description: `Production-ready REST API for ShopSphere, fully backed by local PostgreSQL 18 ('DataBase_for_SamEcommers'). Features relational 7-table schema, atomic SQL transactions, multi-store inventory management, 24-hour JWT authentication, and automated QA database seed resets.`,
     contact: {
-      name: 'QA Automation & API Engineering Team',
+      name: 'QA Automation & Database Architecture Team',
       email: 'admin@practicesoftwaretesting.com',
     },
   },
   servers: [
     {
       url: '/api',
-      description: 'Local and Dev Environment API Endpoint',
+      description: 'Local PostgreSQL 18 Express Backend API',
     },
   ],
   components: {
@@ -131,7 +136,7 @@ export const SWAGGER_SPEC = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'Enter your JWT token obtained from /api/users/login',
+        description: 'Enter your 24-hour JWT token obtained from /api/users/login or /api/users/oauth',
       },
     },
     schemas: {
@@ -143,6 +148,7 @@ export const SWAGGER_SPEC = {
           email: { type: 'string', format: 'email', example: 'customer@practicesoftwaretesting.com' },
           password: { type: 'string', example: 'User01' },
           phone: { type: 'string', example: '+1 (555) 482-9102' },
+          role: { type: 'string', enum: ['customer', 'admin'], example: 'customer' },
         },
       },
       UserLoginRequest: {
@@ -164,9 +170,30 @@ export const SWAGGER_SPEC = {
           price: { type: 'number', example: 189.99 },
           stock: { type: 'integer', example: 24 },
           rating: { type: 'number', example: 4.8 },
+          reviewsCount: { type: 'integer', example: 12 },
           images: { type: 'array', items: { type: 'string' } },
           description: { type: 'string' },
           specifications: { type: 'object' },
+        },
+      },
+      Store: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 1 },
+          name: { type: 'string', example: 'ShopSphere Austin Flagship' },
+          address: { type: 'string', example: '742 Evergreen Terrace, Austin, TX 78701' },
+          phone: { type: 'string', example: '+1 (555) 482-9102' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      InventoryItem: {
+        type: 'object',
+        properties: {
+          productId: { type: 'integer', example: 1 },
+          productCode: { type: 'string', example: 'prod_fash_01' },
+          storeId: { type: 'integer', example: 1 },
+          storeName: { type: 'string', example: 'ShopSphere Austin Flagship' },
+          stockAvailable: { type: 'integer', example: 24 },
         },
       },
       BasketItemRequest: {
@@ -178,6 +205,7 @@ export const SWAGGER_SPEC = {
           selectedVariant: { type: 'string', example: '256GB / Natural Titanium' },
           selectedColor: { type: 'string', example: 'Natural Titanium' },
           selectedSize: { type: 'string', example: 'M' },
+          storeId: { type: 'integer', example: 1, description: 'Optional physical retail store ID' },
         },
       },
       OrderCreateRequest: {
@@ -187,7 +215,7 @@ export const SWAGGER_SPEC = {
           basketId: { type: 'string', example: 'basket_3a8f901b' },
           shippingAddress: {
             type: 'object',
-            required: ['fullName', 'street', 'city', 'state', 'postalCode', 'country', 'phone'],
+            required: ['fullName', 'street', 'city', 'state', 'postalCode', 'country'],
             properties: {
               fullName: { type: 'string', example: 'Sampath Kumar' },
               street: { type: 'string', example: '450 Tech Innovation Way' },
@@ -209,8 +237,8 @@ export const SWAGGER_SPEC = {
     '/users/register': {
       post: {
         tags: ['Authentication'],
-        summary: 'Register a new customer account',
-        description: 'Creates new user account and returns status 201 with auth token and profile.',
+        summary: 'Register a new customer account in PostgreSQL',
+        description: 'Creates new user record in PostgreSQL users table and returns status 201 with 24-hour JWT token.',
         requestBody: {
           required: true,
           content: {
@@ -221,7 +249,7 @@ export const SWAGGER_SPEC = {
         },
         responses: {
           '201': {
-            description: 'User created successfully',
+            description: 'User created successfully in PostgreSQL',
           },
           '400': {
             description: 'Validation failed or email already registered',
@@ -233,7 +261,7 @@ export const SWAGGER_SPEC = {
       post: {
         tags: ['Authentication'],
         summary: 'Authenticate user with email and password (24h JWT Bearer Token)',
-        description: 'Authenticates user credentials, returns a 24-hour JWT Bearer token and user profile.',
+        description: 'Authenticates user credentials against PostgreSQL, returns a 24-hour JWT Bearer token and user profile.',
         requestBody: {
           required: true,
           content: {
@@ -256,7 +284,7 @@ export const SWAGGER_SPEC = {
       post: {
         tags: ['Authentication'],
         summary: 'OAuth 2.0 Login / Registration (Google or Apple)',
-        description: 'Authenticates or provisions a customer via Google or Apple OAuth and returns a 24-hour JWT Bearer token.',
+        description: 'Authenticates or provisions a customer via Google or Apple OAuth in PostgreSQL and returns a 24-hour JWT Bearer token.',
         requestBody: {
           required: true,
           content: {
@@ -269,22 +297,15 @@ export const SWAGGER_SPEC = {
                     type: 'string',
                     enum: ['google', 'apple'],
                     example: 'google',
-                    description: 'OAuth Identity Provider (google or apple)',
                   },
                   email: {
                     type: 'string',
                     format: 'email',
                     example: 'google.user@practicesoftwaretesting.com',
-                    description: 'Email from OAuth provider',
                   },
                   name: {
                     type: 'string',
                     example: 'Google Customer',
-                    description: 'Full name from OAuth provider',
-                  },
-                  avatar: {
-                    type: 'string',
-                    example: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
                   },
                 },
               },
@@ -295,16 +316,13 @@ export const SWAGGER_SPEC = {
           '200': {
             description: 'OAuth authentication successful. Returns 24-hour JWT Bearer token.',
           },
-          '400': {
-            description: 'Invalid provider or missing payload',
-          },
         },
       },
     },
     '/users/me': {
       get: {
         tags: ['Authentication'],
-        summary: 'Get authenticated user profile',
+        summary: 'Get authenticated user profile from PostgreSQL',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
@@ -319,12 +337,13 @@ export const SWAGGER_SPEC = {
     '/products': {
       get: {
         tags: ['Catalog & Products'],
-        summary: 'Filter and paginate products catalog',
+        summary: 'Filter and paginate products catalog from PostgreSQL',
         parameters: [
           { name: 'category', in: 'query', schema: { type: 'string' }, description: 'Filter by category (fashion, electronics, audio, beauty) or subcategory (mobiles, dresses)' },
           { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Text search keyword' },
           { name: 'minPrice', in: 'query', schema: { type: 'number' }, description: 'Minimum price filter' },
           { name: 'maxPrice', in: 'query', schema: { type: 'number' }, description: 'Maximum price filter' },
+          { name: 'storeId', in: 'query', schema: { type: 'integer' }, description: 'Physical Store ID for location-specific stock availability' },
           { name: 'sort', in: 'query', schema: { type: 'string', enum: ['newest', 'low-to-high', 'high-to-low', 'rating'] } },
           { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
           { name: 'limit', in: 'query', schema: { type: 'integer', default: 12 } },
@@ -335,43 +354,80 @@ export const SWAGGER_SPEC = {
           },
         },
       },
+      post: {
+        tags: ['Catalog & Products'],
+        summary: 'Create a new product in PostgreSQL (Admin only)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/Product' },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Product created and inventory seeded for all stores',
+          },
+        },
+      },
     },
     '/products/{id}': {
       get: {
         tags: ['Catalog & Products'],
         summary: 'Get single product detailed view (PDP)',
         parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, example: 'prod_fash_01' },
         ],
         responses: {
           '200': {
             description: 'Product detailed view returned',
           },
           '404': {
-            description: 'Product not found',
+            description: 'Product not found in PostgreSQL',
           },
+        },
+      },
+      put: {
+        tags: ['Catalog & Products'],
+        summary: 'Update product in PostgreSQL (Admin only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': { description: 'Product updated successfully' },
+        },
+      },
+      delete: {
+        tags: ['Catalog & Products'],
+        summary: 'Delete product in PostgreSQL (Admin only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '204': { description: 'Product deleted successfully' },
         },
       },
     },
     '/products/{id}/reviews': {
       get: {
         tags: ['Catalog & Products'],
-        summary: 'Get customer reviews for product',
+        summary: 'Get customer reviews for product from PostgreSQL product_reviews table',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
         ],
         responses: {
           '200': {
-            description: 'List of customer reviews',
-          },
-          '404': {
-            description: 'Product not found',
+            description: 'List of verified customer reviews',
           },
         },
       },
       post: {
         tags: ['Catalog & Products'],
-        summary: 'Submit a new customer review',
+        summary: 'Submit a new customer review (persists to PostgreSQL and updates product average rating)',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
         ],
@@ -393,7 +449,32 @@ export const SWAGGER_SPEC = {
         },
         responses: {
           '201': {
-            description: 'Review created successfully',
+            description: 'Review saved to PostgreSQL and rating recalculated',
+          },
+        },
+      },
+    },
+    '/stores': {
+      get: {
+        tags: ['Stores & Multi-Store Inventory'],
+        summary: 'List all physical retail stores from PostgreSQL store table',
+        responses: {
+          '200': {
+            description: 'List of physical retail stores with addresses and contacts',
+          },
+        },
+      },
+    },
+    '/inventory/{productId}': {
+      get: {
+        tags: ['Stores & Multi-Store Inventory'],
+        summary: 'Get inventory breakdown across all retail stores for a product',
+        parameters: [
+          { name: 'productId', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Store-by-store stock availability breakdown',
           },
         },
       },
@@ -402,7 +483,6 @@ export const SWAGGER_SPEC = {
       post: {
         tags: ['Cart & Basket'],
         summary: 'Initialize a unique basket object',
-        description: 'Initializes a unique basket object with a unique ID and returns status 201.',
         responses: {
           '201': {
             description: 'Basket initialized successfully with unique basketId',
@@ -413,7 +493,7 @@ export const SWAGGER_SPEC = {
     '/carts/{basketId}': {
       get: {
         tags: ['Cart & Basket'],
-        summary: 'Get products in basket and total item count',
+        summary: 'Get products in basket and total item count from PostgreSQL cart table',
         parameters: [
           { name: 'basketId', in: 'path', required: true, schema: { type: 'string' } },
         ],
@@ -421,15 +501,11 @@ export const SWAGGER_SPEC = {
           '200': {
             description: 'Basket contents, item count, and financial totals returned',
           },
-          '404': {
-            description: 'Basket not found',
-          },
         },
       },
       post: {
         tags: ['Cart & Basket'],
-        summary: 'Add or update product items in basket',
-        description: 'Adds or updates product items in the basket, returns "item added or updated" message, status 200.',
+        summary: 'Add or update product items in basket in PostgreSQL',
         parameters: [
           { name: 'basketId', in: 'path', required: true, schema: { type: 'string' } },
         ],
@@ -443,21 +519,17 @@ export const SWAGGER_SPEC = {
         },
         responses: {
           '200': {
-            description: 'Returns item added or updated message with updated basket',
-          },
-          '404': {
-            description: 'Product not found',
+            description: 'Returns item added or updated message with updated basket from PostgreSQL',
           },
         },
       },
       delete: {
         tags: ['Cart & Basket'],
-        summary: 'Clear basket or remove item',
-        description: 'Clears all products or removes specific item from basket, returns status 204.',
+        summary: 'Clear basket or remove item from PostgreSQL',
         parameters: [
           { name: 'basketId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'productId', in: 'query', schema: { type: 'string' }, description: 'Optional product ID to remove specific item' },
-          { name: 'variant', in: 'query', schema: { type: 'string' }, description: 'Optional variant name to remove specific variant' },
+          { name: 'productId', in: 'query', schema: { type: 'string' } },
+          { name: 'variant', in: 'query', schema: { type: 'string' } },
         ],
         responses: {
           '204': {
@@ -469,7 +541,7 @@ export const SWAGGER_SPEC = {
     '/orders': {
       post: {
         tags: ['Orders & Checkout'],
-        summary: 'Create and place order from basket',
+        summary: 'Create and place order with atomic PostgreSQL transaction (decrements inventory)',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -481,16 +553,13 @@ export const SWAGGER_SPEC = {
         },
         responses: {
           '201': {
-            description: 'Order placed successfully. Tracking number and order status returned.',
-          },
-          '400': {
-            description: 'Invalid basket or missing fields',
+            description: 'Order placed in PostgreSQL "order" & "order_item" tables. Stock decremented.',
           },
         },
       },
       get: {
         tags: ['Orders & Checkout'],
-        summary: 'Get order history for authenticated user',
+        summary: 'Get order history from PostgreSQL',
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
@@ -499,14 +568,28 @@ export const SWAGGER_SPEC = {
         },
       },
     },
+    '/orders/{id}': {
+      get: {
+        tags: ['Orders & Checkout'],
+        summary: 'Get single order details by ID or Order Number from PostgreSQL',
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'ORD-782910-QA' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Detailed order with item breakdown and tracking ID',
+          },
+        },
+      },
+    },
     '/seed/reset': {
       post: {
         tags: ['QA & Test Utilities'],
-        summary: 'Reset database to pristine seed accounts and catalog',
-        description: 'Restores the original test users (Admin, Customer 1, Customer 2) and inventory for repeatable test automation.',
+        summary: 'Reset PostgreSQL database to pristine seed accounts and catalog',
+        description: 'Executes DDL schema and re-populates PostgreSQL 18 tables (users, product, store, inventory, cart, order, order_item, product_reviews) for repeatable QA test runs.',
         responses: {
           '200': {
-            description: 'Database successfully reset to seed state',
+            description: 'PostgreSQL database successfully reset and re-seeded',
           },
         },
       },
