@@ -152,13 +152,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
 
           {/* Category specific snippet */}
           <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-            {product.category === 'fashion' && product.specifications['Material']
+            {product.category === 'fashion' && product.specifications?.['Material']
               ? product.specifications['Material']
-              : product.category === 'electronics' && product.specifications['Processor']
+              : product.category === 'electronics' && product.specifications?.['Processor']
               ? product.specifications['Processor']
-              : product.category === 'audio' && product.specifications['Active Noise Cancellation']
+              : product.category === 'audio' && product.specifications?.['Active Noise Cancellation']
               ? product.specifications['Active Noise Cancellation']
-              : product.category === 'beauty' && product.scentNotes
+              : product.category === 'beauty' && product.scentNotes?.top && Array.isArray(product.scentNotes.top) && product.scentNotes.top.length > 0
               ? `Top notes: ${product.scentNotes.top.slice(0, 2).join(', ')}`
               : product.description}
           </p>

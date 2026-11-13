@@ -153,3 +153,4 @@ CREATE INDEX idx_order_user_id ON "order"(user_id);
 CREATE INDEX idx_order_number ON "order"(order_number);
 CREATE INDEX idx_order_item_order_id ON order_item(order_id);
 CREATE INDEX idx_product_reviews_product_id ON product_reviews(product_id);
+
