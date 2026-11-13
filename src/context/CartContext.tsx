@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Basket, BasketItem } from '../types.js';
+import { useAuth } from './AuthContext.js';
 
 interface CartContextType {
   basketId: string | null;
@@ -23,162 +24,146 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const BASKET_ID_KEY = 'shopsphere_basket_id';
-
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [basketId, setBasketId] = useState<string | null>(() => {
-    return localStorage.getItem(BASKET_ID_KEY);
-  });
+  const { user, token } = useAuth();
+  const [basketId, setBasketId] = useState<string | null>(null);
   const [basket, setBasket] = useState<Basket | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const hasMergedRef = useRef(false);
 
-  // Safe helper to create a brand new basket
-  const createNewBasket = async (): Promise<string | null> => {
+  // Initialize or fetch basket strictly from PostgreSQL
+  const fetchCartFromDatabase = async (currentBasketId?: string | null) => {
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/carts', {
+      if (user?.id) {
+        // Authenticated customer: 100% of cart state is tied to user_id in PostgreSQL public.cart
+        const res = await fetch(`/api/carts/user/${user.id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setBasketId(json.data.id);
+            setBasket(json.data);
+            return;
+          }
+        }
+      }
+
+      // Guest / Anonymous session in PostgreSQL
+      const activeId = currentBasketId || basketId;
+      if (activeId) {
+        const res = await fetch(`/api/carts/${activeId}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setBasketId(activeId);
+            setBasket(json.data);
+            return;
+          }
+        }
+      }
+
+      // If no basket exists, initialize a new basket session in PostgreSQL
+      const createRes = await fetch('/api/carts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data?.basketId) {
-          const newId = String(json.data.basketId);
-          setBasketId(newId);
-          localStorage.setItem(BASKET_ID_KEY, newId);
-          setBasket(
-            json.data.basket || {
-              id: newId,
-              items: [],
-              totalItemCount: 0,
-              subtotal: 0,
-              estimatedTax: 0,
-              shippingFee: 0,
-              grandTotal: 0,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          );
-          return newId;
+      if (createRes.ok) {
+        const createJson = await createRes.json();
+        if (createJson.success && createJson.data?.basketId) {
+          setBasketId(createJson.data.basketId);
+          setBasket(createJson.data.basket);
         }
       }
     } catch (err) {
-      console.error('Failed to create new basket:', err);
-    }
-    return null;
-  };
-
-  // Initialize or fetch basket with ZERO recursion
-  const initOrFetchBasket = async () => {
-    const storedId = localStorage.getItem(BASKET_ID_KEY);
-
-    if (!storedId) {
-      return await createNewBasket();
-    }
-
-    try {
-      const res = await fetch(`/api/carts/${storedId}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setBasketId(storedId);
-          setBasket({
-            id: storedId,
-            items: json.data.items || [],
-            totalItemCount: json.data.totalItemCount || 0,
-            subtotal: json.data.subtotal || 0,
-            estimatedTax: json.data.estimatedTax || 0,
-            shippingFee: json.data.shippingFee || 0,
-            grandTotal: json.data.grandTotal || 0,
-            createdAt: json.data.createdAt || new Date().toISOString(),
-            updatedAt: json.data.updatedAt || new Date().toISOString(),
-          });
-          return storedId;
-        }
-      }
-
-      // If status is 404, 403, or invalid: clean up stale storage and initialize fresh basket
-      localStorage.removeItem(BASKET_ID_KEY);
-      setBasketId(null);
-      return await createNewBasket();
-    } catch (err) {
-      console.error('Error fetching basket:', err);
-      localStorage.removeItem(BASKET_ID_KEY);
-      setBasketId(null);
-      return await createNewBasket();
+      console.error('Failed to load cart from PostgreSQL:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Sync cart when user signs in or out
   useEffect(() => {
-    initOrFetchBasket();
-  }, []);
-
-  const refreshBasket = async () => {
-    const currentId = basketId || localStorage.getItem(BASKET_ID_KEY);
-    if (!currentId) return;
-    try {
-      const res = await fetch(`/api/carts/${currentId}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setBasket({
-            id: currentId,
-            items: json.data.items || [],
-            totalItemCount: json.data.totalItemCount || 0,
-            subtotal: json.data.subtotal || 0,
-            estimatedTax: json.data.estimatedTax || 0,
-            shippingFee: json.data.shippingFee || 0,
-            grandTotal: json.data.grandTotal || 0,
-            createdAt: json.data.createdAt || new Date().toISOString(),
-            updatedAt: json.data.updatedAt || new Date().toISOString(),
-          });
-        }
-      } else if (res.status === 404 || res.status === 403) {
-        localStorage.removeItem(BASKET_ID_KEY);
-        setBasketId(null);
-        await createNewBasket();
-      }
-    } catch (err) {
-      console.error('Failed to refresh basket:', err);
+    if (user?.id && basketId && !hasMergedRef.current) {
+      // Merge guest cart items into logged-in user in PostgreSQL
+      fetch('/api/carts/merge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ basketId, userId: user.id }),
+      })
+        .then(res => res.json())
+        .then(json => {
+          hasMergedRef.current = true;
+          if (json.success && json.data) {
+            setBasket(json.data);
+            setBasketId(json.data.id);
+          } else {
+            fetchCartFromDatabase();
+          }
+        })
+        .catch(() => fetchCartFromDatabase());
+    } else {
+      fetchCartFromDatabase();
     }
-  };
+  }, [user?.id]);
 
   const addToCart = async (
     productId: string,
-    quantity: number = 1,
+    quantity = 1,
     options?: { selectedVariant?: string; selectedColor?: string; selectedSize?: string }
   ): Promise<{ success: boolean; message: string }> => {
     setIsLoading(true);
     try {
       let activeBasketId = basketId;
       if (!activeBasketId) {
-        activeBasketId = (await initOrFetchBasket()) || null;
+        const res = await fetch('/api/carts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id }),
+        });
+        const json = await res.json();
+        if (json.success && json.data?.basketId) {
+          activeBasketId = json.data.basketId;
+          setBasketId(activeBasketId);
+        }
       }
+
       if (!activeBasketId) {
-        return { success: false, message: 'Could not initialize cart basket' };
+        return { success: false, message: 'Could not connect to PostgreSQL cart' };
       }
 
       const res = await fetch(`/api/carts/${activeBasketId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           productId,
           quantity,
           selectedVariant: options?.selectedVariant,
           selectedColor: options?.selectedColor,
           selectedSize: options?.selectedSize,
+          userId: user?.id,
         }),
       });
 
       const json = await res.json();
       if (res.ok && json.success) {
         setBasket(json.data);
-        return { success: true, message: json.message || 'item added or updated' };
+        return { success: true, message: json.message || 'Item added to cart in PostgreSQL' };
       }
 
-      return { success: false, message: json.message || 'Failed to add item to basket' };
+      return { success: false, message: json.message || 'Failed to add item to PostgreSQL cart' };
     } catch (err: any) {
-      return { success: false, message: err.message || 'Cart connection error' };
+      console.error('Failed to add to cart in PostgreSQL:', err);
+      return { success: false, message: err.message || 'Database error adding to cart' };
     } finally {
       setIsLoading(false);
     }
@@ -192,33 +177,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!basketId) return;
     setIsLoading(true);
     try {
-      // Find delta
-      const existing = basket?.items.find(
-        it =>
-          it.productId === productId &&
-          (options?.selectedVariant ? it.selectedVariant === options.selectedVariant : true)
-      );
-
-      const delta = existing ? quantity - existing.quantity : quantity;
-
-      const res = await fetch(`/api/carts/${basketId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`/api/carts/${basketId}/items/${productId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
-          productId,
-          quantity: delta,
+          quantity,
           selectedVariant: options?.selectedVariant,
-          selectedColor: options?.selectedColor,
-          selectedSize: options?.selectedSize,
+          userId: user?.id,
         }),
       });
 
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setBasket(json.data);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setBasket(json.data);
+        }
       }
     } catch (err) {
-      console.error('Error updating quantity:', err);
+      console.error('Failed to update cart quantity in PostgreSQL:', err);
     } finally {
       setIsLoading(false);
     }
@@ -228,16 +207,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!basketId) return;
     setIsLoading(true);
     try {
-      let url = `/api/carts/${basketId}?productId=${encodeURIComponent(productId)}`;
-      if (variant) {
-        url += `&variant=${encodeURIComponent(variant)}`;
-      }
-      const res = await fetch(url, { method: 'DELETE' });
+      const params = new URLSearchParams();
+      params.append('productId', productId);
+      if (variant) params.append('variant', variant);
+      if (user?.id) params.append('userId', String(user.id));
+
+      const res = await fetch(`/api/carts/${basketId}?${params.toString()}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
       if (res.status === 204 || res.ok) {
-        await refreshBasket();
+        await fetchCartFromDatabase(basketId);
       }
     } catch (err) {
-      console.error('Error removing item from cart:', err);
+      console.error('Failed to remove item from cart in PostgreSQL:', err);
     } finally {
       setIsLoading(false);
     }
@@ -247,16 +231,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!basketId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/carts/${basketId}`, { method: 'DELETE' });
+      const params = new URLSearchParams();
+      if (user?.id) params.append('userId', String(user.id));
+
+      const res = await fetch(`/api/carts/${basketId}?${params.toString()}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
       if (res.status === 204 || res.ok) {
-        setBasket(prev => (prev ? { ...prev, items: [], totalItemCount: 0, subtotal: 0, estimatedTax: 0, shippingFee: 0, grandTotal: 0 } : null));
+        await fetchCartFromDatabase(basketId);
       }
     } catch (err) {
-      console.error('Error clearing basket:', err);
+      console.error('Failed to clear cart in PostgreSQL:', err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const refreshBasket = async () => {
+    await fetchCartFromDatabase(basketId);
+  };
+
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
 
   return (
     <CartContext.Provider
@@ -271,8 +269,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         grandTotal: basket?.grandTotal || 0,
         isCartOpen,
         isLoading,
-        openCart: () => setIsCartOpen(true),
-        closeCart: () => setIsCartOpen(false),
+        openCart,
+        closeCart,
         addToCart,
         updateQuantity,
         removeItem,

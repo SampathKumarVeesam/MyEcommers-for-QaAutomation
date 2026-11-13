@@ -5,7 +5,7 @@ import { productRepo } from '../repositories/productRepo.js';
 
 export const productsRouter = Router();
 
-// GET /api/products
+// GET /api/products (Fetch filtered, paginated catalog directly from PostgreSQL)
 productsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { category, search, minPrice, maxPrice, sort, page, limit, storeId } = req.query;
@@ -33,11 +33,14 @@ productsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('[Get Products Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to retrieve products from PostgreSQL' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to retrieve products from PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// GET /api/products/:id
+// GET /api/products/:id (Fetch single product from PostgreSQL)
 productsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -46,7 +49,7 @@ productsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =>
     if (!product) {
       res.status(404).json({
         success: false,
-        message: `Product with ID '${id}' not found`,
+        message: `Product with ID '${id}' not found in PostgreSQL`,
       });
       return;
     }
@@ -57,11 +60,14 @@ productsRouter.get('/:id', async (req: Request, res: Response): Promise<void> =>
     });
   } catch (error: any) {
     console.error('[Get Product Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch product from database' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch product from PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// POST /api/products (Admin only)
+// POST /api/products (Admin only: Insert product into PostgreSQL)
 productsRouter.post('/', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body;
@@ -98,17 +104,20 @@ productsRouter.post('/', requireAdmin, async (req: Request, res: Response): Prom
     });
   } catch (error: any) {
     console.error('[Create Product Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to create product in PostgreSQL' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to create product in PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// PUT /api/products/:id (Admin only)
+// PUT /api/products/:id (Admin only: Update product in PostgreSQL)
 productsRouter.put('/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const updated = await productRepo.updateProduct(id, req.body);
     if (!updated) {
-      res.status(404).json({ success: false, message: 'Product not found' });
+      res.status(404).json({ success: false, message: `Product '${id}' not found in PostgreSQL` });
       return;
     }
     res.status(200).json({
@@ -118,33 +127,39 @@ productsRouter.put('/:id', requireAdmin, async (req: Request, res: Response): Pr
     });
   } catch (error: any) {
     console.error('[Update Product Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to update product' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to update product in PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// DELETE /api/products/:id (Admin only)
+// DELETE /api/products/:id (Admin only: Delete product in PostgreSQL)
 productsRouter.delete('/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const deleted = await productRepo.deleteProduct(id);
     if (!deleted) {
-      res.status(404).json({ success: false, message: 'Product not found' });
+      res.status(404).json({ success: false, message: `Product '${id}' not found in PostgreSQL` });
       return;
     }
     res.status(204).send();
   } catch (error: any) {
     console.error('[Delete Product Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to delete product' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to delete product in PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// GET /api/products/:id/reviews
+// GET /api/products/:id/reviews (Fetch product reviews from PostgreSQL)
 productsRouter.get('/:id/reviews', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const product = await productRepo.getProductById(id);
     if (!product) {
-      res.status(404).json({ success: false, message: 'Product not found' });
+      res.status(404).json({ success: false, message: `Product '${id}' not found in PostgreSQL` });
       return;
     }
     const reviews = await productRepo.getReviewsForProduct(id);
@@ -154,17 +169,20 @@ productsRouter.get('/:id/reviews', async (req: Request, res: Response): Promise<
     });
   } catch (error: any) {
     console.error('[Get Reviews Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch reviews from PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// POST /api/products/:id/reviews
+// POST /api/products/:id/reviews (Insert review into PostgreSQL)
 productsRouter.post('/:id/reviews', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const product = await productRepo.getProductById(id);
     if (!product) {
-      res.status(404).json({ success: false, message: 'Product not found' });
+      res.status(404).json({ success: false, message: `Product '${id}' not found in PostgreSQL` });
       return;
     }
 
@@ -194,6 +212,9 @@ productsRouter.post('/:id/reviews', async (req: Request, res: Response): Promise
     });
   } catch (error: any) {
     console.error('[Add Review Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to save review in database' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to save review in PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });

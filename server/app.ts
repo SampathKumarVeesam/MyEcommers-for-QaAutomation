@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.js';
 import { cartsRouter } from './routes/carts.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
+import { wishlistRouter } from './routes/wishlist.js';
 import { DOT_WORKFLOW_DEFINITION, SWAGGER_SPEC } from './swaggerDoc.js';
 
 export function createExpressApp() {
@@ -42,6 +43,7 @@ export function createExpressApp() {
   app.use('/api/products', productsRouter);
   app.use('/api/carts', cartsRouter);
   app.use('/api/orders', ordersRouter);
+  app.use('/api/wishlist', wishlistRouter);
 
   // Store & Inventory Relational Endpoints
   app.get('/api/stores', async (_req, res) => {
@@ -49,7 +51,7 @@ export function createExpressApp() {
       const stores = await storeRepo.getAllStores();
       res.status(200).json({ success: true, data: stores });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: 'Failed to retrieve stores' });
+      res.status(500).json({ success: false, message: `Failed to retrieve stores: ${err.message}` });
     }
   });
 
@@ -58,7 +60,28 @@ export function createExpressApp() {
       const items = await inventoryRepo.getInventoryByProduct(req.params.productId);
       res.status(200).json({ success: true, data: items });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: 'Failed to retrieve inventory' });
+      res.status(500).json({ success: false, message: `Failed to retrieve inventory: ${err.message}` });
+    }
+  });
+
+  // Adjust stock in PostgreSQL inventory
+  app.put('/api/inventory/:productId', async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const { storeId = 1, stock } = req.body || {};
+      if (stock === undefined) {
+        res.status(400).json({ success: false, message: 'stock quantity is required' });
+        return;
+      }
+      await inventoryRepo.setStock(productId, Number(storeId), parseInt(stock, 10));
+      const updated = await inventoryRepo.getInventoryByProduct(productId);
+      res.status(200).json({
+        success: true,
+        message: 'Inventory stock updated successfully in PostgreSQL',
+        data: updated,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: `Failed to update inventory: ${err.message}` });
     }
   });
 

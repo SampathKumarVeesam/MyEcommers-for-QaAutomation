@@ -29,7 +29,7 @@ interface CheckoutModalProps {
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onViewOrders }) => {
   const { user, token } = useAuth();
-  const { basketId, basket, items, subtotal, estimatedTax, shippingFee, grandTotal, clearCart } = useCart();
+  const { basketId, basket, items, subtotal, estimatedTax, shippingFee, grandTotal, clearCart, refreshBasket } = useCart();
 
   const [step, setStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +110,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           paymentMethod,
           userEmail: user?.email || 'customer@practicesoftwaretesting.com',
           userName: user?.name || address.fullName,
+          userId: user?.id,
           otpCode: '123456',
         }),
       });
@@ -117,6 +118,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       const json = await res.json();
       if (res.ok && json.success) {
         setCreatedOrder(json.data);
+        await refreshBasket();
         setStep(5); // Confirmation
         confetti({
           particleCount: 100,

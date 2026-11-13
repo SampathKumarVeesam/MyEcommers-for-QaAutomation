@@ -465,6 +465,41 @@ export const SWAGGER_SPEC = {
         },
       },
     },
+    '/users/profile': {
+      put: {
+        tags: ['Authentication & Users'],
+        summary: 'Update authenticated user profile in PostgreSQL public.users',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'Jane Customer Updated' },
+                  phone: { type: 'string', example: '+1 (555) 999-8888' },
+                  address: {
+                    type: 'object',
+                    properties: {
+                      street: { type: 'string', example: '123 New Address St' },
+                      city: { type: 'string', example: 'Austin' },
+                      state: { type: 'string', example: 'TX' },
+                      postalCode: { type: 'string', example: '78701' },
+                      country: { type: 'string', example: 'United States' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Profile updated in PostgreSQL' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
     '/inventory/{productId}': {
       get: {
         tags: ['Stores & Multi-Store Inventory'],
@@ -476,6 +511,83 @@ export const SWAGGER_SPEC = {
           '200': {
             description: 'Store-by-store stock availability breakdown',
           },
+        },
+      },
+      put: {
+        tags: ['Stores & Multi-Store Inventory'],
+        summary: 'Adjust inventory stock count directly in PostgreSQL public.inventory (Admin)',
+        parameters: [
+          { name: 'productId', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['stock'],
+                properties: {
+                  storeId: { type: 'integer', example: 1 },
+                  stock: { type: 'integer', example: 35 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Inventory stock updated successfully in PostgreSQL' },
+        },
+      },
+    },
+    '/carts/user/{userId}': {
+      get: {
+        tags: ['Cart & Basket'],
+        summary: 'Get cart for specific user from PostgreSQL public.cart table',
+        parameters: [
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string', example: '1' } },
+        ],
+        responses: {
+          '200': { description: 'User cart retrieved from PostgreSQL' },
+        },
+      },
+    },
+    '/wishlist': {
+      get: {
+        tags: ['Customer Wishlist'],
+        summary: 'Get customer wishlist from PostgreSQL public.wishlist table',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Customer wishlist items returned from PostgreSQL' },
+        },
+      },
+      post: {
+        tags: ['Customer Wishlist'],
+        summary: 'Add product to wishlist in PostgreSQL',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['productId'],
+                properties: {
+                  productId: { type: 'string', example: 'prod_fash_01' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Product added to wishlist in PostgreSQL' },
+        },
+      },
+      delete: {
+        tags: ['Customer Wishlist'],
+        summary: 'Clear customer wishlist in PostgreSQL',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Wishlist cleared in PostgreSQL' },
         },
       },
     },

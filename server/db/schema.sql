@@ -4,6 +4,7 @@
 -- ============================================================================
 
 -- Drop tables if re-initializing (in reverse dependency order)
+DROP TABLE IF EXISTS wishlist CASCADE;
 DROP TABLE IF EXISTS product_reviews CASCADE;
 DROP TABLE IF EXISTS order_item CASCADE;
 DROP TABLE IF EXISTS "order" CASCADE;
@@ -141,6 +142,15 @@ CREATE TABLE product_reviews (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 9. WISHLIST TABLE (PostgreSQL Persistent Customer Wishlist)
+CREATE TABLE wishlist (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES product(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, product_id)
+);
+
 -- Indexes for high-throughput queries
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_username ON users(username);
@@ -148,9 +158,11 @@ CREATE INDEX idx_product_category ON product(category);
 CREATE INDEX idx_product_subcategory ON product(subcategory);
 CREATE INDEX idx_product_code ON product(product_code);
 CREATE INDEX idx_cart_basket_id ON cart(basket_id);
+CREATE INDEX idx_cart_user_id ON cart(user_id);
 CREATE INDEX idx_inventory_store_id ON inventory(store_id);
 CREATE INDEX idx_order_user_id ON "order"(user_id);
 CREATE INDEX idx_order_number ON "order"(order_number);
 CREATE INDEX idx_order_item_order_id ON order_item(order_id);
 CREATE INDEX idx_product_reviews_product_id ON product_reviews(product_id);
+CREATE INDEX idx_wishlist_user_id ON wishlist(user_id);
 

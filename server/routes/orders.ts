@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import { AuthenticatedRequest, requireAuth } from '../middleware/auth.js';
+import { AuthenticatedRequest, optionalAuth, requireAuth } from '../middleware/auth.js';
 import { cartRepo } from '../repositories/cartRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
 
@@ -27,9 +27,9 @@ ordersRouter.post('/verify-otp', (req: Request, res: Response): void => {
 });
 
 // POST /api/orders (Create and place an order directly into PostgreSQL with atomic stock decrement)
-ordersRouter.post('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+ordersRouter.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { basketId, shippingAddress, shippingMethod = 'standard', paymentMethod = 'credit_card', userEmail, userName } = req.body || {};
+    const { basketId, shippingAddress, shippingMethod = 'standard', paymentMethod = 'credit_card', userEmail, userName, userId } = req.body || {};
 
     if (!basketId) {
       res.status(400).json({
@@ -39,11 +39,12 @@ ordersRouter.post('/', async (req: AuthenticatedRequest, res: Response): Promise
       return;
     }
 
-    const basket = await cartRepo.getBasket(basketId);
+    const effectiveUserId = req.user?.id || userId;
+    const basket = await cartRepo.getBasket(basketId, effectiveUserId);
     if (!basket || basket.items.length === 0) {
       res.status(400).json({
         success: false,
-        message: 'Basket is empty or not found. Cannot create order without items.',
+        message: 'Basket is empty or not found in PostgreSQL. Cannot create order without items.',
       });
       return;
     }
@@ -56,12 +57,12 @@ ordersRouter.post('/', async (req: AuthenticatedRequest, res: Response): Promise
       return;
     }
 
-    const userId = req.user?.id || '1';
+    const orderUserId = effectiveUserId || '1';
     const email = req.user?.email || userEmail || 'customer@practicesoftwaretesting.com';
     const name = req.user?.name || userName || shippingAddress.fullName;
 
     const order = await orderRepo.createOrder({
-      userId,
+      userId: orderUserId,
       userEmail: email,
       userName: name,
       basketId,
@@ -78,7 +79,10 @@ ordersRouter.post('/', async (req: AuthenticatedRequest, res: Response): Promise
     });
   } catch (error: any) {
     console.error('[Create Order Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to place order in database' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to place order in PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
@@ -103,7 +107,10 @@ ordersRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Respon
     });
   } catch (error: any) {
     console.error('[Get Orders Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to retrieve orders from PostgreSQL' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to retrieve orders from PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });
 
@@ -116,7 +123,7 @@ ordersRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
     if (!order) {
       res.status(404).json({
         success: false,
-        message: `Order with ID '${id}' not found`,
+        message: `Order with ID '${id}' not found in PostgreSQL`,
       });
       return;
     }
@@ -127,6 +134,9 @@ ordersRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('[Get Order By ID Error]:', error);
-    res.status(500).json({ success: false, message: 'Failed to retrieve order' });
+    res.status(500).json({
+      success: false,
+      message: `Failed to retrieve order from PostgreSQL: ${error.message || 'Database error'}`,
+    });
   }
 });

@@ -6,7 +6,7 @@ import { userRepo } from '../repositories/userRepo.js';
 
 export const authRouter = Router();
 
-// POST /api/users/register (Creates new user in PostgreSQL, returns status 201)
+// POST /api/users/register (Creates new user in PostgreSQL public.users, returns status 201)
 authRouter.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, phone, role } = req.body || {};
@@ -69,11 +69,14 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     });
   } catch (error: any) {
     console.error('[Register Error]:', error);
-    res.status(500).json({ success: false, message: 'Internal server error during registration' });
+    res.status(500).json({
+      success: false,
+      message: `PostgreSQL registration failed: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// POST /api/users/login (Authenticates user from PostgreSQL, returns 24h JWT Bearer token, status 200)
+// POST /api/users/login (Authenticates user from PostgreSQL public.users, returns 24h JWT Bearer token, status 200)
 authRouter.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body || {};
@@ -122,7 +125,10 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
     });
   } catch (error: any) {
     console.error('[Login Error]:', error);
-    res.status(500).json({ success: false, message: 'Internal server error during login' });
+    res.status(500).json({
+      success: false,
+      message: `PostgreSQL login lookup failed: ${error.message || 'Database error'}`,
+    });
   }
 });
 
@@ -182,11 +188,14 @@ authRouter.post('/oauth', async (req: Request, res: Response): Promise<void> => 
     });
   } catch (error: any) {
     console.error('[OAuth Error]:', error);
-    res.status(500).json({ success: false, message: 'Internal server error during OAuth' });
+    res.status(500).json({
+      success: false,
+      message: `PostgreSQL OAuth failed: ${error.message || 'Database error'}`,
+    });
   }
 });
 
-// GET /api/users/me (Returns authenticated user profile details)
+// GET /api/users/me (Returns authenticated user profile details from PostgreSQL)
 authRouter.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response): void => {
   if (!req.user) {
     res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -200,6 +209,47 @@ authRouter.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response): v
   });
 });
 
+// PUT /api/users/profile or PATCH /api/users/profile (Updates profile directly in PostgreSQL public.users)
+const handleProfileUpdate = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const { name, phone, avatar, address } = req.body || {};
+    const updated = await userRepo.updateProfile(req.user.id, {
+      name,
+      phone,
+      avatar,
+      address,
+    });
+
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'User not found in database' });
+      return;
+    }
+
+    const { passwordHash: _, ...safeUser } = updated;
+    res.status(200).json({
+      success: true,
+      message: 'User profile updated successfully in PostgreSQL',
+      data: safeUser,
+    });
+  } catch (error: any) {
+    console.error('[Update Profile Error]:', error);
+    res.status(500).json({
+      success: false,
+      message: `PostgreSQL profile update failed: ${error.message || 'Database error'}`,
+    });
+  }
+};
+
+authRouter.put('/profile', requireAuth, handleProfileUpdate);
+authRouter.patch('/profile', requireAuth, handleProfileUpdate);
+authRouter.put('/me', requireAuth, handleProfileUpdate);
+authRouter.patch('/me', requireAuth, handleProfileUpdate);
+
 // GET /api/users (User management listing)
 authRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -211,6 +261,9 @@ authRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error('[List Users Error]:', error);
-    res.status(500).json({ success: false, message: 'Error retrieving users' });
+    res.status(500).json({
+      success: false,
+      message: `PostgreSQL list users failed: ${error.message || 'Database error'}`,
+    });
   }
 });

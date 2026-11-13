@@ -12,31 +12,24 @@ interface AuthContextType {
   loginWithOAuth: (provider: 'google' | 'apple', profile?: { name?: string; email?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   quickLogin: (account: 'admin' | 'customer1' | 'customer2') => Promise<void>;
-  updateUserAddress: (address: Address) => void;
+  updateUserAddress: (address: Address) => Promise<void>;
+  updateProfile: (updates: { name?: string; phone?: string; avatar?: string; address?: Address }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Only the bearer token is stored on the client for session authentication headers.
+// 100% of user profile state, credentials, and roles are retrieved from PostgreSQL public.users.
 const TOKEN_KEY = 'shopsphere_auth_token';
-const USER_KEY = 'shopsphere_auth_user';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem(USER_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
+  const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem(TOKEN_KEY) || null;
   });
-
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Validate token on mount
+  // Validate session against PostgreSQL public.users on mount
   useEffect(() => {
     const checkAuth = async () => {
       const storedToken = localStorage.getItem(TOKEN_KEY);
@@ -55,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const json = await res.json();
           if (json.success && json.data) {
             setUser(json.data);
-            localStorage.setItem(USER_KEY, JSON.stringify(json.data));
+            setToken(storedToken);
           } else {
             logout();
           }
@@ -63,7 +56,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logout();
         }
       } catch (err) {
-        console.error('Error verifying auth session:', err);
+        console.error('Error verifying PostgreSQL auth session:', err);
+        logout();
       } finally {
         setLoading(false);
       }
@@ -85,7 +79,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(json.data.user);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(json.data.user));
         return { success: true };
       }
 
@@ -111,7 +104,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(json.data.user);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(json.data.user));
         return { success: true };
       }
 
@@ -145,7 +137,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(json.data.user);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(json.data.user));
         return { success: true };
       }
 
@@ -162,7 +153,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setToken(null);
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
   };
 
   const quickLogin = async (account: 'admin' | 'customer1' | 'customer2') => {
@@ -175,11 +165,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateUserAddress = (address: Address) => {
-    if (!user) return;
-    const updated = { ...user, address };
-    setUser(updated);
-    localStorage.setItem(USER_KEY, JSON.stringify(updated));
+  const updateProfile = async (updates: { name?: string; phone?: string; avatar?: string; address?: Address }): Promise<boolean> => {
+    if (!token) return false;
+    try {
+      const res = await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setUser(json.data);
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update profile in PostgreSQL:', err);
+    }
+    return false;
+  };
+
+  const updateUserAddress = async (address: Address) => {
+    await updateProfile({ address });
   };
 
   return (
@@ -196,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         quickLogin,
         updateUserAddress,
+        updateProfile,
       }}
     >
       {children}

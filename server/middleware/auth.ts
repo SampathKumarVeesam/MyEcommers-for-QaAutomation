@@ -49,6 +49,25 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 }
 
+export async function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): Promise<void> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
+    const user = await userRepo.findById(payload.id);
+    if (user) {
+      req.user = user;
+    }
+  } catch (err) {
+    // optional, proceed without req.user
+  }
+  next();
+}
+
 export async function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   await requireAuth(req, res, () => {
     if (req.user?.role !== 'admin') {

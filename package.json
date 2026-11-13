@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "db:seed": "tsx server/db/seed.ts"
+    "db:seed": "tsx server/db/seed.ts",
+    "test:e2e:db": "tsx server/db/verify_e2e.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
