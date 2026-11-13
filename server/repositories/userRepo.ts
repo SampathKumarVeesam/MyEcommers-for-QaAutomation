@@ -1,5 +1,6 @@
 import { Address, User } from '../../src/types.js';
-import { query } from '../db/pool.js';
+import { isDbConnected, query } from '../db/pool.js';
+import { INITIAL_USERS } from '../seedData.js';
 
 export function mapUserRow(row: any): User {
   return {
@@ -23,34 +24,75 @@ export function mapUserRow(row: any): User {
   };
 }
 
+const memoryUsers = new Map<string, User>();
+for (const u of INITIAL_USERS) {
+  memoryUsers.set(u.email.toLowerCase(), { ...u });
+}
+
 export class UserRepository {
   async findByEmail(email: string): Promise<User | null> {
     const normalized = email.trim().toLowerCase();
-    const res = await query(
-      `SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
-      [normalized]
-    );
-    if (res.rows.length === 0) return null;
-    return mapUserRow(res.rows[0]);
+    if (!isDbConnected()) {
+      const found = memoryUsers.get(normalized);
+      return found ? { ...found } : null;
+    }
+
+    try {
+      const res = await query(
+        `SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+        [normalized]
+      );
+      if (res.rows.length === 0) return null;
+      return mapUserRow(res.rows[0]);
+    } catch (err: any) {
+      console.warn('[UserRepo Notice]: Falling back to memory users:', err.message);
+      const found = memoryUsers.get(normalized);
+      return found ? { ...found } : null;
+    }
   }
 
   async findById(id: string | number): Promise<User | null> {
-    const isNum = !isNaN(Number(id));
-    const res = await query(
-      `SELECT * FROM users WHERE (user_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
-      isNum ? [String(id), Number(id)] : [String(id)]
-    );
-    if (res.rows.length === 0) return null;
-    return mapUserRow(res.rows[0]);
+    if (!isDbConnected()) {
+      for (const u of memoryUsers.values()) {
+        if (u.id === String(id) || u.email === String(id)) return { ...u };
+      }
+      return null;
+    }
+
+    try {
+      const isNum = !isNaN(Number(id));
+      const res = await query(
+        `SELECT * FROM users WHERE (user_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
+        isNum ? [String(id), Number(id)] : [String(id)]
+      );
+      if (res.rows.length === 0) return null;
+      return mapUserRow(res.rows[0]);
+    } catch (err: any) {
+      for (const u of memoryUsers.values()) {
+        if (u.id === String(id)) return { ...u };
+      }
+      return null;
+    }
   }
 
   async findRawById(id: string | number): Promise<any | null> {
-    const isNum = !isNaN(Number(id));
-    const res = await query(
-      `SELECT * FROM users WHERE (user_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
-      isNum ? [String(id), Number(id)] : [String(id)]
-    );
-    return res.rows[0] || null;
+    if (!isDbConnected()) {
+      for (const u of memoryUsers.values()) {
+        if (u.id === String(id)) return { ...u };
+      }
+      return null;
+    }
+
+    try {
+      const isNum = !isNaN(Number(id));
+      const res = await query(
+        `SELECT * FROM users WHERE (user_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
+        isNum ? [String(id), Number(id)] : [String(id)]
+      );
+      return res.rows[0] || null;
+    } catch (err) {
+      return null;
+    }
   }
 
   async create(user: {
@@ -68,30 +110,63 @@ export class UserRepository {
     const username = user.username || user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
     const role = user.role || 'customer';
 
-    const res = await query(
-      `INSERT INTO users (
-         user_code, name, username, email, password, role, phone, avatar,
-         address_line_1, address_city, address_state, address_postal_code, address_country
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-       RETURNING *`,
-      [
-        userCode,
-        user.name,
-        username,
-        user.email.toLowerCase().trim(),
-        user.passwordHash,
+    if (!isDbConnected()) {
+      const newUser: User = {
+        id: userCode,
+        name: user.name,
+        email: user.email.toLowerCase().trim(),
+        passwordHash: user.passwordHash,
         role,
-        user.phone || null,
-        user.avatar || null,
-        user.address?.street || null,
-        user.address?.city || null,
-        user.address?.state || null,
-        user.address?.postalCode || null,
-        user.address?.country || null,
-      ]
-    );
+        phone: user.phone,
+        avatar: user.avatar,
+        address: user.address,
+        createdAt: new Date().toISOString(),
+      };
+      memoryUsers.set(newUser.email, newUser);
+      return newUser;
+    }
 
-    return mapUserRow(res.rows[0]);
+    try {
+      const res = await query(
+        `INSERT INTO users (
+           user_code, name, username, email, password, role, phone, avatar,
+           address_line_1, address_city, address_state, address_postal_code, address_country
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         RETURNING *`,
+        [
+          userCode,
+          user.name,
+          username,
+          user.email.toLowerCase().trim(),
+          user.passwordHash,
+          role,
+          user.phone || null,
+          user.avatar || null,
+          user.address?.street || null,
+          user.address?.city || null,
+          user.address?.state || null,
+          user.address?.postalCode || null,
+          user.address?.country || null,
+        ]
+      );
+
+      return mapUserRow(res.rows[0]);
+    } catch (err: any) {
+      console.warn('[UserRepo Notice]: Falling back to memory registration:', err.message);
+      const newUser: User = {
+        id: userCode,
+        name: user.name,
+        email: user.email.toLowerCase().trim(),
+        passwordHash: user.passwordHash,
+        role,
+        phone: user.phone,
+        avatar: user.avatar,
+        address: user.address,
+        createdAt: new Date().toISOString(),
+      };
+      memoryUsers.set(newUser.email, newUser);
+      return newUser;
+    }
   }
 
   async updateProfile(
@@ -103,6 +178,17 @@ export class UserRepository {
       address?: Address;
     }
   ): Promise<User | null> {
+    if (!isDbConnected()) {
+      for (const [em, u] of memoryUsers.entries()) {
+        if (u.id === String(userId)) {
+          const updated = { ...u, ...updates };
+          memoryUsers.set(em, updated);
+          return updated;
+        }
+      }
+      return null;
+    }
+
     const raw = await this.findRawById(userId);
     if (!raw) return null;
 
@@ -156,8 +242,16 @@ export class UserRepository {
   }
 
   async listAll(): Promise<User[]> {
-    const res = await query(`SELECT * FROM users ORDER BY id ASC`);
-    return res.rows.map(mapUserRow);
+    if (!isDbConnected()) {
+      return Array.from(memoryUsers.values());
+    }
+
+    try {
+      const res = await query(`SELECT * FROM users ORDER BY id ASC`);
+      return res.rows.map(mapUserRow);
+    } catch (err) {
+      return Array.from(memoryUsers.values());
+    }
   }
 }
 

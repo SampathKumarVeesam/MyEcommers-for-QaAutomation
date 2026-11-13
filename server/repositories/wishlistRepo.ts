@@ -1,62 +1,117 @@
 import { Product } from '../../src/types.js';
-import { query } from '../db/pool.js';
+import { isDbConnected, query } from '../db/pool.js';
 import { mapProductRow, productRepo } from './productRepo.js';
 import { userRepo } from './userRepo.js';
 
+const memoryWishlists: Record<string, Product[]> = {};
+
 export class WishlistRepository {
   async getWishlistByUser(userId: string | number): Promise<Product[]> {
-    const rawUser = await userRepo.findRawById(userId);
-    if (!rawUser) return [];
+    if (!isDbConnected()) {
+      return memoryWishlists[String(userId)] || [];
+    }
 
-    const res = await query(
-      `SELECT p.*
-       FROM wishlist w
-       JOIN product p ON w.product_id = p.id
-       WHERE w.user_id = $1
-       ORDER BY w.created_at DESC`,
-      [rawUser.id]
-    );
+    try {
+      const rawUser = await userRepo.findRawById(userId);
+      if (!rawUser) return memoryWishlists[String(userId)] || [];
 
-    return res.rows.map(mapProductRow);
+      const res = await query(
+        `SELECT p.*
+         FROM wishlist w
+         JOIN product p ON w.product_id = p.id
+         WHERE w.user_id = $1
+         ORDER BY w.created_at DESC`,
+        [rawUser.id]
+      );
+
+      return res.rows.map(mapProductRow);
+    } catch (err) {
+      return memoryWishlists[String(userId)] || [];
+    }
   }
 
   async addToWishlist(userId: string | number, productId: string | number): Promise<boolean> {
-    const rawUser = await userRepo.findRawById(userId);
-    if (!rawUser) throw new Error(`User not found: ${userId}`);
+    if (!isDbConnected()) {
+      const p = await productRepo.getProductById(productId);
+      if (p) {
+        if (!memoryWishlists[String(userId)]) memoryWishlists[String(userId)] = [];
+        if (!memoryWishlists[String(userId)].some(item => item.id === p.id)) {
+          memoryWishlists[String(userId)].unshift(p);
+        }
+      }
+      return true;
+    }
 
-    const internalProdId = await productRepo.getInternalProductId(productId);
-    if (!internalProdId) throw new Error(`Product not found: ${productId}`);
+    try {
+      const rawUser = await userRepo.findRawById(userId);
+      if (!rawUser) return false;
 
-    await query(
-      `INSERT INTO wishlist (user_id, product_id)
-       VALUES ($1, $2)
-       ON CONFLICT (user_id, product_id) DO NOTHING`,
-      [rawUser.id, internalProdId]
-    );
+      const internalProdId = await productRepo.getInternalProductId(productId);
+      if (!internalProdId) return false;
 
-    return true;
+      await query(
+        `INSERT INTO wishlist (user_id, product_id)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id, product_id) DO NOTHING`,
+        [rawUser.id, internalProdId]
+      );
+
+      return true;
+    } catch (err) {
+      const p = await productRepo.getProductById(productId);
+      if (p) {
+        if (!memoryWishlists[String(userId)]) memoryWishlists[String(userId)] = [];
+        if (!memoryWishlists[String(userId)].some(item => item.id === p.id)) {
+          memoryWishlists[String(userId)].unshift(p);
+        }
+      }
+      return true;
+    }
   }
 
   async removeFromWishlist(userId: string | number, productId: string | number): Promise<boolean> {
-    const rawUser = await userRepo.findRawById(userId);
-    if (!rawUser) return false;
+    if (!isDbConnected()) {
+      if (memoryWishlists[String(userId)]) {
+        memoryWishlists[String(userId)] = memoryWishlists[String(userId)].filter(p => p.id !== String(productId));
+      }
+      return true;
+    }
 
-    const internalProdId = await productRepo.getInternalProductId(productId);
-    if (!internalProdId) return false;
+    try {
+      const rawUser = await userRepo.findRawById(userId);
+      if (!rawUser) return false;
 
-    const res = await query(
-      `DELETE FROM wishlist WHERE user_id = $1 AND product_id = $2 RETURNING id`,
-      [rawUser.id, internalProdId]
-    );
+      const internalProdId = await productRepo.getInternalProductId(productId);
+      if (!internalProdId) return false;
 
-    return res.rowCount !== null && res.rowCount > 0;
+      const res = await query(
+        `DELETE FROM wishlist WHERE user_id = $1 AND product_id = $2 RETURNING id`,
+        [rawUser.id, internalProdId]
+      );
+
+      return res.rowCount !== null && res.rowCount > 0;
+    } catch (err) {
+      if (memoryWishlists[String(userId)]) {
+        memoryWishlists[String(userId)] = memoryWishlists[String(userId)].filter(p => p.id !== String(productId));
+      }
+      return true;
+    }
   }
 
   async clearWishlist(userId: string | number): Promise<void> {
-    const rawUser = await userRepo.findRawById(userId);
-    if (!rawUser) return;
+    if (!isDbConnected()) {
+      memoryWishlists[String(userId)] = [];
+      return;
+    }
 
-    await query(`DELETE FROM wishlist WHERE user_id = $1`, [rawUser.id]);
+    try {
+      const rawUser = await userRepo.findRawById(userId);
+      if (!rawUser) return;
+
+      await query(`DELETE FROM wishlist WHERE user_id = $1`, [rawUser.id]);
+    } catch (err) {
+      memoryWishlists[String(userId)] = [];
+    }
   }
 }
 

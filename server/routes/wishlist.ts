@@ -111,3 +111,4 @@ wishlistRouter.delete('/', requireAuth, async (req: AuthenticatedRequest, res: R
     });
   }
 });
+
