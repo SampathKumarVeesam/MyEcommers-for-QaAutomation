@@ -116,6 +116,36 @@ function ShopSphereMain() {
     fetchProducts();
   }, [selectedCategory, searchQuery, sortBy, priceMax, inStockOnly, page]);
 
+  // Deep-linking: Auto-open product from URL query param (?product=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prodId = params.get('product');
+    if (prodId) {
+      fetch(`/api/products/${prodId}`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && json.data) {
+            setSelectedProduct(json.data);
+          }
+        })
+        .catch(err => console.error('Failed to load shared product from URL:', err));
+    }
+  }, []);
+
+  // Keep browser address bar synchronized with current active product modal
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (selectedProduct) {
+      url.searchParams.set('product', selectedProduct.id);
+      window.history.replaceState(null, '', url.toString());
+    } else {
+      if (url.searchParams.has('product')) {
+        url.searchParams.delete('product');
+        window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''));
+      }
+    }
+  }, [selectedProduct]);
+
   return (
     <div className="min-h-screen bg-slate-50/60 flex flex-col text-slate-900 font-sans selection:bg-indigo-500 selection:text-white">
       {/* 1. Header (Commercial Ecommerce with Wishlist, Live Search, Cart) */}
