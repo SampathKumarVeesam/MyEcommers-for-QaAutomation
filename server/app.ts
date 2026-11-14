@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { pool, verifyConnection } from './db/pool.js';
+import { getDbDiagnostics, pool, verifyConnection } from './db/pool.js';
 import { runSeed } from './db/seed.js';
 import { inventoryRepo } from './repositories/inventoryRepo.js';
 import { storeRepo } from './repositories/storeRepo.js';
@@ -135,13 +135,15 @@ export function createExpressApp() {
     }
   });
 
-  // Health check
+  // Health check with real-time PostgreSQL connection diagnostics
   app.get('/api/health', async (_req, res) => {
-    const isDbConnected = await verifyConnection();
-    res.json({
+    const isDbConnected = await verifyConnection(1, 0);
+    const diagnostics = getDbDiagnostics();
+    res.status(isDbConnected ? 200 : 503).json({
       status: isDbConnected ? 'healthy' : 'database_unreachable',
       app: 'ShopSphere API',
       database: 'PostgreSQL 18 (DataBase_for_SamEcommers)',
+      diagnostics,
       timestamp: new Date().toISOString(),
     });
   });
