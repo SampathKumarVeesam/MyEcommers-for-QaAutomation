@@ -189,7 +189,7 @@ function ShopSphereMain() {
       />
 
       {/* 2. Main Content Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 sm:space-y-8">
         {/* Hero Showcase & Flash Deals (Active on Home view without active text search) */}
         {selectedCategory === 'all' && !searchQuery && (
           <HeroBanner
@@ -201,11 +201,11 @@ function ShopSphereMain() {
         )}
 
         {/* Filter, Sort & Catalog Toolbar */}
-        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             {/* Title & Count */}
-            <div className="flex items-center gap-3">
-              <h2 data-test="catalog-title" data-testid="catalog-title" className="text-lg font-extrabold text-slate-900 capitalize tracking-tight">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <h2 data-test="catalog-title" data-testid="catalog-title" className="text-base sm:text-lg font-extrabold text-slate-900 capitalize tracking-tight">
                 {selectedCategory === 'all'
                   ? 'Curated Products Catalog'
                   : selectedCategory === 'electronics'
@@ -218,18 +218,18 @@ function ShopSphereMain() {
                   ? 'Artisanal Perfumes & Fragrance'
                   : selectedCategory}
               </h2>
-              <span data-test="catalog-total-count" data-testid="catalog-total-count" className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+              <span data-test="catalog-total-count" data-testid="catalog-total-count" className="text-[11px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full">
                 {totalProducts} {totalProducts === 1 ? 'item' : 'items'}
               </span>
               {searchQuery && (
-                <span data-test="search-query-badge" data-testid="search-query-badge" className="text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
+                <span data-test="search-query-badge" data-testid="search-query-badge" className="text-[11px] sm:text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
                   Results for &ldquo;<strong className="text-slate-900">{searchQuery}</strong>&rdquo;
                 </span>
               )}
             </div>
 
-            {/* View Mode Switcher */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            {/* View Mode Switcher (Visible on both mobile & desktop) */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 type="button"
                 data-test="view-mode-grid"
@@ -240,9 +240,9 @@ function ShopSphereMain() {
                     ? 'bg-white text-indigo-600 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Standard 4-column Grid"
+                title="Single / Standard Grid"
               >
-                <LayoutGrid className="w-4 h-4" />
+                <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
               <button
                 type="button"
@@ -254,9 +254,9 @@ function ShopSphereMain() {
                     ? 'bg-white text-indigo-600 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="Compact 3-column Grid"
+                title="2-Column Compact Grid"
               >
-                <Grid3X3 className="w-4 h-4" />
+                <Grid3X3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </div>
           </div>
@@ -372,9 +372,9 @@ function ShopSphereMain() {
           <div
             data-test="product-catalog-grid"
             data-testid="product-catalog-grid"
-            className={`grid gap-5 ${
+            className={`grid gap-3 sm:gap-5 ${
               viewMode === 'compact'
-                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3'
                 : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
             }`}
           >

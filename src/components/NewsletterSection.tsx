@@ -43,7 +43,7 @@ export const NewsletterSection: React.FC = () => {
   return (
     <div className="space-y-8 pt-6">
       {/* 1. VIP Club & Newsletter Box */}
-      <div className="relative rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-950 text-white p-8 sm:p-12 overflow-hidden shadow-xl border border-indigo-800">
+      <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-950 text-white p-5 sm:p-8 md:p-12 overflow-hidden shadow-xl border border-indigo-800">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-2xl mx-auto text-center space-y-4">

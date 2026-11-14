@@ -230,7 +230,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Primary Tab Switcher */}
-            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs">
+            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs overflow-x-auto scrollbar-none max-w-full">
               <button
                 data-test="admin-tab-analytics"
                 data-testid="admin-tab-analytics"
@@ -238,17 +238,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   setActiveTab('analytics');
                   setSelectedCustomerId(null);
                 }}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'analytics' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Customer Activity ({customers.length})
+                <span className="hidden sm:inline">Customer </span>Activity ({customers.length})
               </button>
               <button
                 data-test="admin-tab-inventory"
                 data-testid="admin-tab-inventory"
                 onClick={() => setActiveTab('inventory')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'inventory' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
@@ -258,11 +258,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 data-test="admin-tab-orders"
                 data-testid="admin-tab-orders"
                 onClick={() => setActiveTab('orders')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'orders' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Global Orders ({orders.length})
+                <span className="hidden sm:inline">Global </span>Orders ({orders.length})
               </button>
             </div>
 
@@ -540,8 +540,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       {detailTab === 'cart' && (
                         <div className="space-y-3">
                           {customerDetail && customerDetail.cartItems.length > 0 ? (
-                            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden text-xs">
-                              <table className="w-full text-left divide-y divide-slate-200">
+                            <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto text-xs">
+                              <table className="w-full text-left divide-y divide-slate-200 min-w-[500px]">
                                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
                                   <tr>
                                     <th className="p-3">Product In Cart</th>
@@ -586,8 +586,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       {detailTab === 'wishlist' && (
                         <div className="space-y-3">
                           {customerDetail && customerDetail.wishlistItems.length > 0 ? (
-                            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden text-xs">
-                              <table className="w-full text-left divide-y divide-slate-200">
+                            <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto text-xs">
+                              <table className="w-full text-left divide-y divide-slate-200 min-w-[500px]">
                                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
                                   <tr>
                                     <th className="p-3">Saved Product</th>
@@ -649,8 +649,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
 
               {/* Main Customer Activity Table */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs bg-white shadow-2xs">
-                <table className="w-full text-left divide-y divide-slate-200">
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs bg-white shadow-2xs">
+                <table className="w-full text-left divide-y divide-slate-200 min-w-[700px]">
                   <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                     <tr>
                       <th className="p-3.5">Customer</th>
@@ -817,8 +817,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
 
               {/* Table */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-                <table className="w-full text-left divide-y divide-slate-200">
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
+                <table className="w-full text-left divide-y divide-slate-200 min-w-[600px]">
                   <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                     <tr>
                       <th className="p-3">Product</th>
@@ -876,8 +876,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
              ========================================================================= */}
           {activeTab === 'orders' && (
             <div className="space-y-4">
-              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-                <table className="w-full text-left divide-y divide-slate-200">
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
+                <table className="w-full text-left divide-y divide-slate-200 min-w-[650px]">
                   <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                     <tr>
                       <th className="p-3">Order Number</th>
