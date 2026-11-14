@@ -6,13 +6,24 @@ dotenv.config();
 const { Pool } = pg;
 
 let lastConnectionError: string | null = null;
+let invalidUrlReason: string | null = null;
 let currentSslSetting: boolean | { rejectUnauthorized: boolean } = false;
 let dbConnected = false;
 
 // Normalize DATABASE_URL for node-postgres (convert postgres:// to postgresql://)
 let rawConnStr = process.env.DATABASE_URL?.trim();
-if (rawConnStr && rawConnStr.startsWith('postgres://')) {
-  rawConnStr = rawConnStr.replace('postgres://', 'postgresql://');
+
+if (rawConnStr) {
+  if (rawConnStr.startsWith('postgres://')) {
+    rawConnStr = rawConnStr.replace('postgres://', 'postgresql://');
+  }
+  // Check if someone accidentally set DATABASE_URL to just a database name (e.g. database_for_samecommers)
+  if (!/^postgresql:\/\//i.test(rawConnStr)) {
+    invalidUrlReason = `DATABASE_URL is set to "${rawConnStr}", which is only a database name, NOT a full connection URL. In Render Web Service Environment, set DATABASE_URL to your full Internal or External Database URL (e.g. postgresql://samecommers_user:PASSWORD@dpg-xxx-a/database_for_samecommers).`;
+    console.error(`❌ [PostgreSQL Config Error]: ${invalidUrlReason}`);
+    lastConnectionError = invalidUrlReason;
+    rawConnStr = undefined; // Do not pass invalid string to pg, which causes pg to parse host as 'base'
+  }
 }
 
 const connectionString = rawConnStr;
@@ -45,7 +56,7 @@ function createPoolInstance(sslConfig: boolean | { rejectUnauthorized: boolean }
       console.log(`[PostgreSQL Target]: Remote connection string configured, SSL: ${sslConfig ? 'enabled' : 'disabled'}`);
     }
   } else {
-    console.log(`[PostgreSQL Target]: No DATABASE_URL found. Using DB_HOST: ${process.env.DB_HOST || 'localhost'}, DB_PORT: ${process.env.DB_PORT || '5433'}, DB_NAME: ${process.env.DB_NAME || 'DataBase_for_SamEcommers'}`);
+    console.log(`[PostgreSQL Target]: No valid DATABASE_URL found. Using DB_HOST: ${process.env.DB_HOST || 'localhost'}, DB_PORT: ${process.env.DB_PORT || '5433'}, DB_NAME: ${process.env.DB_NAME || 'DataBase_for_SamEcommers'}`);
   }
 
   const p = new Pool(
@@ -102,6 +113,10 @@ setInterval(async () => {
 }, 4 * 60 * 1000);
 
 export async function query<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
+  if (invalidUrlReason && !connectionString) {
+    throw new Error(invalidUrlReason);
+  }
+
   const start = Date.now();
   try {
     const res = await pool.query<T>(text, params);
@@ -134,10 +149,19 @@ export async function query<T extends pg.QueryResultRow = any>(text: string, par
 }
 
 export async function getClient(): Promise<pg.PoolClient> {
+  if (invalidUrlReason && !connectionString) {
+    throw new Error(invalidUrlReason);
+  }
   return await pool.connect();
 }
 
 export async function verifyConnection(retries = 3, delayMs = 2000): Promise<boolean> {
+  if (invalidUrlReason && !connectionString) {
+    lastConnectionError = invalidUrlReason;
+    console.error(`❌ [PostgreSQL Fatal]: ${invalidUrlReason}`);
+    return false;
+  }
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`[PostgreSQL] Connection attempt ${attempt}/${retries}...`);
@@ -197,9 +221,10 @@ export function getDbDiagnostics() {
   return {
     connected: dbConnected,
     hasDatabaseUrl: Boolean(connectionString),
+    configError: invalidUrlReason,
     targetHost: host,
     targetDatabase: database,
     sslMode: Boolean(currentSslSetting),
-    lastError: lastConnectionError,
+    lastError: invalidUrlReason || lastConnectionError,
   };
 }
