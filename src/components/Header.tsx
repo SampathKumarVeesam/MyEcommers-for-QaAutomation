@@ -7,6 +7,7 @@ import {
   Headphones,
   Heart,
   Laptop,
+  Lock,
   LogOut,
   Package,
   Phone,
