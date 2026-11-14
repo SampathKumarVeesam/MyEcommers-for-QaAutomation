@@ -6,6 +6,7 @@ import { runSeed } from './db/seed.js';
 import { inventoryRepo } from './repositories/inventoryRepo.js';
 import { storeRepo } from './repositories/storeRepo.js';
 import { authRouter } from './routes/auth.js';
+import { adminAnalyticsRouter } from './routes/adminAnalytics.js';
 import { cartsRouter } from './routes/carts.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
@@ -44,6 +45,7 @@ export function createExpressApp() {
 
   // REST API Routes
   app.use('/api/users', authRouter);
+  app.use('/api/admin/analytics', adminAnalyticsRouter);
   app.use('/api/products', productsRouter);
   app.use('/api/carts', cartsRouter);
   app.use('/api/orders', ordersRouter);

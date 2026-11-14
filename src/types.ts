@@ -140,3 +140,89 @@ export interface ApiResponse<T> {
   error?: string;
   errors?: Record<string, string>;
 }
+
+export interface AnalyticsSummary {
+  totalCustomers: number;
+  totalOrders: number;
+  totalSales: number;
+  totalCartItems: number;
+  totalWishlistItems: number;
+}
+
+export interface CustomerActivitySummary {
+  id: string;
+  numericId: number;
+  name: string;
+  username: string;
+  email: string;
+  phone: string;
+  avatar: string;
+  role: Role;
+  createdAt: string;
+  ordersCount: number;
+  totalSpent: number;
+  cartItemsCount: number;
+  wishlistItemsCount: number;
+}
+
+export interface CustomerActivityDetail {
+  customer: {
+    id: string;
+    name: string;
+    username: string;
+    email: string;
+    phone: string;
+    avatar: string;
+    role: Role;
+    createdAt: string;
+    address?: Address | null;
+  };
+  orders: {
+    id: string;
+    orderNumber: string;
+    status: OrderStatus;
+    totalAmount: number;
+    subtotal: number;
+    tax: number;
+    shippingFee: number;
+    shippingMethod: string;
+    paymentMethod: string;
+    paymentStatus: string;
+    shippingAddress: Address;
+    createdAt: string;
+    items: {
+      id: number;
+      productId: string;
+      productName: string;
+      productImage: string;
+      price: number;
+      quantity: number;
+      selectedVariant?: string;
+      selectedColor?: string;
+      selectedSize?: string;
+    }[];
+  }[];
+  cartItems: {
+    id: string;
+    productId: string;
+    productName: string;
+    productImage: string;
+    category: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    selectedVariant?: string;
+    selectedColor?: string;
+    selectedSize?: string;
+    createdAt: string;
+  }[];
+  wishlistItems: {
+    id: string;
+    productId: string;
+    productName: string;
+    productImage: string;
+    category: string;
+    price: number;
+    createdAt: string;
+  }[];
+}

@@ -36,6 +36,24 @@ export class UserRepository {
     return mapUserRow(res.rows[0]);
   }
 
+  async findByIdentifier(identifier: string): Promise<User | null> {
+    const normalized = identifier.trim().toLowerCase();
+    const res = await query(
+      `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1) LIMIT 1`,
+      [normalized]
+    );
+    if (res.rows.length === 0) return null;
+    return mapUserRow(res.rows[0]);
+  }
+
+  async updatePassword(userId: string | number, newHash: string): Promise<void> {
+    const isNum = !isNaN(Number(userId));
+    await query(
+      `UPDATE users SET password = $1 WHERE user_code = $2 ${isNum ? 'OR id = $3' : ''}`,
+      isNum ? [newHash, String(userId), Number(userId)] : [newHash, String(userId)]
+    );
+  }
+
   async findById(id: string | number): Promise<User | null> {
     const isNum = !isNaN(Number(id));
     const res = await query(

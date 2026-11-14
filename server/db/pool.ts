@@ -22,7 +22,7 @@ if (rawConnStr) {
   if (!/^postgresql:\/\//i.test(rawConnStr)) {
     if (rawConnStr.startsWith('dpg-')) {
       const dbUser = process.env.DB_USER || 'samecommers_user';
-      const dbPass = process.env.DB_PASSWORD || 'DJvuZvladg101KVO53dWOpZ5qp2Tsia4';
+      const dbPass = process.env.DB_PASSWORD || 'DJvuZvladg101KVC53dWOpZ5qp2Ts1a4';
       const dbName = process.env.DB_NAME || 'database_for_samecommers';
       const dbPort = process.env.DB_PORT || '5432';
       console.log(`ℹ️ [PostgreSQL Auto-Correction]: Detected Render hostname "${rawConnStr}" in DATABASE_URL. Auto-constructing full connection URL...`);

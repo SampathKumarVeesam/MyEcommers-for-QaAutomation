@@ -63,13 +63,31 @@ function ShopSphereMain() {
 
   // Modals State
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [authModal, setAuthModal] = useState<{ open: boolean; tab: 'login' | 'register' }>({
+  const [authModal, setAuthModal] = useState<{ open: boolean; tab: 'login' | 'register' | 'admin' }>({
     open: false,
     tab: 'login',
   });
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // URL Hash/Route protection for Admin Dashboard
+  useEffect(() => {
+    const handleUrlRoute = () => {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash === '#admin' || search.includes('admin')) {
+        if (user?.role === 'admin') {
+          setIsAdminOpen(true);
+        } else {
+          setAuthModal({ open: true, tab: 'admin' });
+        }
+      }
+    };
+    handleUrlRoute();
+    window.addEventListener('hashchange', handleUrlRoute);
+    return () => window.removeEventListener('hashchange', handleUrlRoute);
+  }, [user]);
 
   // Fetch products from backend
   const fetchProducts = async () => {
@@ -601,11 +619,15 @@ function ShopSphereMain() {
         onViewOrders={() => setIsOrdersOpen(true)}
       />
 
-      {/* Auth Modal (Login / Register) */}
+      {/* Auth Modal (Login / Register / Admin) */}
       <AuthModal
         isOpen={authModal.open}
         initialTab={authModal.tab}
         onClose={() => setAuthModal({ ...authModal, open: false })}
+        onAdminSuccess={() => {
+          setAuthModal({ open: false, tab: 'login' });
+          setIsAdminOpen(true);
+        }}
       />
 
       {/* Orders & Invoice Modal */}
