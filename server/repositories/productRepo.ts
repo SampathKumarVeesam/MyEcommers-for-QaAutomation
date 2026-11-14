@@ -260,47 +260,18 @@ export class ProductRepository {
   }
 
   async getInternalProductId(id: string | number): Promise<number | null> {
-    if (!isDbConnected()) return 1;
-
-    try {
-      const isNum = !isNaN(Number(id));
-      const res = await query(
-        `SELECT id FROM product WHERE (product_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
-        isNum ? [String(id), Number(id)] : [String(id)]
-      );
-      return res.rows[0]?.id || null;
-    } catch (err) {
-      return 1;
-    }
+    const isNum = !isNaN(Number(id));
+    const res = await query(
+      `SELECT id FROM product WHERE (product_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
+      isNum ? [String(id), Number(id)] : [String(id)]
+    );
+    return res.rows[0]?.id || null;
   }
 
   async createProduct(p: Partial<Product>): Promise<Product> {
     const code = p.id || `prod_${Date.now().toString(36)}`;
     const slug = p.slug || (p.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const images = p.images?.length ? p.images : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'];
-
-    if (!isDbConnected()) {
-      const fallback: Product = {
-        id: code,
-        title: p.title || 'Untitled Product',
-        slug,
-        price: p.price || 0,
-        compareAtPrice: p.compareAtPrice,
-        category: p.category || 'fashion',
-        subcategory: p.subcategory || 'General',
-        description: p.description || '',
-        images,
-        rating: p.rating || 4.5,
-        reviewsCount: p.reviewsCount || 0,
-        stock: p.stock || 10,
-        tags: p.tags || [],
-        specifications: p.specifications || {},
-        variants: p.variants || [],
-        featured: Boolean(p.featured),
-      };
-      INITIAL_PRODUCTS.unshift(fallback);
-      return fallback;
-    }
 
     const client = await getClient();
     try {
@@ -356,15 +327,6 @@ export class ProductRepository {
   }
 
   async updateProduct(id: string | number, updates: Partial<Product>): Promise<Product | null> {
-    if (!isDbConnected()) {
-      const idx = INITIAL_PRODUCTS.findIndex(p => p.id === String(id));
-      if (idx !== -1) {
-        INITIAL_PRODUCTS[idx] = { ...INITIAL_PRODUCTS[idx], ...updates };
-        return INITIAL_PRODUCTS[idx];
-      }
-      return null;
-    }
-
     const existingId = await this.getInternalProductId(id);
     if (!existingId) return null;
 
@@ -438,15 +400,6 @@ export class ProductRepository {
   }
 
   async deleteProduct(id: string | number): Promise<boolean> {
-    if (!isDbConnected()) {
-      const idx = INITIAL_PRODUCTS.findIndex(p => p.id === String(id));
-      if (idx !== -1) {
-        INITIAL_PRODUCTS.splice(idx, 1);
-        return true;
-      }
-      return false;
-    }
-
     const existingId = await this.getInternalProductId(id);
     if (!existingId) return false;
 
@@ -455,48 +408,24 @@ export class ProductRepository {
   }
 
   async getReviewsForProduct(id: string | number): Promise<Review[]> {
-    if (!isDbConnected()) {
-      return memoryReviews[String(id)] || [];
-    }
+    const internalId = await this.getInternalProductId(id);
+    if (!internalId) return [];
 
-    try {
-      const internalId = await this.getInternalProductId(id);
-      if (!internalId) return [];
-
-      const res = await query(
-        `SELECT pr.*, p.product_code
-         FROM product_reviews pr
-         JOIN product p ON pr.product_id = p.id
-         WHERE pr.product_id = $1
-         ORDER BY pr.created_at DESC`,
-        [internalId]
-      );
-      return res.rows.map(mapReviewRow);
-    } catch (err: any) {
-      return memoryReviews[String(id)] || [];
-    }
+    const res = await query(
+      `SELECT pr.*, p.product_code
+       FROM product_reviews pr
+       JOIN product p ON pr.product_id = p.id
+       WHERE pr.product_id = $1
+       ORDER BY pr.created_at DESC`,
+      [internalId]
+    );
+    return res.rows.map(mapReviewRow);
   }
 
   async addReview(
     productId: string | number,
     review: { userName: string; userEmail?: string; rating: number; comment: string }
   ): Promise<Review> {
-    if (!isDbConnected()) {
-      const newRev: Review = {
-        id: `rev_${Date.now().toString(36)}`,
-        productId: String(productId),
-        userName: review.userName,
-        userEmail: review.userEmail,
-        rating: review.rating,
-        comment: review.comment,
-        createdAt: new Date().toISOString(),
-        verifiedPurchase: true,
-      };
-      if (!memoryReviews[String(productId)]) memoryReviews[String(productId)] = [];
-      memoryReviews[String(productId)].unshift(newRev);
-      return newRev;
-    }
-
     const internalId = await this.getInternalProductId(productId);
     if (!internalId) {
       throw new Error(`Product not found: ${productId}`);

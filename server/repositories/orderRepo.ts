@@ -1,5 +1,5 @@
 import { Address, BasketItem, Order, OrderStatus, PaymentMethod } from '../../src/types.js';
-import { getClient, isDbConnected, query } from '../db/pool.js';
+import { getClient, query } from '../db/pool.js';
 import { inventoryRepo } from './inventoryRepo.js';
 import { mapProductRow, productRepo } from './productRepo.js';
 import { userRepo } from './userRepo.js';
@@ -37,8 +37,6 @@ export function mapOrderRow(row: any, items: BasketItem[] = []): Order {
   };
 }
 
-const memoryOrders: Order[] = [];
-
 export class OrderRepository {
   async createOrder(data: {
     userId: string | number;
@@ -62,31 +60,6 @@ export class OrderRepository {
     const shippingFee = subtotal > 75 ? 0 : data.shippingMethod === 'express' ? 14.99 : 9.99;
     const totalAmount = parseFloat((subtotal + tax + shippingFee).toFixed(2));
     const paymentStatus = data.paymentMethod === 'cod' ? 'cod_pending' : 'paid';
-
-    if (!isDbConnected()) {
-      const order: Order = {
-        id: `ord_${Date.now()}`,
-        orderNumber,
-        userId: String(data.userId),
-        userEmail: data.userEmail,
-        userName: data.userName,
-        basketId: data.basketId,
-        items: data.items,
-        shippingAddress: data.shippingAddress,
-        shippingMethod: data.shippingMethod,
-        paymentMethod: data.paymentMethod,
-        paymentStatus,
-        orderStatus: 'processing',
-        subtotal,
-        tax,
-        shippingFee,
-        grandTotal: totalAmount,
-        trackingNumber: trackingId,
-        createdAt: new Date().toISOString(),
-      };
-      memoryOrders.unshift(order);
-      return order;
-    }
 
     const client = await getClient();
     try {
@@ -119,41 +92,46 @@ export class OrderRepository {
           data.shippingMethod,
           data.paymentMethod,
           paymentStatus,
-          data.shippingAddress.street,
-          data.shippingAddress.postalCode,
-          data.shippingAddress.city,
-          data.shippingAddress.state,
-          data.shippingAddress.country,
+          data.shippingAddress?.street || '742 Evergreen Terrace',
+          data.shippingAddress?.postalCode || '78701',
+          data.shippingAddress?.city || 'Austin',
+          data.shippingAddress?.state || 'TX',
+          data.shippingAddress?.country || 'United States',
         ]
       );
 
-      const insertedOrder = orderRes.rows[0];
+      const createdOrderRow = orderRes.rows[0];
+      const insertedOrderId = createdOrderRow.id;
 
-      // 2. Insert line items into public.order_item and decrement public.inventory
+      // 2. Insert line items into public.order_item and atomically decrement stock
       for (const item of data.items) {
-        const pId = await productRepo.getInternalProductId(item.productId);
-        if (pId) {
-          await client.query(
-            `INSERT INTO order_item (
-               order_id, product_id, user_id, price, quantity, selected_variant, selected_color, selected_size
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [
-              insertedOrder.id,
-              pId,
-              internalUserId,
-              item.unitPrice,
-              item.quantity,
-              item.selectedVariant || null,
-              item.selectedColor || null,
-              item.selectedSize || null,
-            ]
-          );
-
-          await inventoryRepo.decrementStock(pId, item.quantity, undefined, client);
+        const internalProdId = await productRepo.getInternalProductId(item.productId);
+        if (!internalProdId) {
+          throw new Error(`Product not found: ${item.productId}`);
         }
+
+        await client.query(
+          `INSERT INTO order_item (
+             order_id, product_id, user_id, price, quantity,
+             selected_variant, selected_color, selected_size
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            insertedOrderId,
+            internalProdId,
+            internalUserId,
+            item.unitPrice,
+            item.quantity,
+            item.selectedVariant || null,
+            item.selectedColor || null,
+            item.selectedSize || null,
+          ]
+        );
+
+        // Decrement stock in store inventory
+        await inventoryRepo.decrementStock(internalProdId, item.quantity);
       }
 
-      // 3. Clear user's rows from public.cart
+      // 3. Clear customer basket items from public.cart
       if (internalUserId) {
         await client.query(
           `DELETE FROM cart WHERE basket_id = $1 OR user_id = $2`,
@@ -167,33 +145,11 @@ export class OrderRepository {
       }
 
       await client.query('COMMIT');
-      return mapOrderRow(insertedOrder, data.items);
+      return mapOrderRow(createdOrderRow, data.items);
     } catch (err: any) {
       await client.query('ROLLBACK');
-      console.error('[PostgreSQL Checkout Transaction Failed]:', err);
-      // Fallback for resilient cloud mode
-      const order: Order = {
-        id: `ord_${Date.now()}`,
-        orderNumber,
-        userId: String(data.userId),
-        userEmail: data.userEmail,
-        userName: data.userName,
-        basketId: data.basketId,
-        items: data.items,
-        shippingAddress: data.shippingAddress,
-        shippingMethod: data.shippingMethod,
-        paymentMethod: data.paymentMethod,
-        paymentStatus,
-        orderStatus: 'processing',
-        subtotal,
-        tax,
-        shippingFee,
-        grandTotal: totalAmount,
-        trackingNumber: trackingId,
-        createdAt: new Date().toISOString(),
-      };
-      memoryOrders.unshift(order);
-      return order;
+      console.error('[PostgreSQL Order Transaction Error]: Transaction rolled back:', err);
+      throw err;
     } finally {
       client.release();
     }
@@ -201,7 +157,7 @@ export class OrderRepository {
 
   async getOrderItems(orderId: number): Promise<BasketItem[]> {
     const res = await query(
-      `SELECT oi.*, p.product_code, p.name, p.slug, p.price as current_price,
+      `SELECT oi.*, p.product_code, p.name, p.slug, p.price as p_price, p.compare_at_price,
               p.category, p.subcategory, p.description, p.image_url, p.images,
               p.variants, p.rating, p.reviews_count, p.stock, p.tags, p.specifications
        FROM order_item oi
@@ -212,12 +168,15 @@ export class OrderRepository {
     );
 
     return res.rows.map((row) => {
+      const unitPrice = parseFloat(row.price);
+      const quantity = parseInt(row.quantity, 10);
       const product = mapProductRow({
         id: row.product_id,
         product_code: row.product_code,
         name: row.name,
         slug: row.slug,
-        price: row.price,
+        price: row.p_price,
+        compare_at_price: row.compare_at_price,
         category: row.category,
         subcategory: row.subcategory,
         description: row.description,
@@ -231,12 +190,9 @@ export class OrderRepository {
         specifications: row.specifications,
       });
 
-      const unitPrice = parseFloat(row.price);
-      const quantity = parseInt(row.quantity, 10);
-
       return {
-        id: `bitem_${row.id}`,
-        productId: product.id,
+        id: `oi_${row.id}`,
+        productId: row.product_code || String(row.product_id),
         product,
         quantity,
         unitPrice,
@@ -249,74 +205,50 @@ export class OrderRepository {
   }
 
   async getOrderById(id: string | number): Promise<Order | null> {
-    if (!isDbConnected()) {
-      return memoryOrders.find(o => o.id === String(id) || o.orderNumber === String(id)) || null;
-    }
-
-    try {
-      const isNum = !isNaN(Number(id));
-      const res = await query(
-        `SELECT * FROM "order" WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
-        isNum ? [String(id), Number(id)] : [String(id)]
-      );
-      if (res.rows.length === 0) return null;
-      const row = res.rows[0];
-      const items = await this.getOrderItems(row.id);
-      return mapOrderRow(row, items);
-    } catch (err) {
-      return memoryOrders.find(o => o.id === String(id) || o.orderNumber === String(id)) || null;
-    }
+    const isNum = !isNaN(Number(id));
+    const res = await query(
+      `SELECT * FROM "order" WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
+      isNum ? [String(id), Number(id)] : [String(id)]
+    );
+    if (res.rows.length === 0) return null;
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    return mapOrderRow(row, items);
   }
 
   async getOrdersByUser(userId: string | number): Promise<Order[]> {
-    if (!isDbConnected()) {
-      return memoryOrders.filter(o => o.userId === String(userId));
+    const rawUser = await userRepo.findRawById(userId);
+    const internalUserId = rawUser ? rawUser.id : null;
+
+    let res;
+    if (internalUserId) {
+      res = await query(
+        `SELECT * FROM "order" WHERE user_id = $1 OR user_email = $2 ORDER BY created_at DESC`,
+        [internalUserId, rawUser.email]
+      );
+    } else {
+      res = await query(
+        `SELECT * FROM "order" WHERE user_id::text = $1 OR user_email = $1 ORDER BY created_at DESC`,
+        [String(userId)]
+      );
     }
 
-    try {
-      const rawUser = await userRepo.findRawById(userId);
-      const internalUserId = rawUser ? rawUser.id : null;
-
-      let res;
-      if (internalUserId) {
-        res = await query(
-          `SELECT * FROM "order" WHERE user_id = $1 OR user_email = $2 ORDER BY created_at DESC`,
-          [internalUserId, rawUser.email]
-        );
-      } else {
-        res = await query(
-          `SELECT * FROM "order" WHERE user_id::text = $1 OR user_email = $1 ORDER BY created_at DESC`,
-          [String(userId)]
-        );
-      }
-
-      const orders: Order[] = [];
-      for (const row of res.rows) {
-        const items = await this.getOrderItems(row.id);
-        orders.push(mapOrderRow(row, items));
-      }
-      return orders;
-    } catch (err) {
-      return memoryOrders.filter(o => o.userId === String(userId));
+    const orders: Order[] = [];
+    for (const row of res.rows) {
+      const items = await this.getOrderItems(row.id);
+      orders.push(mapOrderRow(row, items));
     }
+    return orders;
   }
 
   async getAllOrders(): Promise<Order[]> {
-    if (!isDbConnected()) {
-      return memoryOrders;
+    const res = await query(`SELECT * FROM "order" ORDER BY created_at DESC`);
+    const orders: Order[] = [];
+    for (const row of res.rows) {
+      const items = await this.getOrderItems(row.id);
+      orders.push(mapOrderRow(row, items));
     }
-
-    try {
-      const res = await query(`SELECT * FROM "order" ORDER BY created_at DESC`);
-      const orders: Order[] = [];
-      for (const row of res.rows) {
-        const items = await this.getOrderItems(row.id);
-        orders.push(mapOrderRow(row, items));
-      }
-      return orders;
-    } catch (err) {
-      return memoryOrders;
-    }
+    return orders;
   }
 }
 

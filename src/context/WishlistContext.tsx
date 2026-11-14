@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Product } from '../types.js';
 import { useAuth } from './AuthContext.js';
+import { apiUrl } from '../config/api.js';
 
 interface WishlistContextType {
   wishlist: Product[];
@@ -28,7 +29,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
-    fetch('/api/wishlist', {
+    fetch(apiUrl('/api/wishlist'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -54,7 +55,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } else {
       if (token) {
         try {
-          const res = await fetch('/api/wishlist', {
+          const res = await fetch(apiUrl('/api/wishlist'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -80,7 +81,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setWishlist(prev => prev.filter(p => p.id !== productId));
     if (token) {
       try {
-        const res = await fetch(`/api/wishlist/${productId}`, {
+        const res = await fetch(apiUrl(`/api/wishlist/${productId}`), {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -100,7 +101,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setWishlist([]);
     if (token) {
       try {
-        await fetch('/api/wishlist', {
+        await fetch(apiUrl('/api/wishlist'), {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,

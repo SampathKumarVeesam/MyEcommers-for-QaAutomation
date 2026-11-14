@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { isDbConnected, query } from '../db/pool.js';
+import { query } from '../db/pool.js';
 import { productRepo } from './productRepo.js';
 
 export interface InventoryItem {
@@ -12,87 +12,59 @@ export interface InventoryItem {
 
 export class InventoryRepository {
   async getInventoryByProduct(productId: number | string): Promise<InventoryItem[]> {
-    if (!isDbConnected()) {
-      return [
-        { productId: 1, productCode: String(productId), storeId: 1, storeName: 'ShopSphere Austin Flagship', stockAvailable: 24 },
-        { productId: 1, productCode: String(productId), storeId: 2, storeName: 'ShopSphere Silicon Valley Hub', stockAvailable: 19 },
-        { productId: 1, productCode: String(productId), storeId: 3, storeName: 'ShopSphere Chicago Center', stockAvailable: 27 },
-      ];
-    }
+    const internalId = await productRepo.getInternalProductId(productId);
+    if (!internalId) return [];
 
-    try {
-      const internalId = await productRepo.getInternalProductId(productId);
-      if (!internalId) return [];
+    const res = await query(
+      `SELECT inv.product_id, p.product_code, inv.store_id, s.name as store_name, inv.stock_available
+       FROM inventory inv
+       JOIN product p ON inv.product_id = p.id
+       JOIN store s ON inv.store_id = s.id
+       WHERE inv.product_id = $1
+       ORDER BY inv.store_id ASC`,
+      [internalId]
+    );
 
-      const res = await query(
-        `SELECT inv.product_id, p.product_code, inv.store_id, s.name as store_name, inv.stock_available
-         FROM inventory inv
-         JOIN product p ON inv.product_id = p.id
-         JOIN store s ON inv.store_id = s.id
-         WHERE inv.product_id = $1
-         ORDER BY inv.store_id ASC`,
-        [internalId]
-      );
-
-      return res.rows.map((row) => ({
-        productId: row.product_id,
-        productCode: row.product_code,
-        storeId: row.store_id,
-        storeName: row.store_name,
-        stockAvailable: parseInt(row.stock_available, 10),
-      }));
-    } catch (err) {
-      return [
-        { productId: 1, productCode: String(productId), storeId: 1, storeName: 'ShopSphere Austin Flagship', stockAvailable: 24 },
-        { productId: 1, productCode: String(productId), storeId: 2, storeName: 'ShopSphere Silicon Valley Hub', stockAvailable: 19 },
-        { productId: 1, productCode: String(productId), storeId: 3, storeName: 'ShopSphere Chicago Center', stockAvailable: 27 },
-      ];
-    }
+    return res.rows.map((row) => ({
+      productId: row.product_id,
+      productCode: row.product_code,
+      storeId: row.store_id,
+      storeName: row.store_name,
+      stockAvailable: parseInt(row.stock_available, 10),
+    }));
   }
 
   async getStock(productId: number, storeId: number): Promise<number> {
-    if (!isDbConnected()) return 20;
-
-    try {
-      const res = await query(
-        `SELECT stock_available FROM inventory WHERE product_id = $1 AND store_id = $2`,
-        [productId, storeId]
-      );
-      if (res.rows.length === 0) return 0;
-      return parseInt(res.rows[0].stock_available, 10);
-    } catch (err) {
-      return 20;
-    }
+    const res = await query(
+      `SELECT stock_available FROM inventory WHERE product_id = $1 AND store_id = $2`,
+      [productId, storeId]
+    );
+    if (res.rows.length === 0) return 0;
+    return parseInt(res.rows[0].stock_available, 10);
   }
 
   async setStock(productId: number | string, storeId: number, stock: number): Promise<void> {
-    if (!isDbConnected()) return;
+    const internalId = await productRepo.getInternalProductId(productId);
+    if (!internalId) throw new Error(`Product not found: ${productId}`);
 
-    try {
-      const internalId = await productRepo.getInternalProductId(productId);
-      if (!internalId) throw new Error(`Product not found: ${productId}`);
+    await query(
+      `INSERT INTO inventory (product_id, store_id, stock_available)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (product_id, store_id)
+       DO UPDATE SET stock_available = EXCLUDED.stock_available`,
+      [internalId, storeId, stock]
+    );
 
-      await query(
-        `INSERT INTO inventory (product_id, store_id, stock_available)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (product_id, store_id)
-         DO UPDATE SET stock_available = EXCLUDED.stock_available`,
-        [internalId, storeId, stock]
-      );
-
-      await query(
-        `UPDATE product
-         SET stock = (
-           SELECT COALESCE(SUM(stock_available), 0)
-           FROM inventory
-           WHERE product_id = $1
-         )
-         WHERE id = $1`,
-        [internalId]
-      );
-    } catch (err: any) {
-      console.warn('[InventoryRepo Notice]: Set stock skipped in cloud mode:', err.message);
-    }
+    await query(
+      `UPDATE product
+       SET stock = (
+         SELECT COALESCE(SUM(stock_available), 0)
+         FROM inventory
+         WHERE product_id = $1
+       )
+       WHERE id = $1`,
+      [internalId]
+    );
   }
 
   async decrementStock(
@@ -101,49 +73,43 @@ export class InventoryRepository {
     storeId?: number,
     client?: pg.PoolClient
   ): Promise<void> {
-    if (!isDbConnected()) return;
-
-    try {
-      const executeQuery = (sql: string, params: any[]) => {
-        if (client) {
-          return client.query(sql, params);
-        }
-        return query(sql, params);
-      };
-
-      if (storeId) {
-        await executeQuery(
-          `UPDATE inventory
-           SET stock_available = GREATEST(0, stock_available - $1)
-           WHERE product_id = $2 AND store_id = $3`,
-          [quantity, productId, storeId]
-        );
-      } else {
-        await executeQuery(
-          `UPDATE inventory
-           SET stock_available = GREATEST(0, stock_available - $1)
-           WHERE (product_id, store_id) IN (
-             SELECT product_id, store_id FROM inventory
-             WHERE product_id = $2
-             ORDER BY stock_available DESC LIMIT 1
-           )`,
-          [quantity, productId]
-        );
+    const executeQuery = (sql: string, params: any[]) => {
+      if (client) {
+        return client.query(sql, params);
       }
+      return query(sql, params);
+    };
 
+    if (storeId) {
       await executeQuery(
-        `UPDATE product
-         SET stock = (
-           SELECT COALESCE(SUM(stock_available), 0)
-           FROM inventory
-           WHERE product_id = $1
-         )
-         WHERE id = $1`,
-        [productId]
+        `UPDATE inventory
+         SET stock_available = GREATEST(0, stock_available - $1)
+         WHERE product_id = $2 AND store_id = $3`,
+        [quantity, productId, storeId]
       );
-    } catch (err: any) {
-      console.warn('[InventoryRepo Notice]: Decrement stock skipped in cloud mode:', err.message);
+    } else {
+      await executeQuery(
+        `UPDATE inventory
+         SET stock_available = GREATEST(0, stock_available - $1)
+         WHERE (product_id, store_id) IN (
+           SELECT product_id, store_id FROM inventory
+           WHERE product_id = $2
+           ORDER BY stock_available DESC LIMIT 1
+         )`,
+        [quantity, productId]
+      );
     }
+
+    await executeQuery(
+      `UPDATE product
+       SET stock = (
+         SELECT COALESCE(SUM(stock_available), 0)
+         FROM inventory
+         WHERE product_id = $1
+       )
+       WHERE id = $1`,
+      [productId]
+    );
   }
 }
 

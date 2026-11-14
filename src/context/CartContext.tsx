@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Basket, BasketItem } from '../types.js';
 import { useAuth } from './AuthContext.js';
+import { apiUrl } from '../config/api.js';
 
 interface CartContextType {
   basketId: string | null;
@@ -38,7 +39,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (user?.id) {
         // Authenticated customer: 100% of cart state is tied to user_id in PostgreSQL public.cart
-        const res = await fetch(`/api/carts/user/${user.id}`, {
+        const res = await fetch(apiUrl(`/api/carts/user/${user.id}`), {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -54,7 +55,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Guest / Anonymous session in PostgreSQL
       const activeId = currentBasketId || basketId;
       if (activeId) {
-        const res = await fetch(`/api/carts/${activeId}`);
+        const res = await fetch(apiUrl(`/api/carts/${activeId}`));
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {
@@ -66,7 +67,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // If no basket exists, initialize a new basket session in PostgreSQL
-      const createRes = await fetch('/api/carts', {
+      const createRes = await fetch(apiUrl('/api/carts'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id }),
@@ -89,7 +90,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (user?.id && basketId && !hasMergedRef.current) {
       // Merge guest cart items into logged-in user in PostgreSQL
-      fetch('/api/carts/merge', {
+      fetch(apiUrl('/api/carts/merge'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +123,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       let activeBasketId = basketId;
       if (!activeBasketId) {
-        const res = await fetch('/api/carts', {
+        const res = await fetch(apiUrl('/api/carts'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user?.id }),
@@ -138,7 +139,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, message: 'Could not connect to PostgreSQL cart' };
       }
 
-      const res = await fetch(`/api/carts/${activeBasketId}`, {
+      const res = await fetch(apiUrl(`/api/carts/${activeBasketId}`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,7 +178,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!basketId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/carts/${basketId}/items/${productId}`, {
+      const res = await fetch(apiUrl(`/api/carts/${basketId}/items/${productId}`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -212,7 +213,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (variant) params.append('variant', variant);
       if (user?.id) params.append('userId', String(user.id));
 
-      const res = await fetch(`/api/carts/${basketId}?${params.toString()}`, {
+      const res = await fetch(apiUrl(`/api/carts/${basketId}?${params.toString()}`), {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -234,7 +235,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const params = new URLSearchParams();
       if (user?.id) params.append('userId', String(user.id));
 
-      const res = await fetch(`/api/carts/${basketId}?${params.toString()}`, {
+      const res = await fetch(apiUrl(`/api/carts/${basketId}?${params.toString()}`), {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

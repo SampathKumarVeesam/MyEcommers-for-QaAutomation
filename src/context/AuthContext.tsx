@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Address, User } from '../types.js';
+import { apiUrl } from '../config/api.js';
 
 interface AuthContextType {
   user: User | null;
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const res = await fetch('/api/users/me', {
+        const res = await fetch(apiUrl('/api/users/me'), {
           headers: {
             Authorization: `Bearer ${storedToken}`,
           },
@@ -68,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
-      const res = await fetch('/api/users/login', {
+      const res = await fetch(apiUrl('/api/users/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -93,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: { name: string; email: string; password: string; phone?: string }) => {
     try {
-      const res = await fetch('/api/users/register', {
+      const res = await fetch(apiUrl('/api/users/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -122,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile?: { name?: string; email?: string }
   ): Promise<{ success: boolean; message?: string }> => {
     try {
-      const res = await fetch('/api/users/oauth', {
+      const res = await fetch(apiUrl('/api/users/oauth'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (updates: { name?: string; phone?: string; avatar?: string; address?: Address }): Promise<boolean> => {
     if (!token) return false;
     try {
-      const res = await fetch('/api/users/profile', {
+      const res = await fetch(apiUrl('/api/users/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

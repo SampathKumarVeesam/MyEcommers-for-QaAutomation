@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { SWAGGER_SPEC } from '../swaggerDoc.js';
+import { apiUrl } from '../config/api.js';
 
 interface SwaggerModalProps {
   isOpen: boolean;
@@ -287,7 +288,7 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
         }
       }
 
-      const res = await fetch(url, options);
+      const res = await fetch(apiUrl(url), options);
       const duration = Math.round(performance.now() - startTime);
 
       let data: any = null;

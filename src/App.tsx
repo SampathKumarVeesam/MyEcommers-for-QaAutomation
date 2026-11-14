@@ -26,6 +26,7 @@ import {
   Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { apiUrl } from './config/api.js';
 import { AdminPanelModal } from './components/AdminPanelModal.js';
 import { AuthModal } from './components/AuthModal.js';
 import { CartDrawer } from './components/CartDrawer.js';
@@ -90,7 +91,7 @@ function ShopSphereMain() {
       params.append('page', page.toString());
       params.append('limit', '12');
 
-      const res = await fetch(`/api/products?${params.toString()}`);
+      const res = await fetch(apiUrl(`/api/products?${params.toString()}`));
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
@@ -124,7 +125,7 @@ function ShopSphereMain() {
     const params = new URLSearchParams(window.location.search);
     const prodId = params.get('product');
     if (prodId) {
-      fetch(`/api/products/${prodId}`)
+      fetch(apiUrl(`/api/products/${prodId}`))
         .then(res => res.json())
         .then(json => {
           if (json.success && json.data) {

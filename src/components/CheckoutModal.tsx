@@ -20,6 +20,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { useCart } from '../context/CartContext.js';
 import { Address, Order, PaymentMethod } from '../types.js';
+import { apiUrl } from '../config/api.js';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/orders', {
+      const res = await fetch(apiUrl('/api/orders'), {
         method: 'POST',
         headers,
         body: JSON.stringify({

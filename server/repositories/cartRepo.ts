@@ -1,252 +1,145 @@
 import crypto from 'node:crypto';
 import { Basket, BasketItem } from '../../src/types.js';
-import { isDbConnected, query } from '../db/pool.js';
+import { query } from '../db/pool.js';
 import { mapProductRow, productRepo } from './productRepo.js';
 import { userRepo } from './userRepo.js';
 
-const memoryBaskets = new Map<string, Basket>();
-
 export class CartRepository {
   async getBasket(basketId: string, userId?: string | number): Promise<Basket> {
-    if (!isDbConnected()) {
-      let b = memoryBaskets.get(basketId);
-      if (!b) {
-        b = {
-          id: basketId,
-          userId: userId ? String(userId) : undefined,
-          items: [],
-          totalItemCount: 0,
-          subtotal: 0,
-          estimatedTax: 0,
-          shippingFee: 0,
-          grandTotal: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        memoryBaskets.set(basketId, b);
-      }
-      return { ...b };
+    let rawUserId: number | null = null;
+    if (userId) {
+      const raw = await userRepo.findRawById(userId);
+      rawUserId = raw ? raw.id : null;
     }
 
-    try {
-      let rawUserId: number | null = null;
-      if (userId) {
-        const raw = await userRepo.findRawById(userId);
-        rawUserId = raw ? raw.id : null;
-      }
+    const res = await query(
+      `SELECT c.*, p.product_code, p.name, p.slug, p.price, p.compare_at_price,
+              p.category, p.subcategory, p.description, p.image_url, p.images,
+              p.variants, p.rating, p.reviews_count, p.stock, p.tags, p.specifications,
+              p.color_options, p.size_options, p.scent_notes, p.featured
+       FROM cart c
+       JOIN product p ON c.product_id = p.id
+       WHERE c.basket_id = $1 ${rawUserId ? 'OR c.user_id = $2' : ''}
+       ORDER BY c.id ASC`,
+      rawUserId ? [basketId, rawUserId] : [basketId]
+    );
 
-      const res = await query(
-        `SELECT c.*, p.product_code, p.name, p.slug, p.price, p.compare_at_price,
-                p.category, p.subcategory, p.description, p.image_url, p.images,
-                p.variants, p.rating, p.reviews_count, p.stock, p.tags, p.specifications,
-                p.color_options, p.size_options, p.scent_notes, p.featured
-         FROM cart c
-         JOIN product p ON c.product_id = p.id
-         WHERE c.basket_id = $1 ${rawUserId ? 'OR c.user_id = $2' : ''}
-         ORDER BY c.id ASC`,
-        rawUserId ? [basketId, rawUserId] : [basketId]
-      );
-
-      const items: BasketItem[] = res.rows.map((row) => {
-        const product = mapProductRow({
-          id: row.product_id,
-          product_code: row.product_code,
-          name: row.name,
-          slug: row.slug,
-          price: row.price,
-          compare_at_price: row.compare_at_price,
-          category: row.category,
-          subcategory: row.subcategory,
-          description: row.description,
-          image_url: row.image_url,
-          images: row.images,
-          variants: row.variants,
-          rating: row.rating,
-          reviews_count: row.reviews_count,
-          stock: row.stock,
-          tags: row.tags,
-          specifications: row.specifications,
-          color_options: row.color_options,
-          size_options: row.size_options,
-          scent_notes: row.scent_notes,
-          featured: row.featured,
-        });
-
-        const options = typeof row.selected_options === 'string'
-          ? JSON.parse(row.selected_options)
-          : (row.selected_options || {});
-
-        const unitPrice = product.price;
-        const quantity = parseInt(row.quantity, 10);
-        const totalPrice = parseFloat((unitPrice * quantity).toFixed(2));
-
-        return {
-          id: `bitem_${row.id}`,
-          productId: product.id,
-          product,
-          quantity,
-          unitPrice,
-          totalPrice,
-          selectedVariant: options.selectedVariant,
-          selectedColor: options.selectedColor,
-          selectedSize: options.selectedSize,
-        };
-      });
-
-      let totalItemCount = 0;
-      let subtotal = 0;
-      for (const it of items) {
-        totalItemCount += it.quantity;
-        subtotal += it.totalPrice;
-      }
-
-      subtotal = parseFloat(subtotal.toFixed(2));
-      const estimatedTax = parseFloat((subtotal * 0.0825).toFixed(2));
-      const shippingFee = subtotal > 75 || totalItemCount === 0 ? 0 : 9.99;
-      const grandTotal = parseFloat((subtotal + estimatedTax + shippingFee).toFixed(2));
-
-      const latestDate = res.rows.length > 0 && res.rows[0].updated_at
-        ? new Date(res.rows[0].updated_at).toISOString()
-        : new Date().toISOString();
+    const items: BasketItem[] = res.rows.map((row) => {
+      const unitPrice = parseFloat(row.price);
+      const qty = parseInt(row.quantity, 10);
+      const selectedOpts = typeof row.selected_options === 'string'
+        ? JSON.parse(row.selected_options)
+        : (row.selected_options || {});
 
       return {
-        id: basketId,
-        userId: rawUserId ? String(rawUserId) : undefined,
-        items,
-        totalItemCount,
-        subtotal,
-        estimatedTax,
-        shippingFee,
-        grandTotal,
-        createdAt: latestDate,
-        updatedAt: latestDate,
+        id: `cart_item_${row.id}`,
+        productId: row.product_code || String(row.product_id),
+        product: mapProductRow(row),
+        quantity: qty,
+        unitPrice,
+        totalPrice: parseFloat((unitPrice * qty).toFixed(2)),
+        selectedVariant: selectedOpts.selectedVariant || undefined,
+        selectedColor: selectedOpts.selectedColor || undefined,
+        selectedSize: selectedOpts.selectedSize || undefined,
       };
-    } catch (err: any) {
-      console.warn('[CartRepo Notice]: Operating in resilient cloud mode:', err.message);
-      let b = memoryBaskets.get(basketId);
-      if (!b) {
-        b = {
-          id: basketId,
-          items: [],
-          totalItemCount: 0,
-          subtotal: 0,
-          estimatedTax: 0,
-          shippingFee: 0,
-          grandTotal: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        memoryBaskets.set(basketId, b);
-      }
-      return { ...b };
-    }
+    });
+
+    const totalItemCount = items.reduce((sum, it) => sum + it.quantity, 0);
+    const subtotal = parseFloat(items.reduce((sum, it) => sum + it.totalPrice, 0).toFixed(2));
+    const estimatedTax = parseFloat((subtotal * 0.0825).toFixed(2));
+    const shippingFee = subtotal > 75 || totalItemCount === 0 ? 0 : 9.99;
+    const grandTotal = parseFloat((subtotal + estimatedTax + shippingFee).toFixed(2));
+
+    return {
+      id: basketId,
+      userId: rawUserId ? String(rawUserId) : (userId ? String(userId) : undefined),
+      items,
+      totalItemCount,
+      subtotal,
+      estimatedTax,
+      shippingFee,
+      grandTotal,
+      createdAt: res.rows[0]?.created_at ? new Date(res.rows[0].created_at).toISOString() : new Date().toISOString(),
+      updatedAt: res.rows[0]?.updated_at ? new Date(res.rows[0].updated_at).toISOString() : new Date().toISOString(),
+    };
+  }
+
+  async createBasket(userId?: string | number): Promise<Basket> {
+    const basketId = `basket_${crypto.randomUUID().slice(0, 12)}`;
+    return {
+      id: basketId,
+      userId: userId ? String(userId) : undefined,
+      items: [],
+      totalItemCount: 0,
+      subtotal: 0,
+      estimatedTax: 0,
+      shippingFee: 0,
+      grandTotal: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   async getUserCart(userId: string | number): Promise<Basket> {
-    if (!isDbConnected()) {
+    const rawUser = await userRepo.findRawById(userId);
+    if (!rawUser) {
       return this.getBasket(`basket_u_${userId}`, userId);
     }
 
-    try {
-      const rawUser = await userRepo.findRawById(userId);
-      if (!rawUser) {
-        return this.getBasket(`basket_u_${userId}`, userId);
-      }
+    const res = await query(
+      `SELECT c.*, p.product_code, p.name, p.slug, p.price, p.compare_at_price,
+              p.category, p.subcategory, p.description, p.image_url, p.images,
+              p.variants, p.rating, p.reviews_count, p.stock, p.tags, p.specifications,
+              p.color_options, p.size_options, p.scent_notes, p.featured
+       FROM cart c
+       JOIN product p ON c.product_id = p.id
+       WHERE c.user_id = $1
+       ORDER BY c.id ASC`,
+      [rawUser.id]
+    );
 
-      const res = await query(
-        `SELECT c.*, p.product_code, p.name, p.slug, p.price, p.compare_at_price,
-                p.category, p.subcategory, p.description, p.image_url, p.images,
-                p.variants, p.rating, p.reviews_count, p.stock, p.tags, p.specifications,
-                p.color_options, p.size_options, p.scent_notes, p.featured
-         FROM cart c
-         JOIN product p ON c.product_id = p.id
-         WHERE c.user_id = $1
-         ORDER BY c.id ASC`,
-        [rawUser.id]
-      );
-
-      const items: BasketItem[] = res.rows.map((row) => {
-        const product = mapProductRow({
-          id: row.product_id,
-          product_code: row.product_code,
-          name: row.name,
-          slug: row.slug,
-          price: row.price,
-          compare_at_price: row.compare_at_price,
-          category: row.category,
-          subcategory: row.subcategory,
-          description: row.description,
-          image_url: row.image_url,
-          images: row.images,
-          variants: row.variants,
-          rating: row.rating,
-          reviews_count: row.reviews_count,
-          stock: row.stock,
-          tags: row.tags,
-          specifications: row.specifications,
-          color_options: row.color_options,
-          size_options: row.size_options,
-          scent_notes: row.scent_notes,
-          featured: row.featured,
-        });
-
-        const options = typeof row.selected_options === 'string'
-          ? JSON.parse(row.selected_options)
-          : (row.selected_options || {});
-
-        const unitPrice = product.price;
-        const quantity = parseInt(row.quantity, 10);
-        const totalPrice = parseFloat((unitPrice * quantity).toFixed(2));
-
-        return {
-          id: `bitem_${row.id}`,
-          productId: product.id,
-          product,
-          quantity,
-          unitPrice,
-          totalPrice,
-          selectedVariant: options.selectedVariant,
-          selectedColor: options.selectedColor,
-          selectedSize: options.selectedSize,
-        };
-      });
-
-      let totalItemCount = 0;
-      let subtotal = 0;
-      for (const it of items) {
-        totalItemCount += it.quantity;
-        subtotal += it.totalPrice;
-      }
-
-      subtotal = parseFloat(subtotal.toFixed(2));
-      const estimatedTax = parseFloat((subtotal * 0.0825).toFixed(2));
-      const shippingFee = subtotal > 75 || totalItemCount === 0 ? 0 : 9.99;
-      const grandTotal = parseFloat((subtotal + estimatedTax + shippingFee).toFixed(2));
-
-      const latestDate = res.rows.length > 0 && res.rows[0].updated_at
-        ? new Date(res.rows[0].updated_at).toISOString()
-        : new Date().toISOString();
-
-      const basketId = res.rows[0]?.basket_id || `basket_u_${rawUser.id}`;
+    const items: BasketItem[] = res.rows.map((row) => {
+      const unitPrice = parseFloat(row.price);
+      const qty = parseInt(row.quantity, 10);
+      const selectedOpts = typeof row.selected_options === 'string'
+        ? JSON.parse(row.selected_options)
+        : (row.selected_options || {});
 
       return {
-        id: basketId,
-        userId: String(rawUser.id),
-        items,
-        totalItemCount,
-        subtotal,
-        estimatedTax,
-        shippingFee,
-        grandTotal,
-        createdAt: latestDate,
-        updatedAt: latestDate,
+        id: `cart_item_${row.id}`,
+        productId: row.product_code || String(row.product_id),
+        product: mapProductRow(row),
+        quantity: qty,
+        unitPrice,
+        totalPrice: parseFloat((unitPrice * qty).toFixed(2)),
+        selectedVariant: selectedOpts.selectedVariant || undefined,
+        selectedColor: selectedOpts.selectedColor || undefined,
+        selectedSize: selectedOpts.selectedSize || undefined,
       };
-    } catch (err: any) {
-      return this.getBasket(`basket_u_${userId}`, userId);
-    }
+    });
+
+    const basketId = res.rows[0]?.basket_id || `basket_u_${rawUser.id}`;
+    const totalItemCount = items.reduce((sum, it) => sum + it.quantity, 0);
+    const subtotal = parseFloat(items.reduce((sum, it) => sum + it.totalPrice, 0).toFixed(2));
+    const estimatedTax = parseFloat((subtotal * 0.0825).toFixed(2));
+    const shippingFee = subtotal > 75 || totalItemCount === 0 ? 0 : 9.99;
+    const grandTotal = parseFloat((subtotal + estimatedTax + shippingFee).toFixed(2));
+
+    return {
+      id: basketId,
+      userId: String(rawUser.id),
+      items,
+      totalItemCount,
+      subtotal,
+      estimatedTax,
+      shippingFee,
+      grandTotal,
+      createdAt: res.rows[0]?.created_at ? new Date(res.rows[0].created_at).toISOString() : new Date().toISOString(),
+      updatedAt: res.rows[0]?.updated_at ? new Date(res.rows[0].updated_at).toISOString() : new Date().toISOString(),
+    };
   }
 
-  async addOrUpdateItem(
+  async addItem(
     basketId: string,
     productId: string | number,
     quantity: number,
@@ -258,52 +151,9 @@ export class CartRepository {
       userId?: string | number;
     }
   ): Promise<{ message: string; basket: Basket }> {
-    if (!isDbConnected()) {
-      let b = await this.getBasket(basketId, options?.userId);
-      const product = await productRepo.getProductById(productId);
-      if (!product) throw new Error(`Product not found: ${productId}`);
-
-      const existingIndex = b.items.findIndex(
-        i => i.productId === String(productId) && i.selectedVariant === options?.selectedVariant
-      );
-
-      if (existingIndex > -1) {
-        b.items[existingIndex].quantity += quantity;
-        b.items[existingIndex].totalPrice = parseFloat(
-          (b.items[existingIndex].unitPrice * b.items[existingIndex].quantity).toFixed(2)
-        );
-      } else {
-        const unitPrice = product.price;
-        b.items.push({
-          id: `bitem_${Date.now()}`,
-          productId: String(productId),
-          product,
-          quantity,
-          unitPrice,
-          totalPrice: parseFloat((unitPrice * quantity).toFixed(2)),
-          selectedVariant: options?.selectedVariant,
-          selectedColor: options?.selectedColor,
-          selectedSize: options?.selectedSize,
-        });
-      }
-
-      b.totalItemCount = b.items.reduce((sum, it) => sum + it.quantity, 0);
-      b.subtotal = parseFloat(b.items.reduce((sum, it) => sum + it.totalPrice, 0).toFixed(2));
-      b.estimatedTax = parseFloat((b.subtotal * 0.0825).toFixed(2));
-      b.shippingFee = b.subtotal > 75 || b.totalItemCount === 0 ? 0 : 9.99;
-      b.grandTotal = parseFloat((b.subtotal + b.estimatedTax + b.shippingFee).toFixed(2));
-      b.updatedAt = new Date().toISOString();
-      memoryBaskets.set(basketId, b);
-
-      return {
-        message: 'item added or updated',
-        basket: b,
-      };
-    }
-
     const internalProdId = await productRepo.getInternalProductId(productId);
     if (!internalProdId) {
-      throw new Error(`Product not found: ${productId}`);
+      throw new Error(`Product not found in PostgreSQL: ${productId}`);
     }
 
     let internalUserId: number | null = null;
@@ -318,38 +168,35 @@ export class CartRepository {
       selectedSize: options?.selectedSize || null,
     });
 
-    let existing;
-    if (internalUserId) {
-      existing = await query(
-        `SELECT id, quantity FROM cart
-         WHERE (user_id = $1 OR basket_id = $2) AND product_id = $3
-           AND selected_options::text = $4
-         LIMIT 1`,
-        [internalUserId, basketId, internalProdId, optsJson]
-      );
-    } else {
-      existing = await query(
-        `SELECT id, quantity FROM cart
-         WHERE basket_id = $1 AND product_id = $2
-           AND selected_options::text = $3
-         LIMIT 1`,
-        [basketId, internalProdId, optsJson]
-      );
+    let checkSql = `
+      SELECT id, quantity 
+      FROM cart 
+      WHERE product_id = $1 
+        AND (basket_id = $2 ${internalUserId ? 'OR user_id = $3' : ''})
+    `;
+    const checkParams: any[] = [internalProdId, basketId];
+    if (internalUserId) checkParams.push(internalUserId);
+
+    if (options?.selectedVariant) {
+      checkSql += ` AND selected_options->>'selectedVariant' = $${checkParams.length + 1}`;
+      checkParams.push(options.selectedVariant);
     }
 
-    if (existing.rows.length > 0) {
-      const newQty = existing.rows[0].quantity + quantity;
+    const existingRes = await query(checkSql, checkParams);
+
+    if (existingRes.rows.length > 0) {
+      const existingRow = existingRes.rows[0];
+      const newQty = parseInt(existingRow.quantity, 10) + quantity;
       await query(
-        `UPDATE cart
-         SET quantity = $1, user_id = COALESCE($2, user_id), updated_at = CURRENT_TIMESTAMP
+        `UPDATE cart 
+         SET quantity = $1, user_id = COALESCE($2, user_id), updated_at = CURRENT_TIMESTAMP 
          WHERE id = $3`,
-        [newQty, internalUserId, existing.rows[0].id]
+        [newQty, internalUserId, existingRow.id]
       );
     } else {
       await query(
-        `INSERT INTO cart (
-           basket_id, user_id, product_id, store_id, quantity, selected_options, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+        `INSERT INTO cart (basket_id, user_id, product_id, store_id, quantity, selected_options)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           basketId,
           internalUserId,
@@ -361,10 +208,10 @@ export class CartRepository {
       );
     }
 
-    const updatedBasket = await this.getBasket(basketId, internalUserId || undefined);
+    const updated = await this.getBasket(basketId, internalUserId || undefined);
     return {
-      message: 'item added or updated in PostgreSQL',
-      basket: updatedBasket,
+      message: 'item added or updated in PostgreSQL cart',
+      basket: updated,
     };
   }
 
@@ -377,30 +224,9 @@ export class CartRepository {
       userId?: string | number;
     }
   ): Promise<Basket> {
-    if (!isDbConnected()) {
-      let b = await this.getBasket(basketId, options?.userId);
-      if (quantity <= 0) {
-        b.items = b.items.filter(i => !(i.productId === String(productId) && i.selectedVariant === options?.selectedVariant));
-      } else {
-        const item = b.items.find(i => i.productId === String(productId) && i.selectedVariant === options?.selectedVariant);
-        if (item) {
-          item.quantity = quantity;
-          item.totalPrice = parseFloat((item.unitPrice * quantity).toFixed(2));
-        }
-      }
-      b.totalItemCount = b.items.reduce((sum, it) => sum + it.quantity, 0);
-      b.subtotal = parseFloat(b.items.reduce((sum, it) => sum + it.totalPrice, 0).toFixed(2));
-      b.estimatedTax = parseFloat((b.subtotal * 0.0825).toFixed(2));
-      b.shippingFee = b.subtotal > 75 || b.totalItemCount === 0 ? 0 : 9.99;
-      b.grandTotal = parseFloat((b.subtotal + b.estimatedTax + b.shippingFee).toFixed(2));
-      b.updatedAt = new Date().toISOString();
-      memoryBaskets.set(basketId, b);
-      return b;
-    }
-
     const internalProdId = await productRepo.getInternalProductId(productId);
     if (!internalProdId) {
-      throw new Error(`Product not found: ${productId}`);
+      throw new Error(`Product not found in PostgreSQL: ${productId}`);
     }
 
     let internalUserId: number | null = null;
@@ -436,19 +262,6 @@ export class CartRepository {
     variant?: string,
     userId?: string | number
   ): Promise<void> {
-    if (!isDbConnected()) {
-      let b = await this.getBasket(basketId, userId);
-      b.items = b.items.filter(i => !(i.productId === String(productId) && i.selectedVariant === variant));
-      b.totalItemCount = b.items.reduce((sum, it) => sum + it.quantity, 0);
-      b.subtotal = parseFloat(b.items.reduce((sum, it) => sum + it.totalPrice, 0).toFixed(2));
-      b.estimatedTax = parseFloat((b.subtotal * 0.0825).toFixed(2));
-      b.shippingFee = b.subtotal > 75 || b.totalItemCount === 0 ? 0 : 9.99;
-      b.grandTotal = parseFloat((b.subtotal + b.estimatedTax + b.shippingFee).toFixed(2));
-      b.updatedAt = new Date().toISOString();
-      memoryBaskets.set(basketId, b);
-      return;
-    }
-
     const internalProdId = await productRepo.getInternalProductId(productId);
     if (!internalProdId) return;
 
@@ -471,11 +284,6 @@ export class CartRepository {
   }
 
   async clearBasket(basketId: string, userId?: string | number): Promise<void> {
-    if (!isDbConnected()) {
-      memoryBaskets.delete(basketId);
-      return;
-    }
-
     let internalUserId: number | null = null;
     if (userId) {
       const rawUser = await userRepo.findRawById(userId);
@@ -490,10 +298,6 @@ export class CartRepository {
   }
 
   async mergeBasket(basketId: string, userId: string | number): Promise<Basket> {
-    if (!isDbConnected()) {
-      return await this.getBasket(basketId, userId);
-    }
-
     const rawUser = await userRepo.findRawById(userId);
     if (!rawUser) {
       return await this.getBasket(basketId);

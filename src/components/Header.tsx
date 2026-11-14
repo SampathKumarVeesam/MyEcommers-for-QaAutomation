@@ -25,6 +25,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { useCart } from '../context/CartContext.js';
 import { useWishlist } from '../context/WishlistContext.js';
 import { Product } from '../types.js';
+import { apiUrl } from '../config/api.js';
 
 interface HeaderProps {
   selectedCategory: string;
@@ -67,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(searchQuery.trim())}&limit=5`);
+        const res = await fetch(apiUrl(`/api/products?search=${encodeURIComponent(searchQuery.trim())}&limit=5`));
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {

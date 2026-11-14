@@ -17,10 +17,14 @@ export function createExpressApp() {
 
   // CORS Middleware for cross-origin requests from Netlify and other clients
   app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'accept'],
+    origin: true, // Dynamically allow request origin (Netlify, localhost, etc.)
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'accept', 'Origin', 'X-Requested-With'],
+    exposedHeaders: ['Authorization'],
+    maxAge: 86400,
   }));
+  app.options('*', cors());
 
   // Basic Middlewares
   app.use(express.json({ limit: '10mb' }));

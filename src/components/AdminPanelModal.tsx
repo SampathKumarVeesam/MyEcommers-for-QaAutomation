@@ -16,6 +16,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { Order, Product } from '../types.js';
+import { apiUrl } from '../config/api.js';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -37,8 +38,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
     setLoading(true);
     try {
       const [prodRes, ordRes] = await Promise.all([
-        fetch('/api/products?limit=100'),
-        fetch('/api/orders', {
+        fetch(apiUrl('/api/products?limit=100')),
+        fetch(apiUrl('/api/orders'), {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -68,7 +69,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({ isOpen, onClos
 
   const handleUpdateStock = async (productId: string, newStock: number) => {
     try {
-      const res = await fetch(`/api/products/${productId}`, {
+      const res = await fetch(apiUrl(`/api/products/${productId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

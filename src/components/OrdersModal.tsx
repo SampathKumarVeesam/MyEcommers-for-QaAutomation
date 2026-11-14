@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { Order } from '../types.js';
+import { apiUrl } from '../config/api.js';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/orders', {
+      const res = await fetch(apiUrl('/api/orders'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

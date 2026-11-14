@@ -31,6 +31,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { useCart } from '../context/CartContext.js';
 import { useWishlist } from '../context/WishlistContext.js';
 import { Product, Review } from '../types.js';
+import { apiUrl } from '../config/api.js';
 
 interface StoreInventory {
   productId: number;
@@ -117,7 +118,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const fetchReviews = async (productId: string) => {
     setLoadingReviews(true);
     try {
-      const res = await fetch(`/api/products/${productId}/reviews`);
+      const res = await fetch(apiUrl(`/api/products/${productId}/reviews`));
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
@@ -134,7 +135,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const fetchStoreInventory = async (productId: string) => {
     setLoadingInventory(true);
     try {
-      const res = await fetch(`/api/inventory/${productId}`);
+      const res = await fetch(apiUrl(`/api/inventory/${productId}`));
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
@@ -154,7 +155,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
     setSubmittingReview(true);
     try {
-      const res = await fetch(`/api/products/${product.id}/reviews`, {
+      const res = await fetch(apiUrl(`/api/products/${product.id}/reviews`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

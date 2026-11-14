@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { DOT_WORKFLOW_DEFINITION } from '../swaggerDoc.js';
+import { apiUrl } from '../config/api.js';
 
 interface DotWorkflowModalProps {
   isOpen: boolean;
@@ -147,11 +148,11 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
 
         if (step.stepNumber === 1) {
           // Reset DB
-          res = await fetch('/api/seed/reset', { method: 'POST' });
+          res = await fetch(apiUrl('/api/seed/reset'), { method: 'POST' });
           data = await res.json();
         } else if (step.stepNumber === 2) {
           // Login
-          res = await fetch('/api/users/login', {
+          res = await fetch(apiUrl('/api/users/login'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -165,27 +166,27 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
           }
         } else if (step.stepNumber === 3) {
           // GET me
-          res = await fetch('/api/users/me', {
+          res = await fetch(apiUrl('/api/users/me'), {
             headers: { Authorization: `Bearer ${bearerToken}` },
           });
           data = await res.json();
         } else if (step.stepNumber === 4) {
           // Query catalog
-          res = await fetch('/api/products?category=mobiles&page=1');
+          res = await fetch(apiUrl('/api/products?category=mobiles&page=1'));
           data = await res.json();
           if (data?.data?.[0]?.id) {
             sampleProductId = data.data[0].id;
           }
         } else if (step.stepNumber === 5) {
           // Init Basket
-          res = await fetch('/api/carts', { method: 'POST' });
+          res = await fetch(apiUrl('/api/carts'), { method: 'POST' });
           data = await res.json();
           if (data?.data?.basketId) {
             currentBasketId = data.data.basketId;
           }
         } else if (step.stepNumber === 6) {
           // Add to basket
-          res = await fetch(`/api/carts/${currentBasketId}`, {
+          res = await fetch(apiUrl(`/api/carts/${currentBasketId}`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -197,11 +198,11 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
           data = await res.json();
         } else if (step.stepNumber === 7) {
           // Get basket
-          res = await fetch(`/api/carts/${currentBasketId}`);
+          res = await fetch(apiUrl(`/api/carts/${currentBasketId}`));
           data = await res.json();
         } else if (step.stepNumber === 8) {
           // Verify OTP
-          res = await fetch('/api/orders/verify-otp', {
+          res = await fetch(apiUrl('/api/orders/verify-otp'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -211,7 +212,7 @@ export const DotWorkflowModal: React.FC<DotWorkflowModalProps> = ({ isOpen, onCl
           data = await res.json();
         } else {
           // Place Order
-          res = await fetch('/api/orders', {
+          res = await fetch(apiUrl('/api/orders'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
