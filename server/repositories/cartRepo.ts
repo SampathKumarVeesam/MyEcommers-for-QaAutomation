@@ -151,6 +151,21 @@ export class CartRepository {
       userId?: string | number;
     }
   ): Promise<{ message: string; basket: Basket }> {
+    return this.addOrUpdateItem(basketId, productId, quantity, options);
+  }
+
+  async addOrUpdateItem(
+    basketId: string,
+    productId: string | number,
+    quantity: number,
+    options?: {
+      selectedVariant?: string;
+      selectedColor?: string;
+      selectedSize?: string;
+      storeId?: number;
+      userId?: string | number;
+    }
+  ): Promise<{ message: string; basket: Basket }> {
     const internalProdId = await productRepo.getInternalProductId(productId);
     if (!internalProdId) {
       throw new Error(`Product not found in PostgreSQL: ${productId}`);
