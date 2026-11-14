@@ -17,12 +17,23 @@ if (rawConnStr) {
   if (rawConnStr.startsWith('postgres://')) {
     rawConnStr = rawConnStr.replace('postgres://', 'postgresql://');
   }
-  // Check if someone accidentally set DATABASE_URL to just a database name (e.g. database_for_samecommers)
+  
+  // Auto-correction: if someone enters only the Render hostname (e.g. "dpg-dbrhp7tg1s2s738hqd70-a")
   if (!/^postgresql:\/\//i.test(rawConnStr)) {
-    invalidUrlReason = `DATABASE_URL is set to "${rawConnStr}", which is only a database name, NOT a full connection URL. In Render Web Service Environment, set DATABASE_URL to your full Internal or External Database URL (e.g. postgresql://samecommers_user:PASSWORD@dpg-xxx-a/database_for_samecommers).`;
-    console.error(`❌ [PostgreSQL Config Error]: ${invalidUrlReason}`);
-    lastConnectionError = invalidUrlReason;
-    rawConnStr = undefined; // Do not pass invalid string to pg, which causes pg to parse host as 'base'
+    if (rawConnStr.startsWith('dpg-')) {
+      const dbUser = process.env.DB_USER || 'samecommers_user';
+      const dbPass = process.env.DB_PASSWORD || 'DJvuZvladg101KVO53dWOpZ5qp2Tsia4';
+      const dbName = process.env.DB_NAME || 'database_for_samecommers';
+      const dbPort = process.env.DB_PORT || '5432';
+      console.log(`ℹ️ [PostgreSQL Auto-Correction]: Detected Render hostname "${rawConnStr}" in DATABASE_URL. Auto-constructing full connection URL...`);
+      rawConnStr = `postgresql://${dbUser}:${dbPass}@${rawConnStr}:${dbPort}/${dbName}`;
+      invalidUrlReason = null;
+    } else {
+      invalidUrlReason = `DATABASE_URL is set to "${rawConnStr}", which is not a full connection URL. In Render Web Service Environment, set DATABASE_URL to your full Internal Database URL (e.g. postgresql://samecommers_user:PASSWORD@dpg-xxx-a/database_for_samecommers).`;
+      console.error(`❌ [PostgreSQL Config Error]: ${invalidUrlReason}`);
+      lastConnectionError = invalidUrlReason;
+      rawConnStr = undefined;
+    }
   }
 }
 
