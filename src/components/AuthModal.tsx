@@ -119,7 +119,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoginGlobalError('');
     setRegGlobalError('');
 
-    await loginWithOAuth(provider);
+    const res = await loginWithOAuth(provider);
+    if (!res.success && res.message) {
+      setIsOAuthLoading(null);
+      setLoginGlobalError(res.message);
+      setRegGlobalError(res.message);
+    }
   };
 
   // Customer Login Submit

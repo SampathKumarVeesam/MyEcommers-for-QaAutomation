@@ -16,6 +16,7 @@ interface OidcStateEntry {
   provider: string;
   codeVerifier: string;
   nonce: string;
+  redirectUri: string;
   origin: string;
   createdAt: number;
 }
@@ -236,16 +237,17 @@ export async function getStandardAuthUrl(
   const codeVerifier = crypto.randomBytes(32).toString('base64url');
   const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
 
+  const redirectUri = config.redirectUri || `${reqOrigin}/api/users/auth/callback/${config.provider}`;
+
   ensureCleanupTimer();
   stateStore.set(state, {
     provider: config.provider,
     codeVerifier,
     nonce,
+    redirectUri,
     origin: reqOrigin,
     createdAt: Date.now(),
   });
-
-  const redirectUri = config.redirectUri || `${reqOrigin}/api/users/auth/callback/${config.provider}`;
 
   const isApple = config.provider === 'apple';
   const params = new URLSearchParams({
@@ -296,14 +298,19 @@ export async function handleStandardCallback(
   }
   stateStore.delete(state);
 
-  const clientOrigin = stored.origin || reqOrigin;
+  const frontendUrl = (process.env.APP_URL || 'https://samecommers.netlify.app').replace(/\/+$/, '');
+  let clientOrigin = stored.origin || reqOrigin;
+  if (!clientOrigin || clientOrigin.includes('onrender.com')) {
+    clientOrigin = frontendUrl;
+  }
+
   const config = getProviderConfig(provider);
   if (!config.isConfigured) {
     return { error: `OAuth is not configured for provider ${provider}`, clientOrigin };
   }
 
   const meta = await discoverOidcEndpoints(config.issuerUrl);
-  const redirectUri = config.redirectUri || `${reqOrigin}/api/users/auth/callback/${config.provider}`;
+  const redirectUri = stored.redirectUri || config.redirectUri || `${reqOrigin}/api/users/auth/callback/${config.provider}`;
 
   let finalIdToken = rawIdToken;
   let finalAccessToken: string | undefined;

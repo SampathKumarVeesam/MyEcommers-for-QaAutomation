@@ -275,12 +275,16 @@ authRouter.get('/auth/:provider', handleOidcLogin);
 // Endpoints: /api/users/auth/callback/:provider
 // ============================================================================
 const handleOidcCallback = async (req: Request, res: Response): Promise<void> => {
-  const provider = (req.params.provider || 'google').toLowerCase();
+  const provider = (req.params.provider || (req.path.includes('apple') ? 'apple' : 'google')).toLowerCase();
   const origin = getRequestOrigin(req);
   const payload = { ...req.query, ...req.body };
 
   const result = await handleStandardCallback(provider, payload, origin);
-  const targetOrigin = result.clientOrigin || origin;
+  const frontendUrl = (process.env.APP_URL || 'https://samecommers.netlify.app').replace(/\/+$/, '');
+  let targetOrigin = result.clientOrigin || origin;
+  if (!targetOrigin || targetOrigin.includes('onrender.com')) {
+    targetOrigin = frontendUrl;
+  }
 
   if (result.error || !result.profile) {
     res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(result.error || `${provider} authentication failed`)}`);
@@ -319,19 +323,44 @@ const handleOidcCallback = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
+// Standard callback routes
 authRouter.get('/auth/callback/:provider', handleOidcCallback);
 authRouter.post('/auth/callback/:provider', handleOidcCallback);
+authRouter.get('/auth/:provider/callback', handleOidcCallback);
+authRouter.post('/auth/:provider/callback', handleOidcCallback);
 
-// Backward-compatible explicit aliases
+// OAuth route aliases (matches GOOGLE_REDIRECT_URI=.../api/users/oauth/google/callback)
+authRouter.get('/oauth/callback/:provider', handleOidcCallback);
+authRouter.post('/oauth/callback/:provider', handleOidcCallback);
+authRouter.get('/oauth/:provider/callback', handleOidcCallback);
+authRouter.post('/oauth/:provider/callback', handleOidcCallback);
+
 authRouter.get('/auth/google/callback', (req: Request, res: Response) => {
   (req.params as Record<string, string>).provider = 'google';
   handleOidcCallback(req, res);
 });
+authRouter.get('/oauth/google/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'google';
+  handleOidcCallback(req, res);
+});
+authRouter.post('/oauth/google/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'google';
+  handleOidcCallback(req, res);
+});
+
 authRouter.post('/auth/apple/callback', (req: Request, res: Response) => {
   (req.params as Record<string, string>).provider = 'apple';
   handleOidcCallback(req, res);
 });
 authRouter.get('/auth/apple/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'apple';
+  handleOidcCallback(req, res);
+});
+authRouter.post('/oauth/apple/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'apple';
+  handleOidcCallback(req, res);
+});
+authRouter.get('/oauth/apple/callback', (req: Request, res: Response) => {
   (req.params as Record<string, string>).provider = 'apple';
   handleOidcCallback(req, res);
 });

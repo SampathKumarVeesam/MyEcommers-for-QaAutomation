@@ -177,8 +177,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithOAuth = async (
     provider: 'google' | 'apple'
   ): Promise<{ success: boolean; message?: string }> => {
-    // Redirect browser to standard OIDC authorization endpoint
-    window.location.href = apiUrl(`/api/users/auth/${provider}`);
+    try {
+      const res = await fetch(apiUrl('/api/users/oauth'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      const data = await res.json();
+      if (data.success && data.authUrl) {
+        window.location.href = data.authUrl;
+        return { success: true };
+      } else if (data.message) {
+        return { success: false, message: data.message };
+      }
+    } catch {
+      // Fallback direct endpoint redirect
+      window.location.href = apiUrl(`/api/users/auth/login/${provider}`);
+      return { success: true };
+    }
+    window.location.href = apiUrl(`/api/users/auth/login/${provider}`);
     return { success: true };
   };
 
