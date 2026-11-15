@@ -31,12 +31,11 @@ async function startServer() {
         const { runSeed } = await import('./server/db/seed.js');
         await runSeed();
       } else {
-        const prodCount = await query('SELECT COUNT(*) AS count FROM product');
         const userCount = await query('SELECT COUNT(*) AS count FROM users');
-        if (parseInt(prodCount.rows[0]?.count || '0', 10) === 0 || parseInt(userCount.rows[0]?.count || '0', 10) === 0) {
-          console.log('🌱 Database is empty. Automatically populating ShopSphere catalog & QA users...');
-          const { runSeed } = await import('./server/db/seed.js');
-          await runSeed();
+        if (parseInt(userCount.rows[0]?.count || '0', 10) === 0) {
+          console.log('🌱 Database users empty. Automatically restoring default admin and QA accounts...');
+          const { userRepo } = await import('./server/repositories/userRepo.js');
+          await userRepo.ensureSeedUsers();
         }
       }
     } catch (seedErr: any) {

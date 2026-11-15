@@ -119,15 +119,16 @@ export function createExpressApp() {
   app.get('/docs', (_req, res) => res.redirect('/api-docs/'));
   app.get('/swagger', (_req, res) => res.redirect('/api-docs/'));
 
-  // Database Seed Reset (Runs DDL schema and re-populates PostgreSQL 18)
+  // Database Seed Reset (Ensures Admin and QA accounts are restored)
   app.post('/api/seed/reset', async (_req, res) => {
     try {
-      await runSeed();
+      const { userRepo } = await import('./repositories/userRepo.js');
+      await userRepo.ensureSeedUsers();
       res.status(200).json({
         success: true,
-        message: 'PostgreSQL 18 database (DataBase_for_SamEcommers) successfully reset and re-seeded.',
+        message: 'PostgreSQL 18 default admin and QA accounts verified and restored.',
         accounts: {
-          admin: 'admin@practicesoftwaretesting.com / welcome01',
+          admin: 'admin (or admin@practicesoftwaretesting.com) / Sampath@123',
           customer1: 'customer@practicesoftwaretesting.com / User01',
           customer2: 'customer2@practicesoftwaretesting.com / User02',
         },

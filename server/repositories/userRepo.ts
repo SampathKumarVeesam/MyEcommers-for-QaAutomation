@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { Address, User } from '../../src/types.js';
 import { query } from '../db/pool.js';
 
@@ -102,8 +103,38 @@ export class UserRepository {
     return res.rows[0] || null;
   }
 
+  /**
+   * Automatically detects and returns the lowest missing integer primary key gap (1, 2, 3...)
+   * Ensures deleted IDs (like ID 1 or gap IDs) are reused before jumping to higher numbers.
+   */
+  async getNextAvailableId(): Promise<number> {
+    try {
+      const res = await query(`
+        SELECT COALESCE(
+          (
+            SELECT gap.id
+            FROM (
+              SELECT 1 AS id WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)
+              UNION ALL
+              SELECT u.id + 1 AS id
+              FROM users u
+              WHERE NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.id = u.id + 1)
+            ) gap
+            ORDER BY gap.id ASC
+            LIMIT 1
+          ),
+          1
+        ) AS next_id
+      `);
+      return parseInt(res.rows[0]?.next_id || '1', 10);
+    } catch {
+      return 1;
+    }
+  }
+
   async create(user: {
     id?: string;
+    explicitNumericId?: number;
     name: string;
     username?: string;
     email: string;
@@ -121,14 +152,18 @@ export class UserRepository {
     const provider = user.provider || 'local';
     const providerId = user.providerId || null;
 
+    // Reuse lowest missing primary key ID gap (e.g. 1 if missing, or filling any deleted ID gap)
+    const nextNumericId = user.explicitNumericId || (await this.getNextAvailableId());
+
     const res = await query(
       `INSERT INTO users (
-         user_code, name, username, email, password, role, phone, avatar,
+         id, user_code, name, username, email, password, role, phone, avatar,
          address_line_1, address_city, address_state, address_postal_code, address_country,
          provider, provider_id
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
       [
+        nextNumericId,
         userCode,
         user.name,
         username,
@@ -147,7 +182,75 @@ export class UserRepository {
       ]
     );
 
+    // Keep sequence synchronized with max id to prevent future duplicate key conflicts
+    try {
+      await query(`
+        SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1))
+      `);
+    } catch {}
+
     return mapUserRow(res.rows[0]);
+  }
+
+  /**
+   * Guarantees the admin user exists in PostgreSQL (even after TRUNCATE TABLE users)
+   */
+  async ensureAdminUser(): Promise<User> {
+    const adminEmail = 'admin@practicesoftwaretesting.com';
+    const existing = await this.findByEmail(adminEmail);
+    if (existing) {
+      return existing;
+    }
+
+    const adminHash = bcrypt.hashSync('Sampath@123', 10);
+    return await this.create({
+      explicitNumericId: 1,
+      id: 'user_admin_001',
+      name: 'Sampath Kumar (admin)',
+      username: 'admin',
+      email: adminEmail,
+      passwordHash: adminHash,
+      role: 'admin',
+      phone: '+1 (555) 019-2834',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    });
+  }
+
+  /**
+   * Restores essential QA seed accounts (Admin, Customer 1, Customer 2)
+   */
+  async ensureSeedUsers(): Promise<void> {
+    await this.ensureAdminUser();
+
+    const c1 = await this.findByEmail('customer@practicesoftwaretesting.com');
+    if (!c1) {
+      await this.create({
+        explicitNumericId: 2,
+        id: 'user_cust_001',
+        name: 'Jane Customer (User 1)',
+        username: 'customer',
+        email: 'customer@practicesoftwaretesting.com',
+        passwordHash: bcrypt.hashSync('User01', 10),
+        role: 'customer',
+        phone: '+1 (555) 482-9102',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
+      });
+    }
+
+    const c2 = await this.findByEmail('customer2@practicesoftwaretesting.com');
+    if (!c2) {
+      await this.create({
+        explicitNumericId: 3,
+        id: 'user_cust_002',
+        name: 'Alex Rivera (User 2)',
+        username: 'customer2',
+        email: 'customer2@practicesoftwaretesting.com',
+        passwordHash: bcrypt.hashSync('User02', 10),
+        role: 'customer',
+        phone: '+1 (555) 839-1120',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+      });
+    }
   }
 
   async updateProfile(
