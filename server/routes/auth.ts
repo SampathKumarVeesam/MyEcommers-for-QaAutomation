@@ -5,11 +5,10 @@ import { AuthenticatedRequest, generateToken, requireAuth } from '../middleware/
 import { userRepo } from '../repositories/userRepo.js';
 import { sendWelcomeEmail } from '../services/emailService.js';
 import {
-  getAppleAuthUrl,
-  getGoogleAuthUrl,
+  getConfiguredProviders,
+  getStandardAuthUrl,
+  handleStandardCallback,
   VerifiedOidcProfile,
-  verifyAppleAuthPayload,
-  verifyGoogleAuthCode,
 } from '../services/oidcService.js';
 import { User } from '../../src/types.js';
 
@@ -241,149 +240,113 @@ async function processOidcUser(profile: VerifiedOidcProfile): Promise<{ user: Us
 }
 
 // ============================================================================
-// OIDC ROUTE 1: Google OAuth 2.0 Authorization Endpoint Initiator
+// OIDC ROUTE 0: Get Configured OAuth / OIDC Providers Status (Public endpoint)
 // ============================================================================
-authRouter.get('/auth/google', (req: Request, res: Response): void => {
+authRouter.get('/auth/providers', (_req: Request, res: Response): void => {
+  res.status(200).json({
+    success: true,
+    providers: getConfiguredProviders(),
+  });
+});
+
+// ============================================================================
+// OIDC ROUTE 1: Standard 3-Legged OAuth / OIDC Authorization Initiator
+// Endpoints: /api/users/auth/login/:provider (also aliases /api/users/auth/:provider)
+// ============================================================================
+const handleOidcLogin = async (req: Request, res: Response): Promise<void> => {
+  const provider = (req.params.provider || 'google').toLowerCase();
   const origin = getRequestOrigin(req);
-  const result = getGoogleAuthUrl(origin);
+  const result = await getStandardAuthUrl(provider, origin);
 
   if (result.error || !result.url) {
-    console.warn('[Google Auth Error]:', result.error);
-    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(result.error || 'Google OAuth is not configured on this server')}`);
+    console.warn(`[OAuth Initiation Warning for ${provider}]:`, result.error);
+    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(result.error || `OAuth is not configured for ${provider}`)}`);
     return;
   }
 
   res.redirect(result.url);
-});
+};
+
+authRouter.get('/auth/login/:provider', handleOidcLogin);
+authRouter.get('/auth/:provider', handleOidcLogin);
 
 // ============================================================================
-// OIDC ROUTE 2: Google OAuth 2.0 Callback & Token Exchange
+// OIDC ROUTE 2: Standard 3-Legged OAuth / OIDC Callback Handlers (GET & POST)
+// Endpoints: /api/users/auth/callback/:provider
 // ============================================================================
-authRouter.get('/auth/google/callback', async (req: Request, res: Response): Promise<void> => {
-  const origin = getRequestOrigin(req);
-  const { code, state, error: googleError } = req.query;
-
-  if (googleError) {
-    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(String(googleError))}`);
-    return;
-  }
-
-  if (!code || !state) {
-    res.redirect(`${origin}/?oauth_error=${encodeURIComponent('Missing authorization code or state from Google')}`);
-    return;
-  }
-
-  const result = await verifyGoogleAuthCode(String(code), String(state), origin);
-  const targetOrigin = result.clientOrigin || origin;
-
-  if (result.error || !result.profile) {
-    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(result.error || 'Google authentication failed')}`);
-    return;
-  }
-
-  try {
-    const { token } = await processOidcUser(result.profile);
-    res.redirect(`${targetOrigin}/?auth_token=${token}`);
-  } catch (err: any) {
-    console.error('[Google OIDC Auto-Registration Error]:', err);
-    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(err.message || 'Auto-registration failed')}`);
-  }
-});
-
-// ============================================================================
-// OIDC ROUTE 3: Apple OAuth 2.0 / OIDC Authorization Endpoint Initiator
-// ============================================================================
-authRouter.get('/auth/apple', (req: Request, res: Response): void => {
-  const origin = getRequestOrigin(req);
-  const result = getAppleAuthUrl(origin);
-
-  if (result.error || !result.url) {
-    console.warn('[Apple Auth Error]:', result.error);
-    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(result.error || 'Apple OAuth is not configured on this server')}`);
-    return;
-  }
-
-  res.redirect(result.url);
-});
-
-// ============================================================================
-// OIDC ROUTE 4: Apple OAuth 2.0 / OIDC Callback (Handles form_post payload)
-// ============================================================================
-const handleAppleCallback = async (req: Request, res: Response): Promise<void> => {
+const handleOidcCallback = async (req: Request, res: Response): Promise<void> => {
+  const provider = (req.params.provider || 'google').toLowerCase();
   const origin = getRequestOrigin(req);
   const payload = { ...req.query, ...req.body };
 
-  if (payload.error) {
-    const errorMsg = String(payload.error_description || payload.error);
-    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(errorMsg)}`);
-    return;
-  }
-
-  const result = await verifyAppleAuthPayload(payload, origin);
+  const result = await handleStandardCallback(provider, payload, origin);
   const targetOrigin = result.clientOrigin || origin;
 
   if (result.error || !result.profile) {
-    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(result.error || 'Apple authentication failed')}`);
+    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(result.error || `${provider} authentication failed`)}`);
     return;
   }
 
   try {
     const { token } = await processOidcUser(result.profile);
-    // Render HTML client-side redirect since Apple callback uses form_post
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Signing in with Apple...</title>
-        </head>
-        <body>
-          <script>
-            window.location.href = "${targetOrigin}/?auth_token=${token}";
-          </script>
-          <p style="font-family: sans-serif; text-align: center; margin-top: 50px;">
-            Redirecting to ShopSphere...
-          </p>
-        </body>
-      </html>
-    `);
+
+    // If request was a POST (such as Apple's form_post), return HTML script redirect
+    if (req.method === 'POST') {
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Completing Sign-In...</title>
+          </head>
+          <body>
+            <script>
+              window.location.href = "${targetOrigin}/?auth_token=${token}";
+            </script>
+            <p style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+              Redirecting to ShopSphere...
+            </p>
+          </body>
+        </html>
+      `);
+      return;
+    }
+
+    res.redirect(`${targetOrigin}/?auth_token=${token}`);
   } catch (err: any) {
-    console.error('[Apple OIDC Auto-Registration Error]:', err);
+    console.error(`[OIDC Auto-Registration Error for ${provider}]:`, err);
     res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(err.message || 'Auto-registration failed')}`);
   }
 };
 
-authRouter.post('/auth/apple/callback', handleAppleCallback);
-authRouter.get('/auth/apple/callback', handleAppleCallback);
+authRouter.get('/auth/callback/:provider', handleOidcCallback);
+authRouter.post('/auth/callback/:provider', handleOidcCallback);
 
-// Backward-compatible endpoint for direct OIDC token verification (replaces mock endpoint)
+// Backward-compatible explicit aliases
+authRouter.get('/auth/google/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'google';
+  handleOidcCallback(req, res);
+});
+authRouter.post('/auth/apple/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'apple';
+  handleOidcCallback(req, res);
+});
+authRouter.get('/auth/apple/callback', (req: Request, res: Response) => {
+  (req.params as Record<string, string>).provider = 'apple';
+  handleOidcCallback(req, res);
+});
+
+// Clean OIDC query endpoint
 authRouter.post('/oauth', async (req: Request, res: Response): Promise<void> => {
   const { provider } = req.body || {};
   const origin = getRequestOrigin(req);
+  const targetProvider = (provider || 'google').toLowerCase();
+  const result = await getStandardAuthUrl(targetProvider, origin);
 
-  if (provider === 'google') {
-    const googleRes = getGoogleAuthUrl(origin);
-    res.status(200).json({
-      success: true,
-      authUrl: googleRes.url || null,
-      message: googleRes.error || 'Redirect user to authUrl to complete Google OAuth 2.0 / OIDC flow',
-    });
-    return;
-  }
-
-  if (provider === 'apple') {
-    const appleRes = getAppleAuthUrl(origin);
-    res.status(200).json({
-      success: true,
-      authUrl: appleRes.url || null,
-      message: appleRes.error || 'Redirect user to authUrl to complete Apple OAuth 2.0 / OIDC flow',
-    });
-    return;
-  }
-
-  res.status(400).json({
-    success: false,
-    message: 'Unsupported provider. Use /api/users/auth/google or /api/users/auth/apple for OAuth 2.0 flow',
+  res.status(200).json({
+    success: !result.error,
+    authUrl: result.url || null,
+    message: result.error || `Redirect user to authUrl to complete 3-legged ${targetProvider} OAuth 2.0 / OIDC flow`,
   });
 });
 

@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   oauthError: string | null;
   clearOAuthError: () => void;
+  configuredProviders: Record<string, boolean>;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: { name: string; email: string; password: string; phone?: string }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string> }>;
   loginWithOAuth: (provider: 'google' | 'apple') => Promise<{ success: boolean; message?: string }>;
@@ -47,11 +48,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [configuredProviders, setConfiguredProviders] = useState<Record<string, boolean>>({
+    google: false,
+    apple: false,
+  });
 
   const clearOAuthError = () => setOauthError(null);
 
   // Validate session against PostgreSQL public.users on mount & catch OAuth callback redirects
   useEffect(() => {
+    // Check configured OAuth providers dynamically
+    fetch(apiUrl('/api/users/auth/providers'))
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.providers) {
+          setConfiguredProviders(res.providers);
+        }
+      })
+      .catch(() => {});
+
     const checkAuth = async () => {
       // Check for incoming OAuth token or error in URL search/hash
       const searchParams = new URLSearchParams(window.location.search);
@@ -221,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         oauthError,
         clearOAuthError,
+        configuredProviders,
         login,
         register,
         loginWithOAuth,

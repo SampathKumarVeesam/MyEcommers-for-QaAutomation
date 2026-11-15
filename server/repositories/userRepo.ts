@@ -111,7 +111,7 @@ export class UserRepository {
     role?: 'admin' | 'customer';
     phone?: string;
     avatar?: string;
-    provider?: 'local' | 'google' | 'apple';
+    provider?: 'local' | 'google' | 'apple' | string;
     providerId?: string;
     address?: Address;
   }): Promise<User> {
