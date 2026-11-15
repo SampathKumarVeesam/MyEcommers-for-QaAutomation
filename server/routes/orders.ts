@@ -73,10 +73,17 @@ ordersRouter.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Resp
       paymentMethod,
     });
 
-    // Send Order Confirmation Email asynchronously (non-blocking) via Zoho Mail SMTP
-    void sendOrderConfirmationEmail(order).catch((err) => {
-      console.error('[Order Confirmation Email Background Error]:', err);
-    });
+    // Send Order Confirmation Email via Zoho Mail SMTP (safe try/catch so email errors never block order placement)
+    try {
+      const emailRes = await sendOrderConfirmationEmail(order);
+      if (emailRes.success) {
+        console.log(`[Order Email]: Confirmation email sent to ${order.userEmail} (${emailRes.messageId})`);
+      } else {
+        console.warn(`[Order Email Warning]: Could not deliver confirmation email to ${order.userEmail}:`, emailRes.error);
+      }
+    } catch (emailErr) {
+      console.error('[Order Confirmation Email Background Error]:', emailErr);
+    }
 
     res.status(201).json({
       success: true,
@@ -184,9 +191,16 @@ const handleStatusUpdate = async (req: Request, res: Response): Promise<void> =>
     const triggerStatuses = ['processed', 'processing', 'out_for_delivery', 'shipped', 'delivered', 'completed'];
 
     if (triggerStatuses.includes(normalized)) {
-      void sendOrderStatusUpdateEmail(updatedOrder, status).catch((err) => {
+      try {
+        const emailRes = await sendOrderStatusUpdateEmail(updatedOrder, status);
+        if (emailRes.success) {
+          console.log(`[Order Status Email]: Status update (${status}) sent to ${updatedOrder.userEmail} (${emailRes.messageId})`);
+        } else {
+          console.warn(`[Order Status Email Warning]: Could not deliver status email to ${updatedOrder.userEmail}:`, emailRes.error);
+        }
+      } catch (err) {
         console.error('[Order Status Email Background Error]:', err);
-      });
+      }
     }
 
     res.status(200).json({

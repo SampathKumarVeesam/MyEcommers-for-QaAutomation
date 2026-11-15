@@ -4,13 +4,13 @@ import { Order } from '../../src/types.js';
 
 dotenv.config();
 
-// Zoho Mail SMTP Configuration
+// Zoho Mail SMTP Configuration (with safe fallbacks to ensure cloud deployments without local .env work immediately)
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.zoho.in';
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
-const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465';
-const SMTP_USER = process.env.SMTP_USER || 'sampathkumarveesam@zohomail.in';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const EMAIL_FROM = process.env.EMAIL_FROM || SMTP_USER;
+const SMTP_SECURE = process.env.SMTP_SECURE ? (process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === '1') : true;
+const SMTP_USER = (process.env.SMTP_USER || 'sampathkumarveesam@zohomail.in').trim();
+const SMTP_PASS = (process.env.SMTP_PASS || 'SXmXCgj4XgJ2').trim();
+const EMAIL_FROM = (process.env.EMAIL_FROM || SMTP_USER).trim();
 const APP_URL = process.env.APP_URL || 'https://samecommers.netlify.app';
 
 let transporter: Transporter | null = null;

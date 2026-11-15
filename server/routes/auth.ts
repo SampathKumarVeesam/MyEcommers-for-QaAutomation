@@ -59,10 +59,17 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     const token = generateToken(created);
     const { passwordHash: _, ...safeUser } = created;
 
-    // Send Welcome Email asynchronously (non-blocking) via Zoho Mail SMTP
-    void sendWelcomeEmail({ name: created.name, email: created.email }).catch((err) => {
-      console.error('[Welcome Email Background Error]:', err);
-    });
+    // Send Welcome Email via Zoho Mail SMTP (safe try/catch so email errors never block registration)
+    try {
+      const emailRes = await sendWelcomeEmail({ name: created.name, email: created.email });
+      if (emailRes.success) {
+        console.log(`[Register Email]: Welcome email sent to ${created.email} (${emailRes.messageId})`);
+      } else {
+        console.warn(`[Register Email Warning]: Could not deliver welcome email to ${created.email}:`, emailRes.error);
+      }
+    } catch (emailErr) {
+      console.error('[Welcome Email Background Error]:', emailErr);
+    }
 
     res.status(201).json({
       success: true,
