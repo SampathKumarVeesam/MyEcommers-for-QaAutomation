@@ -146,14 +146,28 @@ export class UserRepository {
     providerId?: string;
     address?: Address;
   }): Promise<User> {
-    const userCode = user.id || `user_${Date.now().toString(36)}`;
+    let userCode = user.id || `user_${Date.now().toString(36)}`;
     const username = user.username || user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
     const role = user.role || 'customer';
     const provider = user.provider || 'local';
     const providerId = user.providerId || null;
 
     // Reuse lowest missing primary key ID gap (e.g. 1 if missing, or filling any deleted ID gap)
-    const nextNumericId = user.explicitNumericId || (await this.getNextAvailableId());
+    let nextNumericId = user.explicitNumericId;
+    if (nextNumericId) {
+      const checkRes = await query('SELECT 1 FROM users WHERE id = $1', [nextNumericId]);
+      if (checkRes.rows.length > 0) {
+        nextNumericId = await this.getNextAvailableId();
+      }
+    } else {
+      nextNumericId = await this.getNextAvailableId();
+    }
+
+    // Ensure unique user_code
+    const codeCheck = await query('SELECT 1 FROM users WHERE user_code = $1', [userCode]);
+    if (codeCheck.rows.length > 0) {
+      userCode = `${userCode}_${Date.now().toString(36).slice(-4)}`;
+    }
 
     const res = await query(
       `INSERT INTO users (
@@ -197,9 +211,13 @@ export class UserRepository {
    */
   async ensureAdminUser(): Promise<User> {
     const adminEmail = 'admin@practicesoftwaretesting.com';
-    const existing = await this.findByEmail(adminEmail);
+    let existing = await this.findByEmail(adminEmail);
+    if (!existing) {
+      existing = await this.findByIdentifier('admin');
+    }
     if (existing) {
-      return existing;
+      await this.updatePassword(existing.id, bcrypt.hashSync('Sampath@123', 10));
+      return (await this.findById(existing.id))!;
     }
 
     const adminHash = bcrypt.hashSync('Sampath@123', 10);
