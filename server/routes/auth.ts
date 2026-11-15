@@ -59,18 +59,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     const token = generateToken(created);
     const { passwordHash: _, ...safeUser } = created;
 
-    // Send Welcome Email via Zoho Mail SMTP (safe try/catch so email errors never block registration)
-    try {
-      const emailRes = await sendWelcomeEmail({ name: created.name, email: created.email });
-      if (emailRes.success) {
-        console.log(`[Register Email]: Welcome email sent to ${created.email} (${emailRes.messageId})`);
-      } else {
-        console.warn(`[Register Email Warning]: Could not deliver welcome email to ${created.email}:`, emailRes.error);
-      }
-    } catch (emailErr) {
-      console.error('[Welcome Email Background Error]:', emailErr);
-    }
-
+    // Respond immediately to the frontend so registration is instantaneous (~50ms) and never triggers proxy 504 timeouts
     res.status(201).json({
       success: true,
       message: 'User account created successfully in PostgreSQL',
@@ -79,6 +68,20 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
         token,
         expiresIn: '24h',
       },
+    });
+
+    // Send Welcome Email asynchronously in background (completely non-blocking)
+    setImmediate(async () => {
+      try {
+        const emailRes = await sendWelcomeEmail({ name: created.name, email: created.email });
+        if (emailRes.success) {
+          console.log(`[Register Email]: Welcome email sent to ${created.email} (${emailRes.messageId})`);
+        } else {
+          console.warn(`[Register Email Warning]: Could not deliver welcome email to ${created.email}:`, emailRes.error);
+        }
+      } catch (emailErr) {
+        console.error('[Welcome Email Background Error]:', emailErr);
+      }
     });
   } catch (error: any) {
     console.error('[Register Error]:', error);

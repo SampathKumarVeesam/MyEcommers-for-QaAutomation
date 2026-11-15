@@ -15,23 +15,31 @@ const APP_URL = process.env.APP_URL || 'https://samecommers.netlify.app';
 
 let transporter: Transporter | null = null;
 
+function createTransporter(port: number, secure: boolean): Transporter {
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure,
+    requireTLS: !secure,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000,
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+}
+
 /**
  * Initializes or reuses the nodemailer Zoho SMTP transporter
  */
 function getTransporter(): Transporter {
   if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_SECURE,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+    transporter = createTransporter(SMTP_PORT, SMTP_SECURE);
   }
   return transporter;
 }
@@ -503,7 +511,6 @@ async function sendEmail(
       return { success: false, error: 'SMTP credentials not configured in environment' };
     }
 
-    const mailer = getTransporter();
     const mailOptions = {
       from: EMAIL_FROM.includes('<') ? EMAIL_FROM : `"ShopSphere" <${EMAIL_FROM}>`,
       to,
@@ -511,9 +518,19 @@ async function sendEmail(
       html,
     };
 
-    const info = await mailer.sendMail(mailOptions);
-    console.log(`✉️ [EmailService]: Sent '${subject}' to <${to}> (MessageId: ${info.messageId})`);
-    return { success: true, messageId: info.messageId };
+    // Primary attempt on configured port
+    try {
+      const mailer = getTransporter();
+      const info = await mailer.sendMail(mailOptions);
+      console.log(`✉️ [EmailService]: Sent '${subject}' to <${to}> via port ${SMTP_PORT} (MessageId: ${info.messageId})`);
+      return { success: true, messageId: info.messageId };
+    } catch (primaryError: any) {
+      console.warn(`⚠️ [EmailService]: Port ${SMTP_PORT} failed (${primaryError.message}). Retrying on alternative port 587 (TLS)...`);
+      const fallbackMailer = createTransporter(587, false);
+      const fallbackInfo = await fallbackMailer.sendMail(mailOptions);
+      console.log(`✉️ [EmailService]: Sent '${subject}' to <${to}> via fallback port 587 (MessageId: ${fallbackInfo.messageId})`);
+      return { success: true, messageId: fallbackInfo.messageId };
+    }
   } catch (error: any) {
     console.error(`❌ [EmailService Error]: Failed to send email to <${to}>:`, error?.message || error);
     // Explicitly do not rethrow so caller business logic is never interrupted

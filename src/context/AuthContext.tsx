@@ -23,6 +23,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // 100% of user profile state, credentials, and roles are retrieved from PostgreSQL public.users.
 const TOKEN_KEY = 'shopsphere_auth_token';
 
+async function parseJsonResponse(res: Response): Promise<{ ok: boolean; status: number; data: any }> {
+  const text = await res.text();
+  try {
+    const data = JSON.parse(text);
+    return { ok: res.ok, status: res.status, data };
+  } catch {
+    const msg = res.status === 504 
+      ? 'Gateway Timeout: The server took too long to respond. Please try again.'
+      : res.status === 502 || res.status === 503
+      ? 'Backend service is spinning up. Please try again in a few moments.'
+      : text || `Server returned status ${res.status}`;
+    return { ok: false, status: res.status, data: { success: false, message: msg } };
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => {
@@ -75,8 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password }),
       });
 
-      const json = await res.json();
-      if (res.ok && json.success) {
+      const { ok, data: json } = await parseJsonResponse(res);
+      if (ok && json.success) {
         setUser(json.data.user);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
@@ -100,8 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify(data),
       });
 
-      const json = await res.json();
-      if (res.status === 201 && json.success) {
+      const { status, data: json } = await parseJsonResponse(res);
+      if (status === 201 && json.success) {
         setUser(json.data.user);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
@@ -133,8 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }),
       });
 
-      const json = await res.json();
-      if (res.ok && json.success) {
+      const { ok, data: json } = await parseJsonResponse(res);
+      if (ok && json.success) {
         setUser(json.data.user);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
