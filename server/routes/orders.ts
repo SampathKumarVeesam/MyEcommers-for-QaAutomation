@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import { AuthenticatedRequest, optionalAuth, requireAuth } from '../middleware/auth.js';
 import { cartRepo } from '../repositories/cartRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from '../services/emailService.js';
 
 export const ordersRouter = Router();
 
@@ -72,6 +73,11 @@ ordersRouter.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Resp
       paymentMethod,
     });
 
+    // Send Order Confirmation Email asynchronously (non-blocking) via Zoho Mail SMTP
+    void sendOrderConfirmationEmail(order).catch((err) => {
+      console.error('[Order Confirmation Email Background Error]:', err);
+    });
+
     res.status(201).json({
       success: true,
       message: 'Order placed successfully and persisted in PostgreSQL',
@@ -140,3 +146,63 @@ ordersRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
     });
   }
 });
+
+// PATCH /api/orders/:id/status (Updates order status in PostgreSQL & sends automated notification email)
+const handleStatusUpdate = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body || {};
+
+    if (!status || typeof status !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Valid status string is required (e.g. processed, out_for_delivery, delivered)',
+      });
+      return;
+    }
+
+    const currentOrder = await orderRepo.getOrderById(id);
+    if (!currentOrder) {
+      res.status(404).json({
+        success: false,
+        message: `Order with ID '${id}' not found in PostgreSQL`,
+      });
+      return;
+    }
+
+    const updatedOrder = await orderRepo.updateOrderStatus(id, status.trim().toLowerCase());
+    if (!updatedOrder) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update order status in PostgreSQL',
+      });
+      return;
+    }
+
+    // Check if status requires an automated email notification (Processed, Out for Delivery, Delivered)
+    const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const triggerStatuses = ['processed', 'processing', 'out_for_delivery', 'shipped', 'delivered', 'completed'];
+
+    if (triggerStatuses.includes(normalized)) {
+      void sendOrderStatusUpdateEmail(updatedOrder, status).catch((err) => {
+        console.error('[Order Status Email Background Error]:', err);
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Order #${updatedOrder.orderNumber} status updated to '${status}' and notification queued`,
+      data: updatedOrder,
+    });
+  } catch (error: any) {
+    console.error('[Update Order Status Error]:', error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to update order status in PostgreSQL: ${error.message || 'Database error'}`,
+    });
+  }
+};
+
+ordersRouter.patch('/:id/status', handleStatusUpdate);
+ordersRouter.put('/:id/status', handleStatusUpdate);
+

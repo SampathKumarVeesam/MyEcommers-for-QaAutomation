@@ -250,6 +250,22 @@ export class OrderRepository {
     }
     return orders;
   }
+
+  async updateOrderStatus(id: string | number, newStatus: string): Promise<Order | null> {
+    const isNum = !isNaN(Number(id));
+    const res = await query(
+      `UPDATE "order" 
+       SET status = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+       RETURNING *`,
+      isNum ? [newStatus, String(id), Number(id)] : [newStatus, String(id)]
+    );
+
+    if (res.rows.length === 0) return null;
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    return mapOrderRow(row, items);
+  }
 }
 
 export const orderRepo = new OrderRepository();

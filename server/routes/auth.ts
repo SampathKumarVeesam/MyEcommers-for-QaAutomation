@@ -3,6 +3,7 @@ import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
 import { AuthenticatedRequest, generateToken, requireAuth } from '../middleware/auth.js';
 import { userRepo } from '../repositories/userRepo.js';
+import { sendWelcomeEmail } from '../services/emailService.js';
 
 export const authRouter = Router();
 
@@ -57,6 +58,11 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
 
     const token = generateToken(created);
     const { passwordHash: _, ...safeUser } = created;
+
+    // Send Welcome Email asynchronously (non-blocking) via Zoho Mail SMTP
+    void sendWelcomeEmail({ name: created.name, email: created.email }).catch((err) => {
+      console.error('[Welcome Email Background Error]:', err);
+    });
 
     res.status(201).json({
       success: true,

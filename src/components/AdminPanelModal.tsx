@@ -63,6 +63,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [orders, setOrders] = useState<Order[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
 
   // Fetch summary and customers list from PostgreSQL
   const fetchAnalytics = async () => {
@@ -181,6 +183,64 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    if (!token) return;
+    setUpdatingOrderId(orderId);
+    try {
+      const res = await fetch(apiUrl(`/api/orders/${orderId}/status`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setSaveMessage(`Order status updated to "${newStatus.toUpperCase()}" & email notification sent!`);
+        setTimeout(() => setSaveMessage(null), 3000);
+        await fetchInventoryAndOrders();
+        if (selectedCustomerId) {
+          await fetchCustomerDetail(selectedCustomerId);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!token) return;
+    setTestEmailStatus('sending');
+    try {
+      const res = await fetch(apiUrl('/api/admin/analytics/test-email'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email: user?.email || 'sampathkumarveesam@zohomail.in' }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setTestEmailStatus('success');
+        setSaveMessage(`Test email delivered via Zoho Mail SMTP to ${user?.email || 'sampathkumarveesam@zohomail.in'}!`);
+      } else {
+        setTestEmailStatus('error');
+        setSaveMessage(`Test email failed: ${json.message || 'SMTP error'}`);
+      }
+    } catch (err: any) {
+      setTestEmailStatus('error');
+      setSaveMessage(`Test email transmission error: ${err.message}`);
+    } finally {
+      setTimeout(() => {
+        setTestEmailStatus(null);
+        setSaveMessage(null);
+      }, 4000);
+    }
+  };
+
   // Filtered views
   const filteredCustomers = customers.filter(
     c =>
@@ -265,6 +325,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <span className="hidden sm:inline">Global </span>Orders ({orders.length})
               </button>
             </div>
+
+            <button
+              data-test="admin-send-test-email-button"
+              data-testid="admin-send-test-email-button"
+              onClick={handleSendTestEmail}
+              disabled={testEmailStatus === 'sending'}
+              title="Send Zoho Mail SMTP Test Verification Email"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+            >
+              <Mail className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">
+                {testEmailStatus === 'sending' ? 'Sending...' : 'Test SMTP'}
+              </span>
+            </button>
 
             <button
               data-test="admin-refresh-all-button"
@@ -498,9 +572,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <span className="font-extrabold text-slate-900">${order.totalAmount.toFixed(2)}</span>
-                                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      {order.status}
-                                    </span>
+                                    <select
+                                      data-test={`customer-order-status-select-${order.orderNumber}`}
+                                      data-testid={`customer-order-status-select-${order.orderNumber}`}
+                                      value={order.status?.toLowerCase() || 'processing'}
+                                      disabled={updatingOrderId === String(order.id) || updatingOrderId === order.orderNumber}
+                                      onChange={e => handleUpdateOrderStatus(order.orderNumber, e.target.value)}
+                                      className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                                      title="Change status & send notification email"
+                                    >
+                                      <option value="processing">Processing</option>
+                                      <option value="processed">Processed</option>
+                                      <option value="out_for_delivery">Out for Delivery</option>
+                                      <option value="delivered">Delivered</option>
+                                      <option value="cancelled">Cancelled</option>
+                                    </select>
                                   </div>
                                 </div>
 
@@ -909,9 +995,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </td>
                         <td className="p-3 font-bold text-slate-900">${o.grandTotal.toFixed(2)}</td>
                         <td className="p-3">
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                            {o.orderStatus}
-                          </span>
+                          <select
+                            data-test={`admin-order-status-select-${o.orderNumber}`}
+                            data-testid={`admin-order-status-select-${o.orderNumber}`}
+                            value={o.orderStatus?.toLowerCase() || 'processing'}
+                            disabled={updatingOrderId === o.id || updatingOrderId === o.orderNumber}
+                            onChange={e => handleUpdateOrderStatus(o.orderNumber || o.id, e.target.value)}
+                            className="text-[11px] font-bold uppercase px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                            title="Change status & send notification email"
+                          >
+                            <option value="processing">Processing</option>
+                            <option value="processed">Processed</option>
+                            <option value="out_for_delivery">Out for Delivery</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
                         </td>
                       </tr>
                     ))}

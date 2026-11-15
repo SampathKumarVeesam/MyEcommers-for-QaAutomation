@@ -2,6 +2,7 @@ import { Response, Router } from 'express';
 import { query } from '../db/pool.js';
 import { AuthenticatedRequest, requireAdmin } from '../middleware/auth.js';
 import { userRepo } from '../repositories/userRepo.js';
+import { sendTestEmail } from '../services/emailService.js';
 
 export const adminAnalyticsRouter = Router();
 
@@ -330,4 +331,35 @@ adminAnalyticsRouter.get('/customers/:id', async (req: AuthenticatedRequest, res
     });
   }
 });
+
+/**
+ * POST /api/admin/analytics/test-email
+ * Sends a test verification email via Zoho Mail SMTP to the provided email or admin email
+ */
+adminAnalyticsRouter.post('/test-email', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body || {};
+    const targetEmail = (email || req.user?.email || process.env.SMTP_USER || 'sampathkumarveesam@zohomail.in').trim();
+    const result = await sendTestEmail(targetEmail);
+    if (!result.success) {
+      res.status(500).json({
+        success: false,
+        message: `Failed to send test email: ${result.error}`,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Test email sent successfully to ${targetEmail} via Zoho Mail SMTP`,
+      data: result,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: `Test email transmission error: ${err.message}`,
+    });
+  }
+});
+
 
