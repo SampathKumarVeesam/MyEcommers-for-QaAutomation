@@ -11,7 +11,7 @@ interface AuthContextType {
   oauthError: string | null;
   clearOAuthError: () => void;
   configuredProviders: Record<string, boolean>;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string, requiredRole?: 'admin' | 'customer') => Promise<{ success: boolean; message?: string; user?: User }>;
   register: (data: { name: string; email: string; password: string; phone?: string }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string> }>;
   loginWithOAuth: (provider: 'google' | 'apple') => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -123,25 +123,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
+  const login = async (
+    email: string,
+    password: string,
+    requiredRole?: 'admin' | 'customer'
+  ): Promise<{ success: boolean; message?: string; user?: User }> => {
     try {
       const res = await fetch(apiUrl('/api/users/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, requiredRole }),
       });
 
       const { ok, data: json } = await parseJsonResponse(res);
       if (ok && json.success) {
-        setUser(json.data.user);
+        const loggedUser: User = json.data.user;
+
+        // Strict role validation: If admin portal login was requested, reject customers
+        if (requiredRole && loggedUser.role !== requiredRole) {
+          logout();
+          return {
+            success: false,
+            message: `Access denied: Unauthorized access. ${requiredRole === 'admin' ? 'Administrator' : 'Customer'} privileges required.`,
+          };
+        }
+
+        setUser(loggedUser);
         setToken(json.data.token);
         localStorage.setItem(TOKEN_KEY, json.data.token);
-        return { success: true };
+        return { success: true, user: loggedUser };
       }
 
       return {
         success: false,
-        message: json.message || 'Invalid email or password',
+        message: json.message || 'Invalid email/username or password',
       };
     } catch (err: any) {
       return { success: false, message: err.message || 'Network error during login' };

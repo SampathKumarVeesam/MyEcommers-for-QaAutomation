@@ -173,10 +173,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (Object.keys(errors).length > 0) return;
 
     setIsAdminLoggingIn(true);
-    const res = await login(adminIdentifier.trim(), adminPassword.trim());
+    const res = await login(adminIdentifier.trim(), adminPassword.trim(), 'admin');
     setIsAdminLoggingIn(false);
 
-    if (res.success) {
+    if (res.success && res.user?.role === 'admin') {
       resetForms();
       if (onAdminSuccess) {
         onAdminSuccess();
@@ -185,7 +185,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       onClose();
     } else {
-      setAdminGlobalError(res.message || 'Authentication failed. Please verify admin credentials.');
+      setAdminGlobalError(
+        res.message || 'Access denied: Unauthorized access. Administrator privileges required.'
+      );
     }
   };
 

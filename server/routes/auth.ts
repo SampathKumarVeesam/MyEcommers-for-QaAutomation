@@ -102,8 +102,9 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
 // POST /api/users/login (Authenticates user from PostgreSQL public.users, returns 24h JWT Bearer token, status 200)
 authRouter.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, username, password } = req.body || {};
+    const { email, username, password, requiredRole, portal } = req.body || {};
     const identifier = (email || username || '').trim();
+    const targetRole = requiredRole || (portal === 'admin' ? 'admin' : undefined);
 
     if (!identifier || !password) {
       res.status(400).json({
@@ -159,6 +160,15 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
       res.status(401).json({
         success: false,
         message: 'Invalid email or password',
+      });
+      return;
+    }
+
+    // Strict Role Enforcement: If an admin login was requested, deny standard customer accounts
+    if (targetRole && user.role !== targetRole) {
+      res.status(403).json({
+        success: false,
+        message: `Access denied: Unauthorized access. ${targetRole === 'admin' ? 'Administrator' : 'Customer'} privileges required.`,
       });
       return;
     }
