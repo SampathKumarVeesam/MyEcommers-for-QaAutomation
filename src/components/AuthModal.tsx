@@ -29,7 +29,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
   onAdminSuccess,
 }) => {
-  const { login, register, loginWithOAuth, quickLogin } = useAuth();
+  const { login, register, loginWithOAuth, quickLogin, oauthError, clearOAuthError } = useAuth();
   const [tab, setTab] = useState<'login' | 'register' | 'admin'>(initialTab);
 
   // Login form state (customer or admin)
@@ -91,8 +91,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (isOpen) {
       setTab(initialTab);
       resetForms();
+      if (oauthError) {
+        setLoginGlobalError(oauthError);
+        clearOAuthError?.();
+      }
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, oauthError]);
 
   if (!isOpen) return null;
 
@@ -111,16 +115,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoginGlobalError('');
     setRegGlobalError('');
 
-    const res = await loginWithOAuth(provider);
-    setIsOAuthLoading(null);
-
-    if (res.success) {
-      resetForms();
-      onSuccess?.();
-      onClose();
-    } else {
-      setLoginGlobalError(res.message || `Failed to sign in with ${provider}`);
-    }
+    await loginWithOAuth(provider);
   };
 
   // Customer Login Submit

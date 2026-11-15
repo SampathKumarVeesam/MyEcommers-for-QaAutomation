@@ -10,6 +10,7 @@ export interface User {
   avatar?: string;
   address?: Address;
   provider?: 'local' | 'google' | 'apple';
+  providerId?: string;
   createdAt: string;
 }
 

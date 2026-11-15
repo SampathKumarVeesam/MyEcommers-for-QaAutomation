@@ -10,6 +10,8 @@ export function mapUserRow(row: any): User {
     role: row.role as 'admin' | 'customer',
     phone: row.phone || undefined,
     avatar: row.avatar || undefined,
+    provider: (row.provider as 'local' | 'google' | 'apple') || 'local',
+    providerId: row.provider_id || undefined,
     address: row.address_line_1
       ? {
           fullName: row.name,
@@ -41,6 +43,33 @@ export class UserRepository {
     const res = await query(
       `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1) LIMIT 1`,
       [normalized]
+    );
+    if (res.rows.length === 0) return null;
+    return mapUserRow(res.rows[0]);
+  }
+
+  async findByProvider(provider: string, providerId: string): Promise<User | null> {
+    const res = await query(
+      `SELECT * FROM users WHERE provider = $1 AND provider_id = $2 LIMIT 1`,
+      [provider, providerId]
+    );
+    if (res.rows.length === 0) return null;
+    return mapUserRow(res.rows[0]);
+  }
+
+  async linkProvider(
+    userId: string | number,
+    provider: string,
+    providerId: string,
+    avatar?: string
+  ): Promise<User | null> {
+    const isNum = !isNaN(Number(userId));
+    const res = await query(
+      `UPDATE users 
+       SET provider = $1, provider_id = $2, avatar = COALESCE($3, avatar) 
+       WHERE (user_code = $4 ${isNum ? 'OR id = $5' : ''})
+       RETURNING *`,
+      isNum ? [provider, providerId, avatar || null, String(userId), Number(userId)] : [provider, providerId, avatar || null, String(userId)]
     );
     if (res.rows.length === 0) return null;
     return mapUserRow(res.rows[0]);
@@ -82,17 +111,22 @@ export class UserRepository {
     role?: 'admin' | 'customer';
     phone?: string;
     avatar?: string;
+    provider?: 'local' | 'google' | 'apple';
+    providerId?: string;
     address?: Address;
   }): Promise<User> {
     const userCode = user.id || `user_${Date.now().toString(36)}`;
     const username = user.username || user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
     const role = user.role || 'customer';
+    const provider = user.provider || 'local';
+    const providerId = user.providerId || null;
 
     const res = await query(
       `INSERT INTO users (
          user_code, name, username, email, password, role, phone, avatar,
-         address_line_1, address_city, address_state, address_postal_code, address_country
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         address_line_1, address_city, address_state, address_postal_code, address_country,
+         provider, provider_id
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         userCode,
@@ -108,6 +142,8 @@ export class UserRepository {
         user.address?.state || null,
         user.address?.postalCode || null,
         user.address?.country || null,
+        provider,
+        providerId,
       ]
     );
 

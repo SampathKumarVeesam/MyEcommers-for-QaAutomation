@@ -25,9 +25,9 @@ function createTransporter(port: number, secure: boolean): Transporter {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     tls: {
       rejectUnauthorized: false,
     },

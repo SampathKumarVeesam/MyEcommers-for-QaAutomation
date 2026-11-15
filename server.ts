@@ -13,6 +13,12 @@ async function startServer() {
   if (connected) {
     try {
       const { query } = await import('./server/db/pool.js');
+      // Ensure OAuth provider columns exist on users table
+      await query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS provider VARCHAR(50) DEFAULT 'local';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255);
+      `);
+
       const tableCheck = await query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 

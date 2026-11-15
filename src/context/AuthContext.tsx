@@ -8,9 +8,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   loading: boolean;
+  oauthError: string | null;
+  clearOAuthError: () => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: { name: string; email: string; password: string; phone?: string }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string> }>;
-  loginWithOAuth: (provider: 'google' | 'apple', profile?: { name?: string; email?: string }) => Promise<{ success: boolean; message?: string }>;
+  loginWithOAuth: (provider: 'google' | 'apple') => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   quickLogin: (account: 'admin' | 'customer1' | 'customer2') => Promise<void>;
   updateUserAddress: (address: Address) => Promise<void>;
@@ -44,12 +46,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem(TOKEN_KEY) || null;
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
-  // Validate session against PostgreSQL public.users on mount
+  const clearOAuthError = () => setOauthError(null);
+
+  // Validate session against PostgreSQL public.users on mount & catch OAuth callback redirects
   useEffect(() => {
     const checkAuth = async () => {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
-      if (!storedToken) {
+      // Check for incoming OAuth token or error in URL search/hash
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const authToken = searchParams.get('auth_token') || hashParams.get('auth_token');
+      const err = searchParams.get('oauth_error') || hashParams.get('oauth_error');
+
+      if (err) {
+        setOauthError(decodeURIComponent(err));
+        searchParams.delete('oauth_error');
+        const cleanQuery = searchParams.toString() ? `?${searchParams.toString()}` : '';
+        window.history.replaceState({}, document.title, window.location.pathname + cleanQuery);
+      }
+
+      let tokenToUse = authToken || localStorage.getItem(TOKEN_KEY);
+
+      if (authToken) {
+        localStorage.setItem(TOKEN_KEY, authToken);
+        searchParams.delete('auth_token');
+        const cleanQuery = searchParams.toString() ? `?${searchParams.toString()}` : '';
+        window.history.replaceState({}, document.title, window.location.pathname + cleanQuery);
+      }
+
+      if (!tokenToUse) {
         setLoading(false);
         return;
       }
@@ -57,14 +83,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const res = await fetch(apiUrl('/api/users/me'), {
           headers: {
-            Authorization: `Bearer ${storedToken}`,
+            Authorization: `Bearer ${tokenToUse}`,
           },
         });
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data) {
             setUser(json.data);
-            setToken(storedToken);
+            setToken(tokenToUse);
           } else {
             logout();
           }
@@ -134,35 +160,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithOAuth = async (
-    provider: 'google' | 'apple',
-    profile?: { name?: string; email?: string }
+    provider: 'google' | 'apple'
   ): Promise<{ success: boolean; message?: string }> => {
-    try {
-      const res = await fetch(apiUrl('/api/users/oauth'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          name: profile?.name,
-          email: profile?.email,
-        }),
-      });
-
-      const { ok, data: json } = await parseJsonResponse(res);
-      if (ok && json.success) {
-        setUser(json.data.user);
-        setToken(json.data.token);
-        localStorage.setItem(TOKEN_KEY, json.data.token);
-        return { success: true };
-      }
-
-      return {
-        success: false,
-        message: json.message || `Failed to authenticate with ${provider}`,
-      };
-    } catch (err: any) {
-      return { success: false, message: err.message || `Network error during ${provider} authentication` };
-    }
+    // Redirect browser to standard OIDC authorization endpoint
+    window.location.href = apiUrl(`/api/users/auth/${provider}`);
+    return { success: true };
   };
 
   const logout = () => {
@@ -217,6 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user && !!token,
         isAdmin: user?.role === 'admin',
         loading,
+        oauthError,
+        clearOAuthError,
         login,
         register,
         loginWithOAuth,

@@ -4,6 +4,14 @@ import crypto from 'node:crypto';
 import { AuthenticatedRequest, generateToken, requireAuth } from '../middleware/auth.js';
 import { userRepo } from '../repositories/userRepo.js';
 import { sendWelcomeEmail } from '../services/emailService.js';
+import {
+  getAppleAuthUrl,
+  getGoogleAuthUrl,
+  VerifiedOidcProfile,
+  verifyAppleAuthPayload,
+  verifyGoogleAuthCode,
+} from '../services/oidcService.js';
+import { User } from '../../src/types.js';
 
 export const authRouter = Router();
 
@@ -162,68 +170,223 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
-// POST /api/users/oauth (Google & Apple OAuth Login / Registration into PostgreSQL)
-authRouter.post('/oauth', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { provider, email, name, avatar } = req.body || {};
+/**
+ * Helper to determine customer request origin for OAuth redirects
+ */
+function getRequestOrigin(req: Request): string {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/+$/, '');
+  }
+  const referer = req.headers.referer;
+  if (referer) {
+    try {
+      const u = new URL(referer);
+      return `${u.protocol}//${u.host}`;
+    } catch {}
+  }
+  const forwardedProto = (req.headers['x-forwarded-proto'] as string) || 'https';
+  const forwardedHost = (req.headers['x-forwarded-host'] as string) || req.headers.host;
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  return 'https://samecommers.netlify.app';
+}
 
-    if (!provider || !['google', 'apple'].includes(provider)) {
-      res.status(400).json({
-        success: false,
-        message: 'Provider must be "google" or "apple"',
-      });
-      return;
+/**
+ * Common logic to auto-register or link verified OIDC profile in PostgreSQL and trigger welcome email
+ */
+async function processOidcUser(profile: VerifiedOidcProfile): Promise<{ user: User; token: string }> {
+  const { provider, sub, email, name, avatar } = profile;
+
+  // 1. Look up existing user by provider_id & provider
+  let user = await userRepo.findByProvider(provider, sub);
+
+  // 2. If not found by provider ID, look up by email
+  if (!user && email) {
+    user = await userRepo.findByEmail(email);
+    if (user) {
+      user = await userRepo.linkProvider(user.id, provider, sub, avatar);
     }
+  }
 
-    const oauthEmail =
-      (email && email.trim()) ||
-      (provider === 'google'
-        ? 'google.user@practicesoftwaretesting.com'
-        : 'apple.user@practicesoftwaretesting.com');
-
-    const oauthName =
-      (name && name.trim()) ||
-      (provider === 'google' ? 'Google Customer' : 'Apple Customer');
-
-    const oauthAvatar =
-      avatar ||
-      (provider === 'google'
+  // 3. If still not found, auto-register new customer account
+  if (!user) {
+    const randomPassword = crypto.randomUUID();
+    user = await userRepo.create({
+      id: `user_${provider}_${crypto.randomUUID().slice(0, 8)}`,
+      name: name || `${provider === 'google' ? 'Google' : 'Apple'} Customer`,
+      email: email.toLowerCase().trim(),
+      passwordHash: bcrypt.hashSync(randomPassword, 10),
+      role: 'customer',
+      avatar: avatar || (provider === 'google'
         ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80'
-        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80');
-
-    let user = await userRepo.findByEmail(oauthEmail);
-    if (!user) {
-      user = await userRepo.create({
-        id: `user_oauth_${crypto.randomUUID().slice(0, 8)}`,
-        name: oauthName,
-        email: oauthEmail.toLowerCase(),
-        passwordHash: bcrypt.hashSync(`oauth_${provider}_${crypto.randomUUID()}`, 10),
-        role: 'customer',
-        avatar: oauthAvatar,
-      });
-    }
-
-    user.provider = provider;
-    const token = generateToken(user);
-    const { passwordHash: _, ...safeUser } = user;
-
-    res.status(200).json({
-      success: true,
-      message: `Authenticated successfully with ${provider === 'google' ? 'Google' : 'Apple'}`,
-      data: {
-        user: safeUser,
-        token,
-        expiresIn: '24h',
-      },
+        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'),
+      provider,
+      providerId: sub,
     });
-  } catch (error: any) {
-    console.error('[OAuth Error]:', error);
-    res.status(500).json({
-      success: false,
-      message: `PostgreSQL OAuth failed: ${error.message || 'Database error'}`,
+
+    // Send Welcome Email asynchronously via Zoho Mail SMTP
+    setImmediate(async () => {
+      try {
+        await sendWelcomeEmail({ name: user!.name, email: user!.email });
+        console.log(`[${provider.toUpperCase()} OIDC]: Sent welcome registration email to ${user!.email}`);
+      } catch (err) {
+        console.error(`[${provider.toUpperCase()} OIDC Welcome Email Error]:`, err);
+      }
     });
   }
+
+  const token = generateToken(user);
+  return { user, token };
+}
+
+// ============================================================================
+// OIDC ROUTE 1: Google OAuth 2.0 Authorization Endpoint Initiator
+// ============================================================================
+authRouter.get('/auth/google', (req: Request, res: Response): void => {
+  const origin = getRequestOrigin(req);
+  const result = getGoogleAuthUrl(origin);
+
+  if (result.error || !result.url) {
+    console.warn('[Google Auth Error]:', result.error);
+    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(result.error || 'Google OAuth is not configured on this server')}`);
+    return;
+  }
+
+  res.redirect(result.url);
 });
+
+// ============================================================================
+// OIDC ROUTE 2: Google OAuth 2.0 Callback & Token Exchange
+// ============================================================================
+authRouter.get('/auth/google/callback', async (req: Request, res: Response): Promise<void> => {
+  const origin = getRequestOrigin(req);
+  const { code, state, error: googleError } = req.query;
+
+  if (googleError) {
+    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(String(googleError))}`);
+    return;
+  }
+
+  if (!code || !state) {
+    res.redirect(`${origin}/?oauth_error=${encodeURIComponent('Missing authorization code or state from Google')}`);
+    return;
+  }
+
+  const result = await verifyGoogleAuthCode(String(code), String(state), origin);
+  const targetOrigin = result.clientOrigin || origin;
+
+  if (result.error || !result.profile) {
+    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(result.error || 'Google authentication failed')}`);
+    return;
+  }
+
+  try {
+    const { token } = await processOidcUser(result.profile);
+    res.redirect(`${targetOrigin}/?auth_token=${token}`);
+  } catch (err: any) {
+    console.error('[Google OIDC Auto-Registration Error]:', err);
+    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(err.message || 'Auto-registration failed')}`);
+  }
+});
+
+// ============================================================================
+// OIDC ROUTE 3: Apple OAuth 2.0 / OIDC Authorization Endpoint Initiator
+// ============================================================================
+authRouter.get('/auth/apple', (req: Request, res: Response): void => {
+  const origin = getRequestOrigin(req);
+  const result = getAppleAuthUrl(origin);
+
+  if (result.error || !result.url) {
+    console.warn('[Apple Auth Error]:', result.error);
+    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(result.error || 'Apple OAuth is not configured on this server')}`);
+    return;
+  }
+
+  res.redirect(result.url);
+});
+
+// ============================================================================
+// OIDC ROUTE 4: Apple OAuth 2.0 / OIDC Callback (Handles form_post payload)
+// ============================================================================
+const handleAppleCallback = async (req: Request, res: Response): Promise<void> => {
+  const origin = getRequestOrigin(req);
+  const payload = { ...req.query, ...req.body };
+
+  if (payload.error) {
+    const errorMsg = String(payload.error_description || payload.error);
+    res.redirect(`${origin}/?oauth_error=${encodeURIComponent(errorMsg)}`);
+    return;
+  }
+
+  const result = await verifyAppleAuthPayload(payload, origin);
+  const targetOrigin = result.clientOrigin || origin;
+
+  if (result.error || !result.profile) {
+    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(result.error || 'Apple authentication failed')}`);
+    return;
+  }
+
+  try {
+    const { token } = await processOidcUser(result.profile);
+    // Render HTML client-side redirect since Apple callback uses form_post
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Signing in with Apple...</title>
+        </head>
+        <body>
+          <script>
+            window.location.href = "${targetOrigin}/?auth_token=${token}";
+          </script>
+          <p style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+            Redirecting to ShopSphere...
+          </p>
+        </body>
+      </html>
+    `);
+  } catch (err: any) {
+    console.error('[Apple OIDC Auto-Registration Error]:', err);
+    res.redirect(`${targetOrigin}/?oauth_error=${encodeURIComponent(err.message || 'Auto-registration failed')}`);
+  }
+};
+
+authRouter.post('/auth/apple/callback', handleAppleCallback);
+authRouter.get('/auth/apple/callback', handleAppleCallback);
+
+// Backward-compatible endpoint for direct OIDC token verification (replaces mock endpoint)
+authRouter.post('/oauth', async (req: Request, res: Response): Promise<void> => {
+  const { provider } = req.body || {};
+  const origin = getRequestOrigin(req);
+
+  if (provider === 'google') {
+    const googleRes = getGoogleAuthUrl(origin);
+    res.status(200).json({
+      success: true,
+      authUrl: googleRes.url || null,
+      message: googleRes.error || 'Redirect user to authUrl to complete Google OAuth 2.0 / OIDC flow',
+    });
+    return;
+  }
+
+  if (provider === 'apple') {
+    const appleRes = getAppleAuthUrl(origin);
+    res.status(200).json({
+      success: true,
+      authUrl: appleRes.url || null,
+      message: appleRes.error || 'Redirect user to authUrl to complete Apple OAuth 2.0 / OIDC flow',
+    });
+    return;
+  }
+
+  res.status(400).json({
+    success: false,
+    message: 'Unsupported provider. Use /api/users/auth/google or /api/users/auth/apple for OAuth 2.0 flow',
+  });
+});
+
 
 // GET /api/users/me (Returns authenticated user profile details from PostgreSQL)
 authRouter.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response): void => {
