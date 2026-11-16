@@ -63,13 +63,33 @@ function ShopSphereMain() {
 
   // Modals State
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [authModal, setAuthModal] = useState<{ open: boolean; tab: 'login' | 'register' | 'admin' }>({
+  const [authModal, setAuthModal] = useState<{
+    open: boolean;
+    tab: 'login' | 'register' | 'admin';
+    notice?: string;
+  }>({
     open: false,
     tab: 'login',
+    notice: undefined,
   });
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState(false);
+
+  // Intercept checkout for unauthenticated users: ask to sign in first, then smoothly proceed to checkout
+  const handleProceedToCheckout = () => {
+    if (!isAuthenticated) {
+      setPendingCheckout(true);
+      setAuthModal({
+        open: true,
+        tab: 'login',
+        notice: 'Please sign in or create an account first to proceed to checkout.',
+      });
+    } else {
+      setIsCheckoutOpen(true);
+    }
+  };
 
   // URL Hash/Route protection for Admin Dashboard
   useEffect(() => {
@@ -598,7 +618,7 @@ function ShopSphereMain() {
       </footer>
 
       {/* Slide-over Cart Drawer */}
-      <CartDrawer onProceedToCheckout={() => setIsCheckoutOpen(true)} />
+      <CartDrawer onProceedToCheckout={handleProceedToCheckout} />
 
       {/* Slide-over Wishlist Modal */}
       <WishlistModal onSelectProduct={p => setSelectedProduct(p)} />
@@ -607,7 +627,7 @@ function ShopSphereMain() {
       <ProductDetailModal
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
-        onOpenCheckout={() => setIsCheckoutOpen(true)}
+        onOpenCheckout={handleProceedToCheckout}
         onProductUpdated={updatedProd => {
           setSelectedProduct(updatedProd);
           setProducts(prev => prev.map(p => (p.id === updatedProd.id ? updatedProd : p)));
@@ -625,9 +645,20 @@ function ShopSphereMain() {
       <AuthModal
         isOpen={authModal.open}
         initialTab={authModal.tab}
-        onClose={() => setAuthModal({ ...authModal, open: false })}
+        notice={authModal.notice}
+        onClose={() => {
+          setAuthModal({ ...authModal, open: false, notice: undefined });
+          setPendingCheckout(false);
+        }}
+        onSuccess={() => {
+          setAuthModal({ ...authModal, open: false, notice: undefined });
+          if (pendingCheckout) {
+            setPendingCheckout(false);
+            setIsCheckoutOpen(true);
+          }
+        }}
         onAdminSuccess={() => {
-          setAuthModal({ open: false, tab: 'login' });
+          setAuthModal({ open: false, tab: 'login', notice: undefined });
           setIsAdminOpen(true);
         }}
       />

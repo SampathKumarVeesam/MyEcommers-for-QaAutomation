@@ -8,6 +8,7 @@ import {
   Mail,
   Phone,
   ShieldCheck,
+  ShoppingBag,
   User,
   X,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import { useAuth } from '../context/AuthContext.js';
 interface AuthModalProps {
   isOpen: boolean;
   initialTab?: 'login' | 'register' | 'admin';
+  notice?: string;
   onClose: () => void;
   onSuccess?: () => void;
   onAdminSuccess?: () => void;
@@ -25,6 +27,7 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   initialTab = 'login',
+  notice,
   onClose,
   onSuccess,
   onAdminSuccess,
@@ -303,6 +306,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Form Body */}
         <div className="p-6">
+          {/* Checkout Login Notice */}
+          {notice && tab !== 'admin' && (
+            <div
+              data-test="auth-checkout-notice"
+              data-testid="auth-checkout-notice"
+              className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs font-semibold flex items-center gap-2.5 shadow-2xs animate-in fade-in duration-200"
+            >
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
+              <span className="leading-snug">{notice}</span>
+            </div>
+          )}
+
           {/* Header Title */}
           <div className="mb-4">
             <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
