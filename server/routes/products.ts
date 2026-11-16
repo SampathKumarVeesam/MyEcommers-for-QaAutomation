@@ -40,6 +40,33 @@ productsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// GET /api/products/slug/:slug (Fetch single product by slug from PostgreSQL)
+productsRouter.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { slug } = req.params;
+    const product = await productRepo.getProductBySlug(slug);
+
+    if (!product) {
+      res.status(404).json({
+        success: false,
+        message: `Product with slug '${slug}' not found in PostgreSQL`,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error: any) {
+    console.error('[Get Product By Slug Error]:', error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch product by slug from PostgreSQL: ${error.message || 'Database error'}`,
+    });
+  }
+});
+
 // GET /api/products/:id (Fetch single product from PostgreSQL)
 productsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -130,6 +157,30 @@ productsRouter.put('/:id', requireAdmin, async (req: Request, res: Response): Pr
     res.status(500).json({
       success: false,
       message: `Failed to update product in PostgreSQL: ${error.message || 'Database error'}`,
+    });
+  }
+});
+
+// PATCH /api/products/:id/featured (Admin only: Toggle featured status)
+productsRouter.patch('/:id/featured', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { featured } = req.body || {};
+    const updated = await productRepo.toggleFeatured(id, featured);
+    if (!updated) {
+      res.status(404).json({ success: false, message: `Product '${id}' not found in PostgreSQL` });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Product featured status updated successfully in PostgreSQL',
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('[Toggle Featured Error]:', error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to update featured status in PostgreSQL: ${error.message || 'Database error'}`,
     });
   }
 });

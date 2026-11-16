@@ -259,6 +259,25 @@ export class ProductRepository {
     }
   }
 
+  async getProductBySlug(slug: string): Promise<Product | null> {
+    if (!isDbConnected()) {
+      const found = INITIAL_PRODUCTS.find(p => p.slug === slug || p.id === slug);
+      return found ? { ...found } : null;
+    }
+
+    try {
+      const res = await query(
+        `SELECT * FROM product WHERE slug = $1 OR product_code = $1 LIMIT 1`,
+        [slug]
+      );
+      if (res.rows.length === 0) return null;
+      return mapProductRow(res.rows[0]);
+    } catch (err: any) {
+      const found = INITIAL_PRODUCTS.find(p => p.slug === slug || p.id === slug);
+      return found ? { ...found } : null;
+    }
+  }
+
   async getInternalProductId(id: string | number): Promise<number | null> {
     const isNum = !isNaN(Number(id));
     const res = await query(
@@ -474,6 +493,98 @@ export class ProductRepository {
     } finally {
       client.release();
     }
+  }
+
+  async toggleFeatured(id: string | number, featured?: boolean): Promise<Product | null> {
+    const existingId = await this.getInternalProductId(id);
+    if (!existingId) return null;
+
+    let targetFeatured: boolean;
+    if (featured !== undefined) {
+      targetFeatured = Boolean(featured);
+    } else {
+      const cur = await query(`SELECT featured FROM product WHERE id = $1`, [existingId]);
+      targetFeatured = !Boolean(cur.rows[0]?.featured);
+    }
+
+    const res = await query(`UPDATE product SET featured = $1 WHERE id = $2 RETURNING *`, [targetFeatured, existingId]);
+    if (res.rows.length === 0) return null;
+    return mapProductRow(res.rows[0]);
+  }
+
+  async getAllReviews(): Promise<(Review & { productName?: string; productCode?: string })[]> {
+    if (!isDbConnected()) return [];
+    try {
+      const res = await query(
+        `SELECT pr.*, p.name as product_name, p.product_code
+         FROM product_reviews pr
+         JOIN product p ON pr.product_id = p.id
+         ORDER BY pr.created_at DESC`
+      );
+      return res.rows.map(r => ({
+        ...mapReviewRow(r),
+        productName: r.product_name,
+        productCode: r.product_code,
+      }));
+    } catch (err) {
+      console.warn('[Get All Reviews Warning]:', err);
+      return [];
+    }
+  }
+
+  async updateReview(
+    reviewId: string | number,
+    updates: { rating?: number; comment?: string }
+  ): Promise<Review | null> {
+    if (!isDbConnected()) return null;
+    const isNum = !isNaN(Number(reviewId));
+    const findRes = await query(
+      `SELECT * FROM product_reviews WHERE (review_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
+      isNum ? [String(reviewId), Number(reviewId)] : [String(reviewId)]
+    );
+    if (findRes.rows.length === 0) return null;
+    const row = findRes.rows[0];
+
+    const newRating = updates.rating !== undefined ? Math.min(5, Math.max(1, updates.rating)) : row.rating;
+    const newComment = updates.comment !== undefined ? updates.comment.trim() : row.comment;
+
+    const res = await query(
+      `UPDATE product_reviews SET rating = $1, comment = $2 WHERE id = $3 RETURNING *`,
+      [newRating, newComment, row.id]
+    );
+
+    const agg = await query(
+      `SELECT COUNT(*) as cnt, AVG(rating) as avg_rating FROM product_reviews WHERE product_id = $1`,
+      [row.product_id]
+    );
+    const count = parseInt(agg.rows[0].cnt, 10);
+    const avg = parseFloat(parseFloat(agg.rows[0].avg_rating || '5').toFixed(1));
+    await query(`UPDATE product SET rating = $1, reviews_count = $2 WHERE id = $3`, [avg, count, row.product_id]);
+
+    return mapReviewRow(res.rows[0]);
+  }
+
+  async deleteReview(reviewId: string | number): Promise<boolean> {
+    if (!isDbConnected()) return false;
+    const isNum = !isNaN(Number(reviewId));
+    const findRes = await query(
+      `SELECT * FROM product_reviews WHERE (review_code = $1 ${isNum ? 'OR id = $2' : ''}) LIMIT 1`,
+      isNum ? [String(reviewId), Number(reviewId)] : [String(reviewId)]
+    );
+    if (findRes.rows.length === 0) return false;
+    const row = findRes.rows[0];
+
+    await query(`DELETE FROM product_reviews WHERE id = $1`, [row.id]);
+
+    const agg = await query(
+      `SELECT COUNT(*) as cnt, AVG(rating) as avg_rating FROM product_reviews WHERE product_id = $1`,
+      [row.product_id]
+    );
+    const count = parseInt(agg.rows[0].cnt, 10);
+    const avg = count > 0 ? parseFloat(parseFloat(agg.rows[0].avg_rating || '5').toFixed(1)) : 5.0;
+    await query(`UPDATE product SET rating = $1, reviews_count = $2 WHERE id = $3`, [avg, count, row.product_id]);
+
+    return true;
   }
 }
 

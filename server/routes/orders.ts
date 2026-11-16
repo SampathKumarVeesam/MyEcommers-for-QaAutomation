@@ -225,3 +225,41 @@ const handleStatusUpdate = async (req: Request, res: Response): Promise<void> =>
 ordersRouter.patch('/:id/status', handleStatusUpdate);
 ordersRouter.put('/:id/status', handleStatusUpdate);
 
+// PATCH /api/orders/:id/cancel (Customer cancellation of placed order, restores inventory stock)
+ordersRouter.patch('/:id/cancel', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const order = await orderRepo.getOrderById(id);
+    if (!order) {
+      res.status(404).json({ success: false, message: `Order with ID '${id}' not found in PostgreSQL` });
+      return;
+    }
+
+    if (req.user && req.user.role !== 'admin' && String(order.userId) !== String(req.user.id) && order.userEmail !== req.user.email) {
+      res.status(403).json({ success: false, message: 'Forbidden: Cannot cancel another customer order' });
+      return;
+    }
+
+    if (order.orderStatus === 'delivered' || order.orderStatus === 'shipped') {
+      res.status(400).json({
+        success: false,
+        message: `Cannot cancel order with current status '${order.orderStatus}'. Please contact support.`,
+      });
+      return;
+    }
+
+    const cancelled = await orderRepo.cancelOrder(id);
+    res.status(200).json({
+      success: true,
+      message: `Order #${order.orderNumber} successfully cancelled in PostgreSQL`,
+      data: cancelled,
+    });
+  } catch (error: any) {
+    console.error('[Cancel Order Error]:', error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to cancel order in PostgreSQL: ${error.message || 'Database error'}`,
+    });
+  }
+});
+

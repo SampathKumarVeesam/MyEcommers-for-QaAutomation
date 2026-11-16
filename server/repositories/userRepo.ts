@@ -336,6 +336,21 @@ export class UserRepository {
     const res = await query(`SELECT * FROM users ORDER BY id ASC`);
     return res.rows.map(mapUserRow);
   }
+
+  async updateRole(id: string | number, role: 'admin' | 'customer'): Promise<User | null> {
+    const raw = await this.findRawById(id);
+    if (!raw) return null;
+    const res = await query(`UPDATE users SET role = $1 WHERE id = $2 RETURNING *`, [role, raw.id]);
+    if (res.rows.length === 0) return null;
+    return mapUserRow(res.rows[0]);
+  }
+
+  async deleteUser(id: string | number): Promise<boolean> {
+    const raw = await this.findRawById(id);
+    if (!raw) return false;
+    const res = await query(`DELETE FROM users WHERE id = $1 RETURNING id`, [raw.id]);
+    return (res.rowCount ?? 0) > 0;
+  }
 }
 
 export const userRepo = new UserRepository();

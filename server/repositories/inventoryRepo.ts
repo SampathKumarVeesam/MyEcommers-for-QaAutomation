@@ -10,7 +10,37 @@ export interface InventoryItem {
   stockAvailable: number;
 }
 
+export interface DetailedInventoryItem extends InventoryItem {
+  productName: string;
+  category: string;
+  price: number;
+  isLowStock: boolean;
+}
+
 export class InventoryRepository {
+  async getAllInventory(): Promise<DetailedInventoryItem[]> {
+    const res = await query(
+      `SELECT inv.product_id, p.product_code, p.name as product_name, p.category, p.price,
+              inv.store_id, s.name as store_name, inv.stock_available
+       FROM inventory inv
+       JOIN product p ON inv.product_id = p.id
+       JOIN store s ON inv.store_id = s.id
+       ORDER BY p.id ASC, inv.store_id ASC`
+    );
+
+    return res.rows.map((row) => ({
+      productId: row.product_id,
+      productCode: row.product_code,
+      productName: row.product_name,
+      category: row.category,
+      price: parseFloat(row.price),
+      storeId: row.store_id,
+      storeName: row.store_name,
+      stockAvailable: parseInt(row.stock_available, 10),
+      isLowStock: parseInt(row.stock_available, 10) <= 5,
+    }));
+  }
+
   async getInventoryByProduct(productId: number | string): Promise<InventoryItem[]> {
     const internalId = await productRepo.getInternalProductId(productId);
     if (!internalId) return [];

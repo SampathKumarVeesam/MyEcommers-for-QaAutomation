@@ -6,11 +6,13 @@ import { runSeed } from './db/seed.js';
 import { inventoryRepo } from './repositories/inventoryRepo.js';
 import { storeRepo } from './repositories/storeRepo.js';
 import { authRouter } from './routes/auth.js';
+import { adminRouter } from './routes/admin.js';
 import { adminAnalyticsRouter } from './routes/adminAnalytics.js';
 import { cartsRouter } from './routes/carts.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
 import { wishlistRouter } from './routes/wishlist.js';
+import { productRepo } from './repositories/productRepo.js';
 import { DOT_WORKFLOW_DEFINITION, SWAGGER_SPEC } from './swaggerDoc.js';
 
 export function createExpressApp() {
@@ -45,11 +47,65 @@ export function createExpressApp() {
 
   // REST API Routes
   app.use('/api/users', authRouter);
+  app.use('/api/admin', adminRouter);
   app.use('/api/admin/analytics', adminAnalyticsRouter);
   app.use('/api/products', productsRouter);
+  app.use('/api/cart', cartsRouter);
   app.use('/api/carts', cartsRouter);
   app.use('/api/orders', ordersRouter);
   app.use('/api/wishlist', wishlistRouter);
+
+  // Auth direct route aliases
+  app.post('/api/logout', (req, res, next) => authRouter(req, res, next));
+  app.post('/api/register', (req, res, next) => authRouter(req, res, next));
+  app.post('/api/login', (req, res, next) => authRouter(req, res, next));
+
+  // Category Taxonomy Endpoint
+  app.get('/api/categories', (_req, res) => {
+    res.status(200).json({
+      success: true,
+      data: [
+        { id: 'fashion', name: 'Fashion & Apparel', slug: 'fashion', icon: 'shirt', subcategories: ['Men', 'Women', 'Footwear', 'Accessories'] },
+        { id: 'electronics', name: 'Electronics & Gadgets', slug: 'electronics', icon: 'laptop', subcategories: ['Smartphones', 'Audio', 'Laptops', 'Wearables'] },
+        { id: 'audio', name: 'Audio & Acoustics', slug: 'audio', icon: 'headphones', subcategories: ['Headphones', 'Earbuds', 'Speakers', 'Microphones'] },
+        { id: 'beauty', name: 'Beauty & Personal Care', slug: 'beauty', icon: 'sparkles', subcategories: ['Skincare', 'Fragrances', 'Haircare', 'Makeup'] },
+        { id: 'home', name: 'Home & Living', slug: 'home', icon: 'home', subcategories: ['Decor', 'Kitchen', 'Bedding', 'Lighting'] },
+      ],
+    });
+  });
+
+  // Direct Review Endpoints (PUT & DELETE by review ID)
+  app.put('/api/reviews/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating, comment } = req.body || {};
+      const updated = await productRepo.updateReview(id, {
+        rating: rating !== undefined ? parseInt(rating, 10) : undefined,
+        comment,
+      });
+      if (!updated) {
+        res.status(404).json({ success: false, message: `Review with ID '${id}' not found in PostgreSQL` });
+        return;
+      }
+      res.status(200).json({ success: true, message: 'Review updated successfully', data: updated });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: `Failed to update review: ${err.message}` });
+    }
+  });
+
+  app.delete('/api/reviews/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await productRepo.deleteReview(id);
+      if (!deleted) {
+        res.status(404).json({ success: false, message: `Review with ID '${id}' not found in PostgreSQL` });
+        return;
+      }
+      res.status(204).send();
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: `Failed to delete review: ${err.message}` });
+    }
+  });
 
   // Store & Inventory Relational Endpoints
   app.get('/api/stores', async (_req, res) => {

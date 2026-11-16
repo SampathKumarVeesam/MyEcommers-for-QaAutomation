@@ -255,7 +255,7 @@ export class OrderRepository {
     const isNum = !isNaN(Number(id));
     const res = await query(
       `UPDATE "order" 
-       SET status = $1, updated_at = CURRENT_TIMESTAMP 
+       SET status = $1
        WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
        RETURNING *`,
       isNum ? [newStatus, String(id), Number(id)] : [newStatus, String(id)]
@@ -265,6 +265,35 @@ export class OrderRepository {
     const row = res.rows[0];
     const items = await this.getOrderItems(row.id);
     return mapOrderRow(row, items);
+  }
+
+  async cancelOrder(id: string | number): Promise<Order | null> {
+    const order = await this.getOrderById(id);
+    if (!order) return null;
+    if (order.orderStatus === 'cancelled') return order;
+
+    if (order.items && order.items.length > 0) {
+      for (const item of order.items) {
+        try {
+          const internalId = await productRepo.getInternalProductId(item.productId);
+          if (internalId) {
+            await query(
+              `UPDATE inventory SET stock_available = stock_available + $1
+               WHERE product_id = $2 AND store_id = 1`,
+              [item.quantity, internalId]
+            );
+            await query(
+              `UPDATE product SET stock = stock + $1 WHERE id = $2`,
+              [item.quantity, internalId]
+            );
+          }
+        } catch (e) {
+          console.warn('[Cancel Order Stock Restore Error]:', e);
+        }
+      }
+    }
+
+    return await this.updateOrderStatus(id, 'cancelled');
   }
 }
 

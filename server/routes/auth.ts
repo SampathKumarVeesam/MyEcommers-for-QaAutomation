@@ -460,6 +460,14 @@ authRouter.patch('/profile', requireAuth, handleProfileUpdate);
 authRouter.put('/me', requireAuth, handleProfileUpdate);
 authRouter.patch('/me', requireAuth, handleProfileUpdate);
 
+// POST /api/users/logout (Customer & Admin logout session invalidation)
+authRouter.post('/logout', (_req: Request, res: Response): void => {
+  res.status(200).json({
+    success: true,
+    message: 'Logged out successfully',
+  });
+});
+
 // GET /api/users (User management listing)
 authRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {

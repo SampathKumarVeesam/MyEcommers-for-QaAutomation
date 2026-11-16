@@ -1,948 +1,3370 @@
-export const DOT_WORKFLOW_DEFINITION = `
-digraph ShopSphere_E2E_ECommerce_Flow {
-  graph [rankdir=TB, bgcolor="transparent", fontname="Plus Jakarta Sans", nodesep=0.6, ranksep=0.8];
-  node [shape=box, style="filled,rounded", fontname="Plus Jakarta Sans", fontsize=11, margin="0.25,0.15"];
-  edge [fontname="JetBrains Mono", fontsize=9, color="#94a3b8", arrowsize=0.8];
-
-  // --- Subgraph: User Authentication & OIDC ---
-  subgraph cluster_auth {
-    label = "1. Authentication, OIDC & RBAC Layer (PostgreSQL users table)";
-    style = "filled,rounded";
-    color = "#e2e8f0";
-    fillcolor = "#f8fafc";
-    fontname = "Plus Jakarta Sans";
-    fontsize = 13;
-
-    Start [label="START\\nQA Test Session", shape=ellipse, fillcolor="#3b82f6", fontcolor="#ffffff"];
-    Register [label="POST /api/users/register\\nCustomer Registration\\n(Status: 201 -> Zoho Welcome Email)", fillcolor="#eff6ff", color="#3b82f6"];
-    Login [label="POST /api/users/login\\nAuth Credentials\\n(Status: 200 -> 24h JWT Bearer\\n403: Customer Denied in Admin Portal)", fillcolor="#eff6ff", color="#3b82f6"];
-    OAuthProviders [label="GET /api/users/oauth/providers\\nCheck Google & Apple Status", fillcolor="#eff6ff", color="#3b82f6"];
-    OAuthFlow [label="GET /api/users/oauth/login/{provider}\\n3-Legged OIDC Auth Code Flow\\n(PKCE + State Verification)", fillcolor="#eff6ff", color="#3b82f6"];
-    OAuthCallback [label="GET/POST /api/users/oauth/callback/{provider}\\nJWKS Signature Verification & Auto-Registration\\n(Status: 200 -> Zoho Welcome Email)", fillcolor="#eff6ff", color="#3b82f6"];
-    GetMe [label="GET /api/users/me\\nVerify Authenticated Session & Role\\n(Customer / Administrator)", fillcolor="#eff6ff", color="#3b82f6"];
-  }
-
-  // --- Subgraph: Multi-Category Catalog & Inventory ---
-  subgraph cluster_catalog {
-    label = "2. Catalog Browsing & Multi-Store Inventory (product, store, inventory tables)";
-    style = "filled,rounded";
-    color = "#e2e8f0";
-    fillcolor = "#f8fafc";
-    fontname = "Plus Jakarta Sans";
-    fontsize = 13;
-
-    BrowseCatalog [label="GET /api/products\\nBrowse Multi-Category Storefront", fillcolor="#f0fdf4", color="#22c55e"];
-    FilterCategory [label="GET /api/products?category={cat}&page=1\\n(Dresses, Mobiles, Audio, Perfumes)", fillcolor="#f0fdf4", color="#22c55e"];
-    StoreStock [label="GET /api/stores & /api/inventory/:productId\\nMulti-Store Physical Availability", fillcolor="#f0fdf4", color="#22c55e"];
-    SearchFilter [label="Filter Price Range & Sort\\n(Low to High, High to Low, Rating)", fillcolor="#f0fdf4", color="#22c55e"];
-    ViewPDP [label="GET /api/products/:id\\nInspect PDP (Specs, Sizing, Colors, Notes)", fillcolor="#f0fdf4", color="#22c55e"];
-    ProductReviews [label="GET & POST /api/products/:id/reviews\\nCustomer Reviews & Rating Aggregation", fillcolor="#f0fdf4", color="#22c55e"];
-  }
-
-  // --- Subgraph: Cart & Basket Management ---
-  subgraph cluster_cart {
-    label = "3. Basket & Cart Management (cart & wishlist tables in PostgreSQL)";
-    style = "filled,rounded";
-    color = "#e2e8f0";
-    fillcolor = "#f8fafc";
-    fontname = "Plus Jakarta Sans";
-    fontsize = 13;
-
-    InitBasket [label="POST /api/carts\\nInit Unique Basket Session\\n(Status: 201 -> basketId)", fillcolor="#fefce8", color="#eab308"];
-    AddItem [label="POST /api/carts/:basketId\\nAdd/Update Product Variant & Qty\\n(Status: 200: 'item added or updated')", fillcolor="#fefce8", color="#eab308"];
-    GetBasket [label="GET /api/carts/:basketId\\nRetrieve Basket & Total Item Count\\n(Subtotal, Tax, Shipping)", fillcolor="#fefce8", color="#eab308"];
-    DeleteBasketItem [label="DELETE /api/carts/:basketId\\nRemove Item / Clear Cart\\n(Status: 204 No Content)", fillcolor="#fefce8", color="#eab308"];
-    WishlistOps [label="GET/POST/DELETE /api/wishlist\\nCustomer Wishlist Management", fillcolor="#fefce8", color="#eab308"];
-  }
-
-  // --- Subgraph: Multi-Step Checkout & Payment ---
-  subgraph cluster_checkout {
-    label = "4. Checkout & Payment Gateway (order & order_item tables with SQL transactions)";
-    style = "filled,rounded";
-    color = "#e2e8f0";
-    fillcolor = "#f8fafc";
-    fontname = "Plus Jakarta Sans";
-    fontsize = 13;
-
-    AuthGate [label="Checkout Auth Gate\\nCheck Authenticated State\\n(Prompt Login if Guest)", fillcolor="#faf5ff", color="#a855f7"];
-    ShippingStep [label="1. Address Selection & Form Validation\\n(Street, City, Zip, Phone)", fillcolor="#faf5ff", color="#a855f7"];
-    ShippingMethod [label="2. Delivery Method Selection\\n(Standard $0 / Express $14.99)", fillcolor="#faf5ff", color="#a855f7"];
-    PaymentStep [label="3. Payment Method Selection\\n(UPI, Credit/Debit Card, Net Banking, COD)", fillcolor="#faf5ff", color="#a855f7"];
-    OTPStep [label="4. OTP Verification Gate\\nPOST /api/orders/verify-otp (6-Digit Code)", fillcolor="#faf5ff", color="#a855f7"];
-    PlaceOrder [label="POST /api/orders\\nPlace Order (SQL BEGIN/COMMIT, Stock Decrement)\\n(Status: 201 -> Zoho Confirmation Email)", fillcolor="#faf5ff", color="#a855f7"];
-  }
-
-  // --- Subgraph: Post Purchase, Admin & Zoho Notifications ---
-  subgraph cluster_post_purchase {
-    label = "5. Post-Purchase, Admin Analytics & Zoho Notifications";
-    style = "filled,rounded";
-    color = "#e2e8f0";
-    fillcolor = "#f8fafc";
-    fontname = "Plus Jakarta Sans";
-    fontsize = 13;
-
-    ViewOrders [label="GET /api/orders\\nFetch Order History & Tracking from PostgreSQL", fillcolor="#ecfdf5", color="#10b981"];
-    OrderStatus [label="PUT /api/orders/:id/status\\nUpdate Order Status (Processing, Shipped, Delivered)\\n(Status: 200 -> Zoho Status Update Email)", fillcolor="#ecfdf5", color="#10b981"];
-    AdminAnalytics [label="GET /api/admin/analytics/summary & /customers\\nPostgreSQL Sales, Inventory & Customer Analytics", fillcolor="#fff1f2", color="#f43f5e"];
-    ResetDB [label="POST /api/seed/reset\\nRe-run PostgreSQL 18 Migration & Seed DDL\\n(Pristine QA Test Run)", fillcolor="#f1f5f9", color="#64748b"];
-  }
-
-  // Flow Connections
-  Start -> Register [label="New User"];
-  Start -> Login [label="Existing Account"];
-  Start -> OAuthProviders [label="Check OAuth"];
-  OAuthProviders -> OAuthFlow [label="Click Google/Apple"];
-  OAuthFlow -> OAuthCallback [label="Consent Callback"];
-  OAuthCallback -> GetMe [label="Bearer JWT"];
-  Register -> Login [label="Redirect"];
-  Login -> GetMe [label="Bearer JWT"];
-  GetMe -> BrowseCatalog;
-
-  BrowseCatalog -> FilterCategory;
-  FilterCategory -> StoreStock;
-  StoreStock -> SearchFilter;
-  SearchFilter -> ViewPDP;
-  ViewPDP -> ProductReviews;
-
-  ViewPDP -> InitBasket [label="Select Variant"];
-  InitBasket -> AddItem [label="basketId"];
-  AddItem -> GetBasket [label="Inspect Totals"];
-  AddItem -> WishlistOps [label="Save for Later"];
-  GetBasket -> DeleteBasketItem [label="Optional Edit"];
-  DeleteBasketItem -> GetBasket;
-
-  GetBasket -> AuthGate [label="Proceed to Checkout"];
-  AuthGate -> Login [label="If Guest (Prompt Sign In)"];
-  Login -> ShippingStep [label="Resume Checkout"];
-  AuthGate -> ShippingStep [label="If Authenticated"];
-
-  ShippingStep -> ShippingMethod;
-  ShippingMethod -> PaymentStep;
-  PaymentStep -> OTPStep [label="Gateway Verify"];
-  OTPStep -> PlaceOrder [label="OTP Accepted"];
-
-  PlaceOrder -> ViewOrders [label="Order Confirmed"];
-  PlaceOrder -> OrderStatus [label="Admin Fulfillment"];
-  OrderStatus -> AdminAnalytics [label="KPI Aggregation"];
-  AdminAnalytics -> ResetDB [label="QA Teardown"];
-}
-`;
+export const DOT_WORKFLOW_DEFINITION = "digraph ShopSphere_E2E_ECommerce_Flow {\n  graph [rankdir=TB, bgcolor=\"transparent\", fontname=\"Plus Jakarta Sans\", nodesep=0.6, ranksep=0.8];\n  node [shape=box, style=\"filled,rounded\", fontname=\"Plus Jakarta Sans\", fontsize=11, margin=\"0.25,0.15\"];\n  edge [fontname=\"JetBrains Mono\", fontsize=9, color=\"#94a3b8\", arrowsize=0.8];\n\n  // --- Subgraph: User Authentication & OIDC ---\n  subgraph cluster_auth {\n    label = \"1. Customer & Admin Authentication (PostgreSQL users table)\";\n    style = \"filled,rounded\";\n    color = \"#e2e8f0\";\n    fillcolor = \"#f8fafc\";\n    fontname = \"Plus Jakarta Sans\";\n    fontsize = 13;\n\n    Start [label=\"START\\nQA Test Session\", shape=ellipse, fillcolor=\"#3b82f6\", fontcolor=\"#ffffff\"];\n    Register [label=\"POST /api/users/register\\nCustomer Registration\\n(Status: 201 -> Welcome Email)\", fillcolor=\"#eff6ff\", color=\"#3b82f6\"];\n    Login [label=\"POST /api/users/login\\nAuth Credentials\\n(Status: 200 -> 24h JWT Bearer\\n403: Customer Denied in Admin Portal)\", fillcolor=\"#eff6ff\", color=\"#3b82f6\"];\n    OAuthProviders [label=\"GET /api/users/auth/providers\\nCheck Google & Apple Status\", fillcolor=\"#eff6ff\", color=\"#3b82f6\"];\n    OAuthFlow [label=\"GET /api/users/auth/login/{provider}\\n3-Legged OIDC Auth Code Flow\", fillcolor=\"#eff6ff\", color=\"#3b82f6\"];\n    OAuthCallback [label=\"GET/POST /api/users/auth/callback/{provider}\\nJWKS Verification & Auto-Registration\", fillcolor=\"#eff6ff\", color=\"#3b82f6\"];\n    GetMe [label=\"GET /api/users/me\\nVerify Authenticated Session & Role\\n(Customer / Administrator)\", fillcolor=\"#eff6ff\", color=\"#3b82f6\"];\n  }\n\n  // --- Subgraph: Multi-Category Catalog & Inventory ---\n  subgraph cluster_catalog {\n    label = \"2. Catalog Browsing & Multi-Store Inventory (product, store, inventory tables)\";\n    style = \"filled,rounded\";\n    color = \"#e2e8f0\";\n    fillcolor = \"#f8fafc\";\n    fontname = \"Plus Jakarta Sans\";\n    fontsize = 13;\n\n    BrowseCatalog [label=\"GET /api/products\\nBrowse Multi-Category Storefront\", fillcolor=\"#f0fdf4\", color=\"#22c55e\"];\n    Categories [label=\"GET /api/categories\\nTaxonomy & Hierarchies\", fillcolor=\"#f0fdf4\", color=\"#22c55e\"];\n    StoreStock [label=\"GET /api/stores & /api/inventory/:productId\\nMulti-Store Physical Availability\", fillcolor=\"#f0fdf4\", color=\"#22c55e\"];\n    ViewPDP [label=\"GET /api/products/:id & /products/slug/:slug\\nInspect PDP (Specs, Sizing, Colors)\", fillcolor=\"#f0fdf4\", color=\"#22c55e\"];\n    ProductReviews [label=\"GET & POST /api/products/:id/reviews\\nCustomer Reviews & Rating Aggregation\", fillcolor=\"#f0fdf4\", color=\"#22c55e\"];\n  }\n\n  // --- Subgraph: Cart & Basket Management ---\n  subgraph cluster_cart {\n    label = \"3. Basket & Cart Management (cart & wishlist tables in PostgreSQL)\";\n    style = \"filled,rounded\";\n    color = \"#e2e8f0\";\n    fillcolor = \"#f8fafc\";\n    fontname = \"Plus Jakarta Sans\";\n    fontsize = 13;\n\n    InitBasket [label=\"POST /api/cart & /api/carts\\nAdd Item or Init Basket Session\", fillcolor=\"#fefce8\", color=\"#eab308\"];\n    GetBasket [label=\"GET /api/cart & /api/carts/:basketId\\nRetrieve Cart & Total Item Count\", fillcolor=\"#fefce8\", color=\"#eab308\"];\n    UpdateCart [label=\"PATCH /api/cart/:itemId\\nUpdate Quantity & Options\", fillcolor=\"#fefce8\", color=\"#eab308\"];\n    DeleteBasketItem [label=\"DELETE /api/cart/:itemId & /api/cart\\nRemove Item / Clear Cart\", fillcolor=\"#fefce8\", color=\"#eab308\"];\n    WishlistOps [label=\"GET/POST/DELETE /api/wishlist\\nCustomer Wishlist Management\", fillcolor=\"#fefce8\", color=\"#eab308\"];\n  }\n\n  // --- Subgraph: Multi-Step Checkout & Payment ---\n  subgraph cluster_checkout {\n    label = \"4. Checkout & Payment Gateway (order & order_item tables with SQL transactions)\";\n    style = \"filled,rounded\";\n    color = \"#e2e8f0\";\n    fillcolor = \"#f8fafc\";\n    fontname = \"Plus Jakarta Sans\";\n    fontsize = 13;\n\n    AuthGate [label=\"Checkout Auth Gate\\nCheck Authenticated State\\n(Prompt Login if Guest)\", fillcolor=\"#faf5ff\", color=\"#a855f7\"];\n    ShippingStep [label=\"1. Address Selection & Form Validation\", fillcolor=\"#faf5ff\", color=\"#a855f7\"];\n    ShippingMethod [label=\"2. Delivery Method Selection\", fillcolor=\"#faf5ff\", color=\"#a855f7\"];\n    PaymentStep [label=\"3. Payment Method Selection\", fillcolor=\"#faf5ff\", color=\"#a855f7\"];\n    OTPStep [label=\"4. OTP Verification Gate\\nPOST /api/orders/verify-otp (6-Digit Code)\", fillcolor=\"#faf5ff\", color=\"#a855f7\"];\n    PlaceOrder [label=\"POST /api/orders\\nPlace Order (SQL Atomic Decrement)\\n(Status: 201 -> Confirmation Email)\", fillcolor=\"#faf5ff\", color=\"#a855f7\"];\n  }\n\n  // --- Subgraph: Post Purchase, Admin & Zoho Notifications ---\n  subgraph cluster_admin {\n    label = \"5. Admin Dashboard, Inventory & Moderation (Admin JWT)\";\n    style = \"filled,rounded\";\n    color = \"#fee2e2\";\n    fillcolor = \"#fff5f5\";\n    fontname = \"Plus Jakarta Sans\";\n    fontsize = 13;\n\n    AdminAnalytics [label=\"GET /api/admin/analytics/summary\\nSales, Customers & Order Totals\", fillcolor=\"#fee2e2\", color=\"#ef4444\"];\n    AdminProducts [label=\"POST/PUT/DELETE /api/admin/products\\nProduct Catalog Management\", fillcolor=\"#fee2e2\", color=\"#ef4444\"];\n    AdminInventory [label=\"GET & PATCH /api/admin/inventory\\nStock Levels & Low Stock Alerts\", fillcolor=\"#fee2e2\", color=\"#ef4444\"];\n    AdminOrders [label=\"GET & PATCH /api/admin/orders\\nOrder Status Lifecycle & Emails\", fillcolor=\"#fee2e2\", color=\"#ef4444\"];\n    AdminUsers [label=\"GET/PATCH/DELETE /api/admin/users\\nUser Management & Role Assignment\", fillcolor=\"#fee2e2\", color=\"#ef4444\"];\n    AdminReviews [label=\"GET & DELETE /api/admin/reviews\\nReview Moderation\", fillcolor=\"#fee2e2\", color=\"#ef4444\"];\n  }\n\n  // Flow Connections\n  Start -> Register [label=\"New User\"];\n  Start -> Login [label=\"Existing Account\"];\n  Start -> OAuthProviders [label=\"Check OAuth\"];\n  OAuthProviders -> OAuthFlow [label=\"Click Google/Apple\"];\n  OAuthFlow -> OAuthCallback [label=\"Consent Callback\"];\n  OAuthCallback -> GetMe [label=\"Bearer JWT\"];\n  Register -> Login [label=\"Redirect\"];\n  Login -> GetMe [label=\"Bearer JWT\"];\n  GetMe -> BrowseCatalog;\n  BrowseCatalog -> Categories;\n  BrowseCatalog -> StoreStock;\n  BrowseCatalog -> ViewPDP;\n  ViewPDP -> ProductReviews;\n  ViewPDP -> InitBasket [label=\"Add to Cart\"];\n  InitBasket -> GetBasket;\n  GetBasket -> UpdateCart;\n  GetBasket -> DeleteBasketItem;\n  GetBasket -> WishlistOps;\n  GetBasket -> AuthGate [label=\"Proceed to Checkout\"];\n  AuthGate -> ShippingStep [label=\"Customer Authenticated\"];\n  ShippingStep -> ShippingMethod;\n  ShippingMethod -> PaymentStep;\n  PaymentStep -> OTPStep [label=\"Gateway Verify\"];\n  OTPStep -> PlaceOrder [label=\"OTP Accepted\"];\n  PlaceOrder -> AdminOrders [label=\"Order Fulfillment\"];\n  AdminOrders -> AdminInventory [label=\"Stock Sync\"];\n  AdminInventory -> AdminAnalytics [label=\"KPI Aggregation\"];\n}";
 
 export const SWAGGER_SPEC = {
-  openapi: '3.0.3',
-  info: {
-    title: 'ShopSphere PostgreSQL 18 Multi-Category E-Commerce & QA API',
-    version: '2.4.0',
-    description: `Production-ready REST API for ShopSphere, fully backed by PostgreSQL 18 ('DataBase_for_SamEcommers'). Features relational 7-table schema, atomic SQL transactions, multi-store physical inventory, 3-legged OAuth 2.0 / OIDC flow (Google & Apple), 2FA Gateway OTP verification, Zoho SMTP email notifications, strict Admin RBAC, and automated QA database seed resets.`,
-    contact: {
-      name: 'QA Automation & Database Architecture Team',
-      email: 'admin@practicesoftwaretesting.com',
-    },
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ShopSphere Full-Stack E-Commerce & Admin API (OpenAPI 3.0)",
+    "version": "3.0.0",
+    "description": "Complete REST API specification covering both **Customer POV** and **Admin POV** workflows, fully synchronized with the Express backend and PostgreSQL 18 database ('DataBase_for_SamEcommers').\n\n### Features & Architecture:\n- **Customer POV:** User Authentication, OIDC SSO (Google & Apple), Catalog Filters & Search, Categories, Physical Store Inventory, PDP Reviews, Persistent Cart & Wishlist, Multi-Step Checkout with OTP gate, and Customer Order History.\n- **Admin POV [Requires Admin JWT]:** Product Management (Create/Update/Delete/Featured), Multi-Store Inventory & Stock Alerts, Platform Order Fulfillment & Zoho Email Automation, Customer & User Management with Role Updates, Review Moderation, and Real-Time Analytics KPIs.\n- **Security:** Standard HTTP Bearer JWT authentication for authorized customer and administrator actions.",
+    "contact": {
+      "name": "QA Automation & Database Architecture Team",
+      "email": "admin@practicesoftwaretesting.com"
+    }
   },
-  servers: [
+  "servers": [
     {
-      url: '/api',
-      description: 'Local & Production PostgreSQL 18 Express Backend API',
-    },
+      "url": "/api",
+      "description": "Production & Local Express Backend API"
+    }
   ],
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Enter your 24-hour JWT token obtained from /api/users/login or /api/users/oauth',
-      },
+  "tags": [
+    {
+      "name": "Customer - Auth",
+      "description": "Customer registration, login, logout, profile, and OIDC SSO authentication"
     },
-    schemas: {
-      UserRegisterRequest: {
-        type: 'object',
-        required: ['name', 'email', 'password'],
-        properties: {
-          name: { type: 'string', example: 'Jane Customer' },
-          email: { type: 'string', format: 'email', example: 'customer@practicesoftwaretesting.com' },
-          password: { type: 'string', example: 'User01' },
-          phone: { type: 'string', example: '+1 (555) 482-9102' },
-          role: { type: 'string', enum: ['customer', 'admin'], example: 'customer' },
-        },
-      },
-      UserLoginRequest: {
-        type: 'object',
-        required: ['password'],
-        properties: {
-          email: { type: 'string', format: 'email', example: 'admin@practicesoftwaretesting.com' },
-          username: { type: 'string', example: 'admin' },
-          password: { type: 'string', example: 'Sampath@123' },
-          portal: { type: 'string', enum: ['customer', 'admin'], example: 'admin' },
-          requiredRole: { type: 'string', enum: ['customer', 'admin'], example: 'admin' },
-        },
-      },
-      OAuthProviderConfig: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', example: true },
-          providers: {
-            type: 'object',
-            properties: {
-              google: { type: 'boolean', example: true },
-              apple: { type: 'boolean', example: false },
-            },
-          },
-        },
-      },
-      OAuthInitRequest: {
-        type: 'object',
-        required: ['provider'],
-        properties: {
-          provider: { type: 'string', enum: ['google', 'apple'], example: 'google' },
-          redirectUri: { type: 'string', example: 'https://samecommers.netlify.app' },
-        },
-      },
-      UserProfileUpdateRequest: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', example: 'Jane Customer Updated' },
-          phone: { type: 'string', example: '+1 (555) 999-8888' },
-          avatar: { type: 'string', example: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80' },
-          address: {
-            type: 'object',
-            properties: {
-              street: { type: 'string', example: '123 New Address St' },
-              city: { type: 'string', example: 'Austin' },
-              state: { type: 'string', example: 'TX' },
-              postalCode: { type: 'string', example: '78701' },
-              country: { type: 'string', example: 'United States' },
-            },
-          },
-        },
-      },
-      Product: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', example: 'prod_fash_01' },
-          title: { type: 'string', example: 'Silk Evening Flared Wrap Dress' },
-          slug: { type: 'string', example: 'silk-evening-flared-wrap-dress' },
-          category: { type: 'string', enum: ['fashion', 'electronics', 'audio', 'beauty'] },
-          subcategory: { type: 'string', example: 'Dresses' },
-          price: { type: 'number', example: 189.99 },
-          stock: { type: 'integer', example: 24 },
-          rating: { type: 'number', example: 4.8 },
-          reviewsCount: { type: 'integer', example: 12 },
-          images: { type: 'array', items: { type: 'string' } },
-          description: { type: 'string' },
-          specifications: { type: 'object' },
-        },
-      },
-      Store: {
-        type: 'object',
-        properties: {
-          id: { type: 'integer', example: 1 },
-          name: { type: 'string', example: 'ShopSphere Austin Flagship' },
-          address: { type: 'string', example: '742 Evergreen Terrace, Austin, TX 78701' },
-          phone: { type: 'string', example: '+1 (555) 482-9102' },
-          createdAt: { type: 'string', format: 'date-time' },
-        },
-      },
-      InventoryItem: {
-        type: 'object',
-        properties: {
-          productId: { type: 'integer', example: 1 },
-          productCode: { type: 'string', example: 'prod_fash_01' },
-          storeId: { type: 'integer', example: 1 },
-          storeName: { type: 'string', example: 'ShopSphere Austin Flagship' },
-          stockAvailable: { type: 'integer', example: 24 },
-        },
-      },
-      BasketItemRequest: {
-        type: 'object',
-        required: ['productId'],
-        properties: {
-          productId: { type: 'string', example: 'prod_elec_01' },
-          quantity: { type: 'integer', example: 1 },
-          selectedVariant: { type: 'string', example: '256GB / Natural Titanium' },
-          selectedColor: { type: 'string', example: 'Natural Titanium' },
-          selectedSize: { type: 'string', example: 'M' },
-          storeId: { type: 'integer', example: 1, description: 'Optional physical retail store ID' },
-        },
-      },
-      VerifyOtpRequest: {
-        type: 'object',
-        required: ['otpCode'],
-        properties: {
-          otpCode: { type: 'string', example: '123456', description: '6-digit verification code' },
-        },
-      },
-      OrderCreateRequest: {
-        type: 'object',
-        required: ['basketId', 'shippingAddress', 'shippingMethod', 'paymentMethod'],
-        properties: {
-          basketId: { type: 'string', example: 'basket_3a8f901b' },
-          shippingAddress: {
-            type: 'object',
-            required: ['fullName', 'street', 'city', 'state', 'postalCode', 'country'],
-            properties: {
-              fullName: { type: 'string', example: 'Sampath Kumar' },
-              street: { type: 'string', example: '450 Tech Innovation Way' },
-              city: { type: 'string', example: 'San Francisco' },
-              state: { type: 'string', example: 'CA' },
-              postalCode: { type: 'string', example: '94105' },
-              country: { type: 'string', example: 'United States' },
-              phone: { type: 'string', example: '+1 (555) 019-2834' },
-            },
-          },
-          shippingMethod: { type: 'string', enum: ['standard', 'express', 'priority'], example: 'express' },
-          paymentMethod: { type: 'string', enum: ['upi', 'credit_card', 'net_banking', 'cod'], example: 'credit_card' },
-          otpCode: { type: 'string', example: '123456' },
-        },
-      },
-      OrderStatusUpdateRequest: {
-        type: 'object',
-        required: ['status'],
-        properties: {
-          status: {
-            type: 'string',
-            enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-            example: 'shipped',
-          },
-        },
-      },
+    {
+      "name": "Customer - Products",
+      "description": "Product catalog browsing, search, categories, store inventory, and PDP customer reviews"
     },
+    {
+      "name": "Customer - Cart & Wishlist",
+      "description": "Shopping cart operations, basket sessions, item quantities, and user wishlist"
+    },
+    {
+      "name": "Customer - Orders",
+      "description": "Multi-step checkout, OTP verification gate, order placement, and customer order history"
+    },
+    {
+      "name": "Admin - Products",
+      "description": "[Requires Admin JWT] Administrator product catalog creation, updates, and deletion"
+    },
+    {
+      "name": "Admin - Inventory",
+      "description": "[Requires Admin JWT] Multi-store stock adjustments, inventory monitoring, and low-stock alerts"
+    },
+    {
+      "name": "Admin - Orders",
+      "description": "[Requires Admin JWT] Platform-wide order management, status updates, and automated notifications"
+    },
+    {
+      "name": "Admin - Users & Analytics",
+      "description": "[Requires Admin JWT] Customer activity metrics, user role management, platform analytics KPI summary, and store settings"
+    },
+    {
+      "name": "Admin - Reviews & Moderation",
+      "description": "[Requires Admin JWT] Review inspection, moderation, and content removal"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your 24-hour JWT token obtained from POST /users/login or POST /users/oauth. Admin endpoints require a token from an account with role: admin."
+      }
+    },
+    "schemas": {
+      "AuthLoginDTO": {
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "customer@practicesoftwaretesting.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "example": "User01"
+          },
+          "portal": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "admin"
+            ],
+            "example": "customer"
+          },
+          "requiredRole": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "admin"
+            ],
+            "example": "customer"
+          }
+        }
+      },
+      "AuthRegisterDTO": {
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Jane Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "jane.doe@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "SecurePass123!"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1 (555) 382-9912"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "admin"
+            ],
+            "default": "customer",
+            "example": "customer"
+          }
+        }
+      },
+      "UserProfileDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user_a9f12b48"
+          },
+          "name": {
+            "type": "string",
+            "example": "Jane Doe"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "jane.doe@example.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "janedoe"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "admin"
+            ],
+            "example": "customer"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1 (555) 382-9912"
+          },
+          "avatar": {
+            "type": "string",
+            "example": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "street": {
+                "type": "string",
+                "example": "123 Market Street"
+              },
+              "city": {
+                "type": "string",
+                "example": "San Francisco"
+              },
+              "state": {
+                "type": "string",
+                "example": "CA"
+              },
+              "postalCode": {
+                "type": "string",
+                "example": "94105"
+              },
+              "country": {
+                "type": "string",
+                "example": "United States"
+              }
+            }
+          }
+        }
+      },
+      "ProductDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "prod_f4b7a1"
+          },
+          "title": {
+            "type": "string",
+            "example": "Floral Summer Dress"
+          },
+          "slug": {
+            "type": "string",
+            "example": "floral-summer-dress"
+          },
+          "price": {
+            "type": "number",
+            "example": 79.99
+          },
+          "compareAtPrice": {
+            "type": "number",
+            "example": 99.99
+          },
+          "category": {
+            "type": "string",
+            "example": "fashion"
+          },
+          "subcategory": {
+            "type": "string",
+            "example": "Dresses"
+          },
+          "description": {
+            "type": "string",
+            "example": "Lightweight and breathable floral sundress for warm summer days."
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80"
+            ]
+          },
+          "stock": {
+            "type": "integer",
+            "example": 25
+          },
+          "rating": {
+            "type": "number",
+            "example": 4.8
+          },
+          "reviewsCount": {
+            "type": "integer",
+            "example": 14
+          },
+          "featured": {
+            "type": "boolean",
+            "example": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "summer",
+              "floral",
+              "trending"
+            ]
+          },
+          "specifications": {
+            "type": "object",
+            "example": {
+              "Material": "100% Organic Cotton",
+              "Fit": "Relaxed"
+            }
+          }
+        }
+      },
+      "ProductListResponseDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductDTO"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "example": 36
+              },
+              "page": {
+                "type": "integer",
+                "example": 1
+              },
+              "totalPages": {
+                "type": "integer",
+                "example": 3
+              },
+              "limit": {
+                "type": "integer",
+                "example": 12
+              }
+            }
+          }
+        }
+      },
+      "CreateReviewDTO": {
+        "type": "object",
+        "required": [
+          "userName",
+          "rating",
+          "comment"
+        ],
+        "properties": {
+          "userName": {
+            "type": "string",
+            "example": "Alex Smith"
+          },
+          "userEmail": {
+            "type": "string",
+            "format": "email",
+            "example": "alex.smith@example.com"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "example": 5
+          },
+          "comment": {
+            "type": "string",
+            "example": "Exceptional material quality, fits true to size and arrived ahead of schedule!"
+          }
+        }
+      },
+      "ReviewResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "rev_m3x8y9"
+          },
+          "productId": {
+            "type": "string",
+            "example": "prod_f4b7a1"
+          },
+          "userName": {
+            "type": "string",
+            "example": "Alex Smith"
+          },
+          "userEmail": {
+            "type": "string",
+            "example": "alex.smith@example.com"
+          },
+          "rating": {
+            "type": "integer",
+            "example": 5
+          },
+          "comment": {
+            "type": "string",
+            "example": "Exceptional material quality, fits true to size."
+          },
+          "verifiedPurchase": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-16T10:00:00.000Z"
+          }
+        }
+      },
+      "AddToCartDTO": {
+        "type": "object",
+        "required": [
+          "productId"
+        ],
+        "properties": {
+          "productId": {
+            "type": "string",
+            "example": "prod_f4b7a1"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "example": 2
+          },
+          "selectedVariant": {
+            "type": "string",
+            "example": "Medium / Rose Red"
+          },
+          "selectedColor": {
+            "type": "string",
+            "example": "Rose Red"
+          },
+          "selectedSize": {
+            "type": "string",
+            "example": "M"
+          },
+          "storeId": {
+            "type": "integer",
+            "example": 1
+          },
+          "basketId": {
+            "type": "string",
+            "example": "basket_8df7a2b91c"
+          }
+        }
+      },
+      "UpdateCartItemDTO": {
+        "type": "object",
+        "required": [
+          "quantity"
+        ],
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 3
+          },
+          "selectedVariant": {
+            "type": "string",
+            "example": "Large / Navy Blue"
+          },
+          "basketId": {
+            "type": "string",
+            "example": "basket_8df7a2b91c"
+          }
+        }
+      },
+      "WishlistItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "wishlist_18"
+          },
+          "productId": {
+            "type": "string",
+            "example": "prod_f4b7a1"
+          },
+          "productName": {
+            "type": "string",
+            "example": "Floral Summer Dress"
+          },
+          "price": {
+            "type": "number",
+            "example": 79.99
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-16T12:00:00.000Z"
+          }
+        }
+      },
+      "CreateOrderDTO": {
+        "type": "object",
+        "required": [
+          "basketId",
+          "shippingAddress"
+        ],
+        "properties": {
+          "basketId": {
+            "type": "string",
+            "example": "basket_8df7a2b91c"
+          },
+          "shippingAddress": {
+            "type": "object",
+            "required": [
+              "fullName",
+              "street",
+              "city",
+              "postalCode"
+            ],
+            "properties": {
+              "fullName": {
+                "type": "string",
+                "example": "Sampath Kumar"
+              },
+              "street": {
+                "type": "string",
+                "example": "100 Tech Boulevard, Suite 400"
+              },
+              "city": {
+                "type": "string",
+                "example": "Austin"
+              },
+              "state": {
+                "type": "string",
+                "example": "TX"
+              },
+              "postalCode": {
+                "type": "string",
+                "example": "78701"
+              },
+              "country": {
+                "type": "string",
+                "example": "United States"
+              }
+            }
+          },
+          "shippingMethod": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "express",
+              "priority"
+            ],
+            "default": "standard",
+            "example": "standard"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "credit_card",
+              "upi",
+              "net_banking",
+              "cod"
+            ],
+            "default": "credit_card",
+            "example": "credit_card"
+          },
+          "userEmail": {
+            "type": "string",
+            "format": "email",
+            "example": "customer@practicesoftwaretesting.com"
+          },
+          "userName": {
+            "type": "string",
+            "example": "Sampath Kumar"
+          }
+        }
+      },
+      "OrderResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "24"
+          },
+          "orderNumber": {
+            "type": "string",
+            "example": "ORD-2026-78491"
+          },
+          "userId": {
+            "type": "string",
+            "example": "user_a9f12b48"
+          },
+          "userEmail": {
+            "type": "string",
+            "example": "customer@practicesoftwaretesting.com"
+          },
+          "userName": {
+            "type": "string",
+            "example": "Sampath Kumar"
+          },
+          "orderStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "shipped",
+              "delivered",
+              "cancelled"
+            ],
+            "example": "processing"
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 179.98
+          },
+          "subtotal": {
+            "type": "number",
+            "example": 159.98
+          },
+          "tax": {
+            "type": "number",
+            "example": 12.8
+          },
+          "shippingFee": {
+            "type": "number",
+            "example": 7.2
+          },
+          "shippingMethod": {
+            "type": "string",
+            "example": "standard"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "example": "credit_card"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "paid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 42
+                },
+                "productId": {
+                  "type": "string",
+                  "example": "prod_f4b7a1"
+                },
+                "productName": {
+                  "type": "string",
+                  "example": "Floral Summer Dress"
+                },
+                "price": {
+                  "type": "number",
+                  "example": 79.99
+                },
+                "quantity": {
+                  "type": "integer",
+                  "example": 2
+                }
+              }
+            }
+          },
+          "shippingAddress": {
+            "type": "object",
+            "properties": {
+              "fullName": {
+                "type": "string",
+                "example": "Sampath Kumar"
+              },
+              "street": {
+                "type": "string",
+                "example": "100 Tech Boulevard"
+              },
+              "city": {
+                "type": "string",
+                "example": "Austin"
+              },
+              "state": {
+                "type": "string",
+                "example": "TX"
+              },
+              "postalCode": {
+                "type": "string",
+                "example": "78701"
+              },
+              "country": {
+                "type": "string",
+                "example": "United States"
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-16T14:30:00.000Z"
+          }
+        }
+      },
+      "CreateProductDTO": {
+        "type": "object",
+        "required": [
+          "title",
+          "price",
+          "category"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Noise Cancelling Wireless Headphones"
+          },
+          "slug": {
+            "type": "string",
+            "example": "noise-cancelling-wireless-headphones"
+          },
+          "price": {
+            "type": "number",
+            "example": 199.99
+          },
+          "compareAtPrice": {
+            "type": "number",
+            "example": 249.99
+          },
+          "category": {
+            "type": "string",
+            "example": "audio"
+          },
+          "subcategory": {
+            "type": "string",
+            "example": "Headphones"
+          },
+          "description": {
+            "type": "string",
+            "example": "Industry-leading active noise cancellation with 40-hour battery life."
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+            ]
+          },
+          "stock": {
+            "type": "integer",
+            "example": 40
+          },
+          "featured": {
+            "type": "boolean",
+            "example": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "audio",
+              "bluetooth",
+              "wireless"
+            ]
+          },
+          "specifications": {
+            "type": "object",
+            "example": {
+              "Battery": "40 Hours",
+              "Bluetooth": "5.3",
+              "ANC": "Hybrid"
+            }
+          }
+        }
+      },
+      "UpdateProductDTO": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Noise Cancelling Wireless Headphones Pro"
+          },
+          "price": {
+            "type": "number",
+            "example": 189.99
+          },
+          "compareAtPrice": {
+            "type": "number",
+            "example": 239.99
+          },
+          "category": {
+            "type": "string",
+            "example": "audio"
+          },
+          "subcategory": {
+            "type": "string",
+            "example": "Headphones"
+          },
+          "description": {
+            "type": "string",
+            "example": "Updated pro audio model with custom spatial sound profile."
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stock": {
+            "type": "integer",
+            "example": 50
+          },
+          "featured": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "UpdateInventoryDTO": {
+        "type": "object",
+        "required": [
+          "stock"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "integer",
+            "default": 1,
+            "example": 1
+          },
+          "stock": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 75
+          }
+        }
+      },
+      "InventoryResponseDTO": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "integer",
+            "example": 1
+          },
+          "productCode": {
+            "type": "string",
+            "example": "prod_f4b7a1"
+          },
+          "productName": {
+            "type": "string",
+            "example": "Floral Summer Dress"
+          },
+          "category": {
+            "type": "string",
+            "example": "fashion"
+          },
+          "price": {
+            "type": "number",
+            "example": 79.99
+          },
+          "storeId": {
+            "type": "integer",
+            "example": 1
+          },
+          "storeName": {
+            "type": "string",
+            "example": "Downtown Flagship Store"
+          },
+          "stockAvailable": {
+            "type": "integer",
+            "example": 25
+          },
+          "isLowStock": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "UpdateOrderStatusDTO": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "out_for_delivery",
+              "shipped",
+              "delivered",
+              "cancelled"
+            ],
+            "example": "shipped"
+          }
+        }
+      },
+      "AdminOrderResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "24"
+          },
+          "orderNumber": {
+            "type": "string",
+            "example": "ORD-2026-78491"
+          },
+          "userId": {
+            "type": "string",
+            "example": "1"
+          },
+          "userEmail": {
+            "type": "string",
+            "example": "customer@practicesoftwaretesting.com"
+          },
+          "userName": {
+            "type": "string",
+            "example": "Sampath Kumar"
+          },
+          "orderStatus": {
+            "type": "string",
+            "example": "shipped"
+          },
+          "totalAmount": {
+            "type": "number",
+            "example": 179.98
+          },
+          "paymentStatus": {
+            "type": "string",
+            "example": "paid"
+          },
+          "shippingMethod": {
+            "type": "string",
+            "example": "standard"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-16T14:30:00.000Z"
+          }
+        }
+      },
+      "UpdateUserRoleDTO": {
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "admin"
+            ],
+            "example": "admin"
+          }
+        }
+      },
+      "AdminUserResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user_a9f12b48"
+          },
+          "numericId": {
+            "type": "integer",
+            "example": 4
+          },
+          "name": {
+            "type": "string",
+            "example": "Jane Customer"
+          },
+          "username": {
+            "type": "string",
+            "example": "janecustomer"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "customer@practicesoftwaretesting.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "admin"
+            ],
+            "example": "customer"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1 (555) 482-9102"
+          },
+          "avatar": {
+            "type": "string",
+            "example": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80"
+          },
+          "ordersCount": {
+            "type": "integer",
+            "example": 5
+          },
+          "totalSpent": {
+            "type": "number",
+            "example": 849.5
+          },
+          "cartItemsCount": {
+            "type": "integer",
+            "example": 2
+          },
+          "wishlistItemsCount": {
+            "type": "integer",
+            "example": 3
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-10T08:00:00.000Z"
+          }
+        }
+      },
+      "AnalyticsSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "totalCustomers": {
+            "type": "integer",
+            "example": 12
+          },
+          "totalOrders": {
+            "type": "integer",
+            "example": 48
+          },
+          "totalSales": {
+            "type": "number",
+            "example": 6842.5
+          },
+          "totalCartItems": {
+            "type": "integer",
+            "example": 16
+          },
+          "totalWishlistItems": {
+            "type": "integer",
+            "example": 27
+          }
+        }
+      },
+      "UpdateStoreDTO": {
+        "type": "object",
+        "properties": {
+          "storeId": {
+            "type": "integer",
+            "default": 1,
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "ShopSphere Flagship Store - San Francisco"
+          },
+          "address": {
+            "type": "string",
+            "example": "500 Howard Street, San Francisco, CA 94105"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1 (415) 555-0199"
+          }
+        }
+      },
+      "ApiResponseMessage": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "ErrorResponse400": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed. Required fields are missing."
+          },
+          "errors": {
+            "type": "object",
+            "example": {
+              "email": "Invalid email address format"
+            }
+          }
+        }
+      },
+      "ErrorResponse401": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Unauthorized. Authentication token is missing or expired."
+          }
+        }
+      },
+      "ErrorResponse403": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Forbidden. Administrator privileges required."
+          }
+        }
+      },
+      "ErrorResponse404": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Requested resource was not found in PostgreSQL database."
+          }
+        }
+      }
+    }
   },
-  paths: {
-    '/users/register': {
-      post: {
-        tags: ['Authentication & Users'],
-        summary: 'Register a new customer account in PostgreSQL',
-        description: 'Creates new user record in PostgreSQL users table, issues a 24-hour JWT token, and dispatches a Welcome Email via Zoho SMTP in the background.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/UserRegisterRequest' },
+  "paths": {
+    "/users/register": {
+      "post": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Register new customer account",
+        "description": "Creates a new customer profile in PostgreSQL (status 201) and triggers asynchronous Zoho welcome confirmation email.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRegisterDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or duplicate email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Authenticate customer or administrator credentials",
+        "description": "Validates user credentials against PostgreSQL hashed password and generates a signed 24-hour JWT Bearer token. Enforces strict role isolation (standard customers are rejected when attempting to authenticate on the Admin Portal).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful with JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/UserProfileDTO"
+                        },
+                        "token": {
+                          "type": "string",
+                          "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        },
+                        "expiresIn": {
+                          "type": "string",
+                          "example": "24h"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or inactive account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role access denied (e.g. standard customer attempting Admin Portal login)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse403"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/logout": {
+      "post": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Invalidate customer or administrator session",
+        "description": "Terminates active session and confirms client-side JWT token discarding.",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Get current authenticated user profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/UserProfileDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/profile": {
+      "put": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Update customer profile and shipping defaults",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserProfileDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/auth/providers": {
+      "get": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Check Google & Apple OIDC SSO status",
+        "responses": {
+          "200": {
+            "description": "List of enabled OAuth/OIDC identity providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "google"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Google"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "example": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": [
+          "Customer - Products"
+        ],
+        "summary": "Browse catalog with search, price filters, and pagination",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "schema": {
+              "type": "string"
             },
+            "example": "fashion"
           },
-        },
-        responses: {
-          '201': {
-            description: 'User created successfully in PostgreSQL. Welcome email dispatched.',
-          },
-          '400': {
-            description: 'Validation failed or email already registered',
-          },
-        },
-      },
-    },
-    '/users/login': {
-      post: {
-        tags: ['Authentication & Users'],
-        summary: 'Authenticate user with email/username and password (24h JWT Bearer Token)',
-        description: 'Authenticates credentials against PostgreSQL public.users. Enforces strict role isolation: returns 403 Forbidden if standard customer credentials attempt access via portal="admin".',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/UserLoginRequest' },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
             },
+            "example": "dress"
           },
-        },
-        responses: {
-          '200': {
-            description: 'Authentication successful. Returns 24h JWT token and user profile object.',
-          },
-          '400': {
-            description: 'Missing identifier or password',
-          },
-          '401': {
-            description: 'Invalid email/username or password',
-          },
-          '403': {
-            description: 'Access denied: Customer credentials cannot access the Administrator portal.',
-          },
-        },
-      },
-    },
-    '/users/me': {
-      get: {
-        tags: ['Authentication & Users'],
-        summary: 'Get authenticated user session profile from PostgreSQL',
-        security: [{ bearerAuth: [] }],
-        responses: {
-          '200': {
-            description: 'User profile retrieved successfully',
-          },
-          '401': {
-            description: 'Unauthorized. Bearer token missing or invalid.',
-          },
-        },
-      },
-    },
-    '/users/profile': {
-      put: {
-        tags: ['Authentication & Users'],
-        summary: 'Update authenticated customer profile in PostgreSQL public.users',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/UserProfileUpdateRequest' },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "schema": {
+              "type": "number"
             },
+            "example": 20
           },
-        },
-        responses: {
-          '200': { description: 'Profile updated in PostgreSQL' },
-          '401': { description: 'Unauthorized' },
-        },
-      },
-    },
-    '/users/oauth/providers': {
-      get: {
-        tags: ['OAuth 2.0 & OIDC'],
-        summary: 'Check configured OAuth 2.0 / OpenID Connect providers',
-        description: 'Returns which social providers (Google, Apple) have client credentials populated in the environment.',
-        responses: {
-          '200': {
-            description: 'Active OAuth providers returned',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/OAuthProviderConfig' },
-              },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "schema": {
+              "type": "number"
             },
+            "example": 150
           },
-        },
-      },
-    },
-    '/users/oauth': {
-      post: {
-        tags: ['OAuth 2.0 & OIDC'],
-        summary: 'Initiate or complete OAuth 2.0 / OIDC authentication',
-        description: 'Initiates 3-legged authorization code flow (returning provider authUrl with state & PKCE) or completes authentication.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/OAuthInitRequest' },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "price-asc",
+                "price-desc",
+                "rating",
+                "newest"
+              ]
             },
+            "example": "price-asc"
           },
-        },
-        responses: {
-          '200': {
-            description: 'OAuth authorization URL generated or user authenticated with 24h JWT token.',
-          },
-        },
-      },
-    },
-    '/users/oauth/login/{provider}': {
-      get: {
-        tags: ['OAuth 2.0 & OIDC'],
-        summary: 'Direct redirect to provider authorization consent screen (Google or Apple)',
-        parameters: [
-          { name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'apple'] } },
-        ],
-        responses: {
-          '302': { description: 'Redirect to Google/Apple official authorization endpoint' },
-        },
-      },
-    },
-    '/users/oauth/callback/{provider}': {
-      get: {
-        tags: ['OAuth 2.0 & OIDC'],
-        summary: 'OAuth 2.0 OIDC GET authorization code callback',
-        description: 'Receives authorization code, validates CSRF state, exchanges code for tokens, verifies OIDC id_token signature using provider JWKS keys, auto-registers customer in PostgreSQL if missing, dispatches Welcome Email, and issues 24-hour JWT session.',
-        parameters: [
-          { name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'apple'] } },
-          { name: 'code', in: 'query', required: true, schema: { type: 'string' } },
-          { name: 'state', in: 'query', required: true, schema: { type: 'string' } },
-        ],
-        responses: {
-          '302': { description: 'Redirect to frontend with auth token' },
-        },
-      },
-      post: {
-        tags: ['OAuth 2.0 & OIDC'],
-        summary: 'OAuth 2.0 OIDC POST authorization code callback (Apple form_post mode)',
-        parameters: [
-          { name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'apple'] } },
-        ],
-        responses: {
-          '302': { description: 'Redirect to frontend with auth token' },
-        },
-      },
-    },
-    '/products': {
-      get: {
-        tags: ['Catalog & Products'],
-        summary: 'Filter and paginate products catalog from PostgreSQL',
-        parameters: [
-          { name: 'category', in: 'query', schema: { type: 'string' }, description: 'Filter by category (fashion, electronics, audio, beauty)' },
-          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Text search keyword' },
-          { name: 'minPrice', in: 'query', schema: { type: 'number' }, description: 'Minimum price filter' },
-          { name: 'maxPrice', in: 'query', schema: { type: 'number' }, description: 'Maximum price filter' },
-          { name: 'storeId', in: 'query', schema: { type: 'integer' }, description: 'Physical Store ID for location-specific stock availability' },
-          { name: 'sort', in: 'query', schema: { type: 'string', enum: ['newest', 'low-to-high', 'high-to-low', 'rating'] } },
-          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', default: 12 } },
-        ],
-        responses: {
-          '200': {
-            description: 'Filtered products list with pagination metadata',
-          },
-        },
-      },
-      post: {
-        tags: ['Catalog & Products'],
-        summary: 'Create a new product in PostgreSQL (Admin only)',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/Product' },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
             },
+            "example": 1
           },
-        },
-        responses: {
-          '201': {
-            description: 'Product created and inventory seeded for all stores',
-          },
-        },
-      },
-    },
-    '/products/{id}': {
-      get: {
-        tags: ['Catalog & Products'],
-        summary: 'Get single product detailed view (PDP)',
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
-        ],
-        responses: {
-          '200': {
-            description: 'Product detailed view returned',
-          },
-          '404': {
-            description: 'Product not found in PostgreSQL',
-          },
-        },
-      },
-      put: {
-        tags: ['Catalog & Products'],
-        summary: 'Update product in PostgreSQL (Admin only)',
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-        ],
-        responses: {
-          '200': { description: 'Product updated successfully' },
-        },
-      },
-      delete: {
-        tags: ['Catalog & Products'],
-        summary: 'Delete product in PostgreSQL (Admin only)',
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-        ],
-        responses: {
-          '204': { description: 'Product deleted successfully' },
-        },
-      },
-    },
-    '/products/{id}/reviews': {
-      get: {
-        tags: ['Catalog & Products'],
-        summary: 'Get customer reviews for product from PostgreSQL product_reviews table',
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
-        ],
-        responses: {
-          '200': {
-            description: 'List of verified customer reviews',
-          },
-        },
-      },
-      post: {
-        tags: ['Catalog & Products'],
-        summary: 'Submit a new customer review (persists to PostgreSQL and updates product average rating)',
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['userName', 'rating', 'comment'],
-                properties: {
-                  userName: { type: 'string', example: 'Sarah Jenkins' },
-                  rating: { type: 'integer', minimum: 1, maximum: 5, example: 5 },
-                  comment: { type: 'string', example: 'Superb quality and prompt shipping!' },
-                },
-              },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 12
             },
+            "example": 12
           },
-        },
-        responses: {
-          '201': {
-            description: 'Review saved to PostgreSQL and rating recalculated',
-          },
-        },
-      },
-    },
-    '/stores': {
-      get: {
-        tags: ['Stores & Multi-Store Inventory'],
-        summary: 'List all physical retail stores from PostgreSQL store table',
-        responses: {
-          '200': {
-            description: 'List of physical retail stores with addresses and contacts',
-          },
-        },
-      },
-    },
-    '/inventory/{productId}': {
-      get: {
-        tags: ['Stores & Multi-Store Inventory'],
-        summary: 'Get inventory breakdown across all retail stores for a product',
-        parameters: [
-          { name: 'productId', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
-        ],
-        responses: {
-          '200': {
-            description: 'Store-by-store stock availability breakdown',
-          },
-        },
-      },
-      put: {
-        tags: ['Stores & Multi-Store Inventory'],
-        summary: 'Adjust inventory stock count directly in PostgreSQL public.inventory (Admin)',
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: 'productId', in: 'path', required: true, schema: { type: 'string', example: 'prod_fash_01' } },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['stock'],
-                properties: {
-                  storeId: { type: 'integer', example: 1 },
-                  stock: { type: 'integer', example: 35 },
-                },
-              },
+          {
+            "name": "storeId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
             },
-          },
-        },
-        responses: {
-          '200': { description: 'Inventory stock updated successfully in PostgreSQL' },
-        },
-      },
-    },
-    '/carts': {
-      post: {
-        tags: ['Cart & Basket'],
-        summary: 'Initialize a unique basket object',
-        responses: {
-          '201': {
-            description: 'Basket initialized successfully with unique basketId',
-          },
-        },
-      },
-    },
-    '/carts/{basketId}': {
-      get: {
-        tags: ['Cart & Basket'],
-        summary: 'Get products in basket and total item count from PostgreSQL cart table',
-        parameters: [
-          { name: 'basketId', in: 'path', required: true, schema: { type: 'string' } },
+            "example": 1
+          }
         ],
-        responses: {
-          '200': {
-            description: 'Basket contents, item count, and financial totals returned',
-          },
-        },
-      },
-      post: {
-        tags: ['Cart & Basket'],
-        summary: 'Add or update product items in basket in PostgreSQL',
-        parameters: [
-          { name: 'basketId', in: 'path', required: true, schema: { type: 'string' } },
+        "responses": {
+          "200": {
+            "description": "Paginated product catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListResponseDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "tags": [
+          "Customer - Products"
         ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/BasketItemRequest' },
+        "summary": "Get single product by ID or product_code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Returns item added or updated message with updated basket from PostgreSQL',
-          },
-        },
-      },
-      delete: {
-        tags: ['Cart & Basket'],
-        summary: 'Clear basket or remove item from PostgreSQL',
-        parameters: [
-          { name: 'basketId', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'productId', in: 'query', schema: { type: 'string' } },
-          { name: 'variant', in: 'query', schema: { type: 'string' } },
+            "example": "prod_f4b7a1"
+          }
         ],
-        responses: {
-          '204': {
-            description: 'Basket or item cleared successfully (No Content)',
+        "responses": {
+          "200": {
+            "description": "Product details retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ProductDTO"
+                    }
+                  }
+                }
+              }
+            }
           },
-        },
-      },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    '/carts/user/{userId}': {
-      get: {
-        tags: ['Cart & Basket'],
-        summary: 'Get cart for specific user from PostgreSQL public.cart table',
-        parameters: [
-          { name: 'userId', in: 'path', required: true, schema: { type: 'string', example: '1' } },
+    "/products/slug/{slug}": {
+      "get": {
+        "tags": [
+          "Customer - Products"
         ],
-        responses: {
-          '200': { description: 'User cart retrieved from PostgreSQL' },
-        },
-      },
-    },
-    '/wishlist': {
-      get: {
-        tags: ['Customer Wishlist'],
-        summary: 'Get customer wishlist from PostgreSQL public.wishlist table',
-        security: [{ bearerAuth: [] }],
-        responses: {
-          '200': { description: 'Customer wishlist items returned from PostgreSQL' },
-        },
-      },
-      post: {
-        tags: ['Customer Wishlist'],
-        summary: 'Add product to wishlist in PostgreSQL',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['productId'],
-                properties: {
-                  productId: { type: 'string', example: 'prod_fash_01' },
-                },
-              },
+        "summary": "Get product by URL-friendly slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             },
-          },
-        },
-        responses: {
-          '200': { description: 'Product added to wishlist in PostgreSQL' },
-        },
-      },
-      delete: {
-        tags: ['Customer Wishlist'],
-        summary: 'Clear customer wishlist in PostgreSQL',
-        security: [{ bearerAuth: [] }],
-        responses: {
-          '200': { description: 'Wishlist cleared in PostgreSQL' },
-        },
-      },
-    },
-    '/orders/verify-otp': {
-      post: {
-        tags: ['Orders, Checkout & 2FA Gate'],
-        summary: 'Verify simulated 2-Factor Gateway OTP Security Check (6-digit code)',
-        description: 'Simulates the payment gateway 2FA security check before authorizing order charge.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/VerifyOtpRequest' },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'OTP verified successfully. Gateway payment pre-authorized.',
-          },
-          '400': {
-            description: 'Invalid OTP code. Please enter a valid 6-digit verification code.',
-          },
-        },
-      },
-    },
-    '/orders': {
-      post: {
-        tags: ['Orders, Checkout & 2FA Gate'],
-        summary: 'Create and place order with atomic PostgreSQL transaction (decrements inventory)',
-        description: 'Enforces checkout authentication gate. Atomically decrements product stock, persists order & order_item records, clears basket, and dispatches an automated Order Confirmation Email via Zoho SMTP.',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/OrderCreateRequest' },
-            },
-          },
-        },
-        responses: {
-          '201': {
-            description: 'Order placed in PostgreSQL. Inventory decremented. Order confirmation email sent via Zoho SMTP.',
-          },
-        },
-      },
-      get: {
-        tags: ['Orders, Checkout & 2FA Gate'],
-        summary: 'Get order history from PostgreSQL',
-        security: [{ bearerAuth: [] }],
-        responses: {
-          '200': {
-            description: 'List of past orders',
-          },
-        },
-      },
-    },
-    '/orders/{id}': {
-      get: {
-        tags: ['Orders, Checkout & 2FA Gate'],
-        summary: 'Get single order details by ID or Order Number from PostgreSQL',
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'ORD-782910-QA' } },
+            "example": "floral-summer-dress"
+          }
         ],
-        responses: {
-          '200': {
-            description: 'Detailed order with item breakdown and tracking ID',
+        "responses": {
+          "200": {
+            "description": "Product retrieved by slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ProductDTO"
+                    }
+                  }
+                }
+              }
+            }
           },
-        },
-      },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    '/orders/{id}/status': {
-      put: {
-        tags: ['Orders, Checkout & 2FA Gate'],
-        summary: 'Update order fulfillment status in PostgreSQL and notify customer via Zoho SMTP (Admin)',
-        description: 'Updates status to processing, shipped, or delivered. Triggers real-time customer status update email with tracking details via Zoho SMTP.',
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: '2' } },
+    "/categories": {
+      "get": {
+        "tags": [
+          "Customer - Products"
         ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/OrderStatusUpdateRequest' },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Order status updated and customer notified via Zoho SMTP.',
-          },
-          '404': {
-            description: 'Order not found in PostgreSQL',
-          },
-        },
-      },
-      patch: {
-        tags: ['Orders, Checkout & 2FA Gate'],
-        summary: 'Patch order fulfillment status (Admin)',
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: '2' } },
+        "summary": "Get product categories and taxonomy",
+        "responses": {
+          "200": {
+            "description": "Category hierarchy list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "fashion"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Fashion & Apparel"
+                          },
+                          "slug": {
+                            "type": "string",
+                            "example": "fashion"
+                          },
+                          "icon": {
+                            "type": "string",
+                            "example": "shirt"
+                          },
+                          "subcategories": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "example": [
+                              "Men",
+                              "Women",
+                              "Footwear"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stores": {
+      "get": {
+        "tags": [
+          "Customer - Products"
         ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/OrderStatusUpdateRequest' },
-            },
-          },
-        },
-        responses: {
-          '200': { description: 'Order status updated successfully' },
-        },
-      },
+        "summary": "Get physical retail store locations",
+        "responses": {
+          "200": {
+            "description": "List of retail physical stores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UpdateStoreDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    '/admin/analytics/summary': {
-      get: {
-        tags: ['Administrator Analytics & Controls'],
-        summary: 'Retrieve live PostgreSQL revenue, order count, and low stock metrics (Admin only)',
-        security: [{ bearerAuth: [] }],
-        responses: {
-          '200': {
-            description: 'Live business analytics and inventory alerts returned',
-          },
-          '403': {
-            description: 'Forbidden: Administrator privileges required',
-          },
-        },
-      },
-    },
-    '/admin/analytics/customers': {
-      get: {
-        tags: ['Administrator Analytics & Controls'],
-        summary: 'List all registered customers with lifetime spend and order counts from PostgreSQL (Admin only)',
-        security: [{ bearerAuth: [] }],
-        responses: {
-          '200': {
-            description: 'Customer list with aggregated spend metadata',
-          },
-        },
-      },
-    },
-    '/admin/analytics/customers/{id}': {
-      get: {
-        tags: ['Administrator Analytics & Controls'],
-        summary: 'Get customer detail profile with complete order history (Admin only)',
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string', example: '1' } },
+    "/inventory/{productId}": {
+      "get": {
+        "tags": [
+          "Customer - Products"
         ],
-        responses: {
-          '200': {
-            description: 'Customer profile and historical purchase breakdown',
-          },
-        },
-      },
-    },
-    '/admin/analytics/test-email': {
-      post: {
-        tags: ['Administrator Analytics & Controls'],
-        summary: 'Test Zoho SMTP outbound mail server connection and delivery (Admin only)',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: false,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  to: { type: 'string', format: 'email', example: 'admin@practicesoftwaretesting.com' },
-                },
-              },
+        "summary": "Check store stock availability for a product",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Test email successfully sent via Zoho SMTP server',
-          },
-        },
-      },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inventory levels across physical stores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InventoryResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    '/seed/reset': {
-      post: {
-        tags: ['QA & Test Utilities'],
-        summary: 'Reset PostgreSQL database to pristine seed accounts and catalog',
-        description: 'Executes DDL schema and re-populates PostgreSQL 18 tables (users, product, store, inventory, cart, order, order_item, product_reviews) for repeatable QA test runs. Restores admin and customer test accounts with pristine sequence IDs starting from 1.',
-        responses: {
-          '200': {
-            description: 'PostgreSQL database successfully reset and re-seeded',
-          },
-        },
+    "/products/{id}/reviews": {
+      "get": {
+        "tags": [
+          "Customer - Products"
+        ],
+        "summary": "Get all reviews for a product",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of customer reviews",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReviewResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       },
+      "post": {
+        "tags": [
+          "Customer - Products"
+        ],
+        "summary": "Submit a product review and recalculate rating",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review saved and rating updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Review submitted successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ReviewResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required review fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          }
+        }
+      }
     },
-  },
+    "/reviews/{id}": {
+      "put": {
+        "tags": [
+          "Customer - Products"
+        ],
+        "summary": "Edit customer review",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "rev_m3x8y9"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "integer",
+                    "example": 4
+                  },
+                  "comment": {
+                    "type": "string",
+                    "example": "Updated comment after washing."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Review not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Customer - Products"
+        ],
+        "summary": "Delete customer review",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "rev_m3x8y9"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Review deleted successfully"
+          },
+          "404": {
+            "description": "Review not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cart": {
+      "get": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Get current customer cart items and totals",
+        "parameters": [
+          {
+            "name": "basketId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "example": "basket_8df7a2b91c"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current cart object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "basket_8df7a2b91c"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AddToCartDTO"
+                          }
+                        },
+                        "totalItemCount": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "subtotal": {
+                          "type": "number",
+                          "example": 159.98
+                        },
+                        "estimatedTax": {
+                          "type": "number",
+                          "example": 12.8
+                        },
+                        "shippingFee": {
+                          "type": "number",
+                          "example": 7.2
+                        },
+                        "grandTotal": {
+                          "type": "number",
+                          "example": 179.98
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Add item to shopping cart or initialize basket",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToCartDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Item added or basket initialized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid product or quantity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Clear all items from current cart",
+        "responses": {
+          "204": {
+            "description": "Cart cleared successfully"
+          }
+        }
+      }
+    },
+    "/cart/{itemId}": {
+      "patch": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Update cart item quantity",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCartItemDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart quantity updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Remove specific item from shopping cart",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Item removed from cart"
+          }
+        }
+      }
+    },
+    "/wishlist": {
+      "get": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Get user saved wishlist items",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wishlist items retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WishlistItemDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Add product to wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string",
+                    "example": "prod_f4b7a1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product added to wishlist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Clear entire wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Wishlist cleared"
+          }
+        }
+      }
+    },
+    "/wishlist/{productId}": {
+      "delete": {
+        "tags": [
+          "Customer - Cart & Wishlist"
+        ],
+        "summary": "Remove product from wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product removed from wishlist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/verify-otp": {
+      "post": {
+        "tags": [
+          "Customer - Orders"
+        ],
+        "summary": "Verify simulated 6-digit payment OTP code",
+        "description": "Simulates the 2-Factor Gateway OTP verification step during the checkout flow.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "otpCode"
+                ],
+                "properties": {
+                  "otpCode": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing OTP code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders": {
+      "post": {
+        "tags": [
+          "Customer - Orders"
+        ],
+        "summary": "Place and finalize order (SQL transaction with atomic stock decrement)",
+        "description": "Executes atomic order creation in PostgreSQL, decrements product stock, clears customer cart, and queues Zoho Mail order confirmation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created and persisted in PostgreSQL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order placed successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty cart or invalid shipping details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Customer - Orders"
+        ],
+        "summary": "Get customer order history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of placed orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OrderResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "tags": [
+          "Customer - Orders"
+        ],
+        "summary": "Get order details by order ID or orderNumber",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/cancel": {
+      "patch": {
+        "tags": [
+          "Customer - Orders"
+        ],
+        "summary": "Cancel placed order (Restores inventory stock in PostgreSQL)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order cancelled and stock restored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order successfully cancelled in PostgreSQL"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order is already shipped or delivered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products": {
+      "post": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "[Requires Admin JWT] Create new product in catalog",
+        "description": "Inserts new product into PostgreSQL `product` table and initializes default inventory.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ProductDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse401"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse403"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "[Requires Admin JWT] Update full product details",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ProductDTO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "[Requires Admin JWT] Delete product from catalog",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Product deleted successfully"
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/products/{id}/featured": {
+      "patch": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "[Requires Admin JWT] Toggle product featured status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "featured": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product featured status toggled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/inventory": {
+      "get": {
+        "tags": [
+          "Admin - Inventory"
+        ],
+        "summary": "[Requires Admin JWT] List multi-store stock levels and low-stock alerts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inventory levels across all stores and products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 36
+                    },
+                    "lowStockCount": {
+                      "type": "integer",
+                      "example": 4
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InventoryResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/inventory/{productId}": {
+      "patch": {
+        "tags": [
+          "Admin - Inventory"
+        ],
+        "summary": "[Requires Admin JWT] Adjust stock for product in store inventory",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "prod_f4b7a1"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInventoryDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stock updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "[Requires Admin JWT] List all orders across all customers with status filters",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "shipped",
+                "delivered",
+                "cancelled"
+              ]
+            },
+            "example": "processing"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Platform orders list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 48
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminOrderResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}": {
+      "get": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "[Requires Admin JWT] Get detailed order breakdown with items and customer info",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed order structure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderResponseDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "[Requires Admin JWT] Update order fulfillment status & trigger customer notification",
+        "description": "Updates status in PostgreSQL and automatically sends status change email via Zoho SMTP.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrderStatusDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order status updated and notification queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse400"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] List all registered users with spend & order metrics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User list with analytics metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 12
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminUserResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "get": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Deep inspection of user profile, orders, cart, and wishlist",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_a9f12b48"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed user profile and transaction history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponseDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Delete customer account",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_a9f12b48"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Customer account deleted"
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/role": {
+      "patch": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Update user role (admin | customer)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user_a9f12b48"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User role updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/analytics/summary": {
+      "get": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Real-time platform KPI analytics summary",
+        "description": "Computes total registered customers, total orders, lifetime sales revenue, total cart items, and wishlist totals from PostgreSQL.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Platform analytics totals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AnalyticsSummaryDTO"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/analytics/test-email": {
+      "post": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Trigger test verification email via Zoho Mail SMTP",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "sampathkumarveesam@zohomail.in"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test email successfully transmitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/store": {
+      "put": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Update store settings and contact info",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoreDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Store settings updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seed/reset": {
+      "post": {
+        "tags": [
+          "Admin - Users & Analytics"
+        ],
+        "summary": "[Requires Admin JWT] Reset database seed & verify admin/QA accounts",
+        "description": "Restores initial test administrator and customer accounts in PostgreSQL 18 for pristine QA automation runs.",
+        "responses": {
+          "200": {
+            "description": "PostgreSQL database verified and seed accounts restored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reviews": {
+      "get": {
+        "tags": [
+          "Admin - Reviews & Moderation"
+        ],
+        "summary": "[Requires Admin JWT] List all customer reviews for content moderation",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All product reviews across the catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 25
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ReviewResponseDTO"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reviews/{id}": {
+      "delete": {
+        "tags": [
+          "Admin - Reviews & Moderation"
+        ],
+        "summary": "[Requires Admin JWT] Delete / moderate inappropriate review",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "rev_m3x8y9"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Review removed by administrator"
+          },
+          "404": {
+            "description": "Review not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse404"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 };
