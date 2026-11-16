@@ -16,7 +16,7 @@ import {
   Truck,
   X
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { useCart } from '../context/CartContext.js';
 import { Address, Order, PaymentMethod } from '../types.js';
