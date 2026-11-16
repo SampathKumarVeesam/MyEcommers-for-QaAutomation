@@ -12,7 +12,7 @@ ordersRouter.post('/verify-otp', (req: Request, res: Response): void => {
   if (!otpCode || otpCode.trim() !== '123456') {
     res.status(400).json({
       success: false,
-      message: 'Invalid OTP code. For test automation use code: 123456',
+      message: 'Invalid OTP code. Please enter a valid 6-digit verification code.',
     });
     return;
   }

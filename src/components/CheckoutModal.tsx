@@ -63,9 +63,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   const [selectedBank, setSelectedBank] = useState('JPMorgan Chase Bank');
 
   // Step 4: OTP Verification
-  const [otpCode, setOtpCode] = useState('123456');
+  const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpVerified, setOtpVerified] = useState(false);
+
+  // Reset checkout state whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+      setOtpCode('');
+      setOtpError('');
+      setIsSubmitting(false);
+      setCreatedOrder(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -88,8 +99,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   };
 
   const handleVerifyOtpAndPlaceOrder = async () => {
+    if (!otpCode.trim()) {
+      setOtpError('Please enter the 6-digit OTP code received on your phone.');
+      return;
+    }
     if (otpCode.trim() !== '123456') {
-      setOtpError('Invalid OTP code. Please enter 123456 for test authorization.');
+      setOtpError('Invalid OTP code. Please check your code and try again.');
       return;
     }
     setOtpError('');
@@ -112,7 +127,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           userEmail: user?.email || 'customer@practicesoftwaretesting.com',
           userName: user?.name || address.fullName,
           userId: user?.id,
-          otpCode: '123456',
+          otpCode: otpCode.trim(),
         }),
       });
 
@@ -583,8 +598,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 <div>
                   <h4 className="text-xs font-bold text-indigo-950">2-Factor Gateway OTP Security Check</h4>
                   <p className="text-[11px] text-indigo-700 mt-0.5">
-                    For QA Smoke &amp; Regression Testing, the simulated 6-digit OTP passcode is prefilled as{' '}
-                    <strong className="underline text-indigo-900 font-mono">123456</strong>.
+                    Please enter the 6-digit verification code sent to your registered phone number to authorize this payment.
                   </p>
                 </div>
               </div>
@@ -594,12 +608,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 <div className="flex justify-center">
                   <input
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     data-test="checkout-otp-input"
                     data-testid="checkout-otp-input"
                     maxLength={6}
+                    placeholder="••••••"
                     value={otpCode}
-                    onChange={e => setOtpCode(e.target.value)}
-                    className="w-44 text-center tracking-[0.4em] font-mono text-xl font-bold py-2 px-3 rounded-xl border-2 border-indigo-500 bg-white shadow-inner outline-none text-indigo-900"
+                    onChange={e => {
+                      setOtpCode(e.target.value);
+                      if (otpError) setOtpError('');
+                    }}
+                    className="w-44 text-center tracking-[0.4em] font-mono text-xl font-bold py-2 px-3 rounded-xl border-2 border-indigo-500 bg-white shadow-inner outline-none text-indigo-900 placeholder:text-slate-300 placeholder:tracking-widest"
+                    autoFocus
                   />
                 </div>
                 {otpError && <p data-test="checkout-otp-error" data-testid="checkout-otp-error" className="text-xs text-rose-600 font-semibold">{otpError}</p>}
