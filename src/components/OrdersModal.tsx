@@ -1,4 +1,5 @@
 import {
+  Banknote,
   Calendar,
   CheckCircle2,
   Clock,
@@ -25,6 +26,40 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [markingPaid, setMarkingPaid] = useState(false);
+  const [paidSuccessMsg, setPaidSuccessMsg] = useState<string | null>(null);
+
+  const handleMarkPaidToDeliveryBoy = async (orderId: string) => {
+    if (!token) return;
+    setMarkingPaid(true);
+    try {
+      const res = await fetch(apiUrl(`/api/orders/${orderId}/paid-to-delivery-boy`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setPaidSuccessMsg('Payment marked as paid to delivery boy! Admin has been notified for verification.');
+        setTimeout(() => setPaidSuccessMsg(null), 6000);
+        if (selectedOrder) {
+          setSelectedOrder({
+            ...selectedOrder,
+            paymentStatus: 'paid_to_delivery_agent',
+          });
+        }
+        await fetchOrders();
+      } else {
+        alert(json.message || 'Failed to update payment status');
+      }
+    } catch (err: any) {
+      console.error('Error marking paid to delivery boy:', err);
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
 
   const fetchOrders = async () => {
     if (!token) {

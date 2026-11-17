@@ -87,7 +87,7 @@ export interface Basket {
 
 export type PaymentMethod = 'upi' | 'credit_card' | 'net_banking' | 'cod';
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'processed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
 
 export interface Order {
   id: string;
@@ -100,7 +100,7 @@ export interface Order {
   shippingAddress: Address;
   shippingMethod: 'standard' | 'express' | 'priority';
   paymentMethod: PaymentMethod;
-  paymentStatus: 'paid' | 'pending' | 'cod_pending';
+  paymentStatus: 'paid' | 'pending' | 'cod_pending' | 'paid_to_delivery_agent';
   orderStatus: OrderStatus;
   subtotal: number;
   tax: number;

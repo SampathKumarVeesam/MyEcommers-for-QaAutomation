@@ -2,7 +2,7 @@ import { Request, Response, Router } from 'express';
 import { AuthenticatedRequest, optionalAuth, requireAuth } from '../middleware/auth.js';
 import { cartRepo } from '../repositories/cartRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
-import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail } from '../services/emailService.js';
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendCodPaymentMarkedAdminAlert } from '../services/emailService.js';
 
 export const ordersRouter = Router();
 
@@ -191,7 +191,7 @@ const handleStatusUpdate = async (req: Request, res: Response): Promise<void> =>
 
     // Check if status requires an automated email notification (Processed, Out for Delivery, Delivered)
     const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_');
-    const triggerStatuses = ['processed', 'processing', 'out_for_delivery', 'shipped', 'delivered', 'completed'];
+    const triggerStatuses = ['processed', 'processing', 'out_for_delivery', 'shipped', 'delivered', 'completed', 'cancelled'];
 
     res.status(200).json({
       success: true,
@@ -221,6 +221,65 @@ const handleStatusUpdate = async (req: Request, res: Response): Promise<void> =>
     });
   }
 };
+
+
+// POST /api/orders/:id/paid-to-delivery-boy (Customer marks Cash on Delivery as paid to delivery boy)
+ordersRouter.post('/:id/paid-to-delivery-boy', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const order = await orderRepo.getOrderById(id);
+    if (!order) {
+      res.status(404).json({ success: false, message: `Order with ID '${id}' not found` });
+      return;
+    }
+
+    if (order.paymentMethod !== 'cod') {
+      res.status(400).json({
+        success: false,
+        message: 'Only Cash on Delivery (COD) orders can be marked as paid to delivery boy.',
+      });
+      return;
+    }
+
+    if (order.orderStatus === 'cancelled') {
+      res.status(400).json({
+        success: false,
+        message: 'Cannot mark a cancelled order as paid.',
+      });
+      return;
+    }
+
+    const updated = await orderRepo.markPaidToDeliveryBoy(id);
+    if (!updated) {
+      res.status(500).json({ success: false, message: 'Failed to update payment status' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Order #${updated.orderNumber} marked as paid to delivery boy. Admin has been notified for verification.`,
+      data: updated,
+    });
+
+    // Notify Admin via email to verify payment and approve delivery
+    setImmediate(async () => {
+      try {
+        const adminEmailRes = await sendCodPaymentMarkedAdminAlert(updated);
+        if (adminEmailRes.success) {
+          console.log(`[Admin COD Alert]: Notified admin of payment for order #${updated.orderNumber}`);
+        }
+      } catch (err) {
+        console.error('[Admin COD Alert Background Error]:', err);
+      }
+    });
+  } catch (error: any) {
+    console.error('[Paid To Delivery Boy Error]:', error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to mark paid to delivery boy: ${error.message || 'Server error'}`,
+    });
+  }
+});
 
 ordersRouter.patch('/:id/status', handleStatusUpdate);
 ordersRouter.put('/:id/status', handleStatusUpdate);
@@ -254,6 +313,16 @@ ordersRouter.patch('/:id/cancel', optionalAuth, async (req: AuthenticatedRequest
       message: `Order #${order.orderNumber} successfully cancelled in PostgreSQL`,
       data: cancelled,
     });
+
+    if (cancelled) {
+      setImmediate(async () => {
+        try {
+          await sendOrderStatusUpdateEmail(cancelled, 'cancelled');
+        } catch (e) {
+          console.error('[Cancel Order Email Error]:', e);
+        }
+      });
+    }
   } catch (error: any) {
     console.error('[Cancel Order Error]:', error);
     res.status(500).json({

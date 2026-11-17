@@ -87,6 +87,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     if (!address.street.trim()) errs.street = 'Street address is required';
     if (!address.city.trim()) errs.city = 'City is required';
     if (!address.postalCode.trim()) errs.postalCode = 'Postal Code is required';
+    if (!address.country?.trim()) errs.country = 'Country is required';
     if (!address.phone.trim()) errs.phone = 'Phone number is required';
     setAddressErrors(errs);
     return Object.keys(errs).length === 0;
@@ -319,6 +320,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 </div>
 
                 <div>
+                  <label className="block font-bold text-slate-700 mb-1">Country</label>
+                  <input
+                    type="text"
+                    data-test="checkout-country"
+                    data-testid="checkout-country"
+                    value={address.country}
+                    onChange={e => setAddress({ ...address, country: e.target.value })}
+                    placeholder="e.g. United States, India"
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
+                      addressErrors.country ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    }`}
+                  />
+                  {addressErrors.country && <p className="text-rose-500 mt-1 font-medium">{addressErrors.country}</p>}
+                </div>
+
+                <div className="sm:col-span-2">
                   <label className="block font-bold text-slate-700 mb-1">Contact Phone</label>
                   <input
                     type="text"

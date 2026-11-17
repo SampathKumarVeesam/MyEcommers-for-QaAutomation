@@ -294,7 +294,7 @@ const handleAdminOrderStatus = async (req: AuthenticatedRequest, res: Response):
 
     // Notify customer asynchronously
     const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_');
-    const triggerStatuses = ['processed', 'processing', 'out_for_delivery', 'shipped', 'delivered', 'completed'];
+    const triggerStatuses = ['processed', 'processing', 'out_for_delivery', 'shipped', 'delivered', 'completed', 'cancelled'];
     if (triggerStatuses.includes(normalized)) {
       setImmediate(async () => {
         try {
@@ -315,6 +315,38 @@ const handleAdminOrderStatus = async (req: AuthenticatedRequest, res: Response):
     });
   }
 };
+
+
+// POST /api/admin/orders/:id/approve-cod-delivery (Admin approves COD payment and marks delivered)
+adminRouter.post('/orders/:id/approve-cod-delivery', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const currentOrder = await orderRepo.getOrderById(id);
+    if (!currentOrder) {
+      res.status(404).json({ success: false, message: `Order #${id} not found` });
+      return;
+    }
+    const updated = await orderRepo.updateOrderStatus(id, 'delivered');
+    if (!updated) {
+      res.status(500).json({ success: false, message: 'Failed to update order to delivered' });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: `COD Order #${updated.orderNumber} payment approved and status updated to delivered`,
+      data: updated,
+    });
+    setImmediate(async () => {
+      try {
+        await sendOrderStatusUpdateEmail(updated, 'delivered');
+      } catch (e) {
+        console.error('[Admin COD Approval Email Error]:', e);
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 adminRouter.patch('/orders/:id/status', handleAdminOrderStatus);
 adminRouter.put('/orders/:id/status', handleAdminOrderStatus);

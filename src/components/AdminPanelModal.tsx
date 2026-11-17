@@ -21,7 +21,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../config/api.js';
 import { useAuth } from '../context/AuthContext.js';
 import {
@@ -45,6 +45,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 }) => {
   const { token, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders'>('analytics');
+  const contentBodyRef = useRef<HTMLDivElement>(null);
 
   // Summary & Customer Activity State
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -462,7 +463,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         )}
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div ref={contentBodyRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* =========================================================================
               SECTION 3: CUSTOMER ACTIVITY & ANALYTICS TAB (Default)
              ========================================================================= */}
@@ -589,6 +590,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     </select>
                                   </div>
                                 </div>
+                                {order.paymentStatus === 'paid_to_delivery_agent' && (
+                                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs">
+                                    <span className="font-bold text-amber-800 flex items-center gap-1">
+                                      ⚠️ Customer marked Paid to Delivery Boy (Cash/UPI)
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={updatingOrderId === String(order.id) || updatingOrderId === order.orderNumber}
+                                      onClick={() => handleUpdateOrderStatus(order.orderNumber, 'delivered')}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-[11px] shadow-xs cursor-pointer transition-colors"
+                                      title="Verify payment and approve as delivered"
+                                    >
+                                      Approve &amp; Mark Delivered
+                                    </button>
+                                  </div>
+                                )}
 
                                 {/* Order Line Items */}
                                 <div className="space-y-1.5 pt-1">
@@ -1010,6 +1027,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+                          {o.paymentStatus === 'paid_to_delivery_agent' && (
+                            <div className="mt-1 flex flex-col gap-1">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                ⚠️ Paid to Delivery Boy
+                              </span>
+                              <button
+                                type="button"
+                                disabled={updatingOrderId === o.id || updatingOrderId === o.orderNumber}
+                                onClick={() => handleUpdateOrderStatus(o.orderNumber || o.id, 'delivered')}
+                                className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                              >
+                                Approve &amp; Deliver
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

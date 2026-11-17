@@ -9,7 +9,7 @@ const SMTP_HOST = process.env.SMTP_HOST || 'smtp.zoho.in';
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
 const SMTP_SECURE = process.env.SMTP_SECURE ? (process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === '1') : true;
 const SMTP_USER = (process.env.SMTP_USER || 'sampathkumarveesam@zohomail.in').trim();
-const SMTP_PASS = (process.env.SMTP_PASS || 'SXmXCgj4XgJ2').trim();
+const SMTP_PASS = (process.env.SMTP_PASS || 'ivGziZPzZT0D').trim();
 const EMAIL_FROM = (process.env.EMAIL_FROM || SMTP_USER).trim();
 const APP_URL = process.env.APP_URL || 'https://samecommers.netlify.app';
 
@@ -167,6 +167,11 @@ function wrapEmailHtml(title: string, bodyContent: string): string {
       background-color: #d1fae5;
       color: #065f46;
       border: 1px solid #a7f3d0;
+    }
+    .badge-cancelled {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
     }
     .badge-pending {
       background-color: #f1f5f9;
@@ -370,7 +375,8 @@ export async function sendOrderStatusUpdateEmail(
   }
 
   // Normalize status string
-  const normStatus = newStatus.trim().toLowerCase().replace(/\s+/g, '_');
+  const normStatus = newStatus.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const isCod = order.paymentMethod === 'cod';
   
   let statusTitle = 'Order Status Updated';
   let statusBadgeClass = 'badge-processed';
@@ -383,15 +389,28 @@ export async function sendOrderStatusUpdateEmail(
     statusIcon = '🏭';
     statusDescription = 'Great news! Your order has been processed by our warehouse and is being carefully packaged for shipment.';
   } else if (normStatus === 'out_for_delivery' || normStatus === 'shipped') {
-    statusTitle = 'Your Order is Out for Delivery! 🚚';
+    statusTitle = isCod
+      ? 'Your COD Order is Out for Delivery! 🚚'
+      : 'Your Order is Out for Delivery! 🚚';
     statusBadgeClass = 'badge-out_for_delivery';
     statusIcon = '🚚';
-    statusDescription = 'Exciting news! Your package is currently out for delivery and will arrive at your shipping address soon.';
+    statusDescription = isCod
+      ? `Exciting news! Your Cash on Delivery order is out for delivery. Please keep cash (${order.grandTotal.toFixed(2)}) or UPI ready to pay the delivery executive upon arrival.`
+      : 'Exciting news! Your package is currently out for delivery and will arrive at your shipping address soon.';
   } else if (normStatus === 'delivered' || normStatus === 'completed') {
-    statusTitle = 'Your Order Has Been Delivered! 🎁';
+    statusTitle = isCod
+      ? 'Your COD Order Has Been Delivered & Paid! 🎉'
+      : 'Your Order Has Been Delivered! 🎉';
     statusBadgeClass = 'badge-delivered';
     statusIcon = '🏡';
-    statusDescription = 'Your package has been safely delivered to your address. Thank you for shopping with ShopSphere!';
+    statusDescription = isCod
+      ? `Your package has been safely delivered and your Cash/UPI payment of ${order.grandTotal.toFixed(2)} has been verified and confirmed. Thank you for shopping with ShopSphere!`
+      : 'Your package has been safely delivered to your address. Thank you for shopping with ShopSphere!';
+  } else if (normStatus === 'cancelled') {
+    statusTitle = 'Your Order Has Been Cancelled ❌';
+    statusBadgeClass = 'badge-cancelled';
+    statusIcon = '❌';
+    statusDescription = `Your order #${order.orderNumber} has been cancelled. If any payment was captured, a refund will be processed to the original payment source.`;
   } else {
     statusTitle = `Order #${order.orderNumber} Status Update: ${newStatus}`;
   }
@@ -400,7 +419,7 @@ export async function sendOrderStatusUpdateEmail(
 
   const itemsList = order.items.map(item => `
     <li style="margin-bottom: 6px;">
-      <strong>${item.product?.title || item.productId}</strong> (Qty: ${item.quantity}) - $${item.totalPrice.toFixed(2)}
+      <strong>${item.product?.title || item.productId}</strong> (Qty: ${item.quantity}) - ${item.totalPrice.toFixed(2)}
     </li>
   `).join('');
 
@@ -437,6 +456,24 @@ export async function sendOrderStatusUpdateEmail(
         ` : ''}
       </div>
 
+      ${(normStatus === 'out_for_delivery' || normStatus === 'shipped') && isCod ? `
+        <!-- COD Out for delivery Payment Notice -->
+        <div class="card" style="background: #fffbeb; border: 2px dashed #f59e0b; padding: 20px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #92400e; text-transform: uppercase;">
+            💵 Cash on Delivery - Pay Delivery Executive
+          </h4>
+          <p style="font-size: 13px; color: #78350f; margin: 0 0 8px 0;">
+            Total Due: <strong style="font-size: 16px; color: #b45309;">${order.grandTotal.toFixed(2)}</strong>
+          </p>
+          <p style="font-size: 13px; color: #78350f; margin: 0 0 12px 0;">
+            Please pay the delivery executive via <strong>Cash</strong> or <strong>UPI</strong>. Once paid, click the button below or visit your orders page to select <strong>"Paid to Delivery Boy"</strong>.
+          </p>
+          <div style="text-align: center;">
+            <a href="${APP_URL}" class="btn" style="background: #d97706;">Select Paid to Delivery Boy</a>
+          </div>
+        </div>
+      ` : ''}
+
       <!-- Quick Order Summary -->
       <div class="card">
         <h4 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569;">Order Details</h4>
@@ -444,17 +481,80 @@ export async function sendOrderStatusUpdateEmail(
           ${itemsList}
         </ul>
         <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 13px; font-weight: 700; color: #0f172a;">
-          Total Amount: $${order.grandTotal.toFixed(2)}
+          Total Amount: ${order.grandTotal.toFixed(2)}
         </div>
       </div>
 
       <!-- Shipping Address -->
       <div style="font-size: 13px; color: #64748b; margin-top: 16px;">
-        <strong>Delivering to:</strong> ${order.shippingAddress.fullName}, ${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.postalCode}
+        <strong>Delivering to:</strong> ${order.shippingAddress.fullName}, ${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}
       </div>
 
       <div style="text-align: center; margin: 30px 0 10px 0;">
         <a href="${APP_URL}" class="btn">View Live Order Tracking</a>
+      </div>
+    `
+  );
+
+  return sendEmail(recipient, subject, html);
+}
+
+
+/**
+ * 4. COD Payment Marked by Customer - Admin Alert Email
+ * Triggered when customer clicks "Paid to Delivery Boy".
+ * Alerts admin to verify payment and approve the order to "delivered".
+ */
+export async function sendCodPaymentMarkedAdminAlert(
+  order: Order
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const recipient = EMAIL_FROM || SMTP_USER;
+  const subject = `⚠️ COD Payment Received: Customer Marked Order #${order.orderNumber} as Paid to Delivery Boy`;
+
+  const html = wrapEmailHtml(
+    subject,
+    `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 44px;">💵</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 12px 0 6px 0;">Customer Marked COD as Paid</h2>
+        <p style="color: #64748b; font-size: 14px; margin: 0;">
+          Action required: Verify cash/UPI receipt with delivery executive and approve order as Delivered.
+        </p>
+      </div>
+
+      <div class="card" style="background: #fffbeb; border: 1px solid #fef3c7;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 13px; font-weight: 700; color: #92400e; text-transform: uppercase;">
+            COD Verification Alert
+          </span>
+          <span class="badge badge-out_for_delivery">
+            PAID TO DELIVERY BOY
+          </span>
+        </div>
+        <p style="font-size: 14px; color: #78350f; margin: 0 0 10px 0;">
+          Customer <strong>${order.shippingAddress.fullName}</strong> (${order.userEmail}) has marked Order <strong>#${order.orderNumber}</strong> as paid to the delivery executive.
+        </p>
+        <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 8px;">
+          Amount Collected: <span style="color: #059669;">${order.grandTotal.toFixed(2)}</span> (via Cash or UPI)
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #475569;">Delivery Information</h4>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569;">
+          <li><strong>Recipient:</strong> ${order.shippingAddress.fullName}</li>
+          <li><strong>Phone:</strong> ${order.shippingAddress.phone || 'N/A'}</li>
+          <li><strong>Address:</strong> ${order.shippingAddress.street}, ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postalCode}, ${order.shippingAddress.country}</li>
+          <li><strong>Tracking Number:</strong> ${order.trackingNumber || 'N/A'}</li>
+        </ul>
+      </div>
+
+      <p style="font-size: 13px; color: #475569; text-align: center;">
+        Please log into the Admin Console, verify that the delivery executive received the funds, and approve the status as <strong>Delivered</strong>. Once approved, the customer will automatically receive their official Order Delivered confirmation.
+      </p>
+
+      <div style="text-align: center; margin: 30px 0 10px 0;">
+        <a href="${APP_URL}" class="btn">Open Admin Console</a>
       </div>
     `
   );

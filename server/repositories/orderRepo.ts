@@ -253,12 +253,37 @@ export class OrderRepository {
 
   async updateOrderStatus(id: string | number, newStatus: string): Promise<Order | null> {
     const isNum = !isNaN(Number(id));
+    const normStatus = newStatus.trim().toLowerCase();
+    const shouldMarkPaid = normStatus === 'delivered' || normStatus === 'completed';
+    const sql = shouldMarkPaid
+      ? `UPDATE "order" 
+         SET status = $1, payment_status = 'paid'
+         WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+         RETURNING *`
+      : `UPDATE "order" 
+         SET status = $1
+         WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+         RETURNING *`;
+
+    const res = await query(
+      sql,
+      isNum ? [newStatus, String(id), Number(id)] : [newStatus, String(id)]
+    );
+
+    if (res.rows.length === 0) return null;
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    return mapOrderRow(row, items);
+  }
+
+  async markPaidToDeliveryBoy(id: string | number): Promise<Order | null> {
+    const isNum = !isNaN(Number(id));
     const res = await query(
       `UPDATE "order" 
-       SET status = $1
-       WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+       SET payment_status = 'paid_to_delivery_agent'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
        RETURNING *`,
-      isNum ? [newStatus, String(id), Number(id)] : [newStatus, String(id)]
+      isNum ? [String(id), Number(id)] : [String(id)]
     );
 
     if (res.rows.length === 0) return null;
