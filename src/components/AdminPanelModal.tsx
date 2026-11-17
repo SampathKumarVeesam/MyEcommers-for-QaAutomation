@@ -130,6 +130,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     if (!token) return;
     setLoadingDetail(true);
     setSelectedCustomerId(customerId);
+
+    // Smooth scroll the content body to the top where the inspector card opens
+    contentBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      contentBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 80);
+
     try {
       const res = await fetch(apiUrl(`/api/admin/analytics/customers/${customerId}`), {
         headers: { Authorization: `Bearer ${token}` },
@@ -138,6 +145,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         const json = await res.json();
         if (json.success && json.data) {
           setCustomerDetail(json.data);
+          contentBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }
     } catch (err) {
@@ -866,11 +874,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               type="button"
                               data-test={`inspect-cust-${cust.id}`}
                               data-testid={`inspect-cust-${cust.id}`}
-                              onClick={() => fetchCustomerDetail(cust.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-600 text-slate-700 hover:text-white font-bold text-xs transition-all cursor-pointer shadow-2xs"
+                              onClick={() => {
+                                if (selectedCustomerId === cust.id) {
+                                  // If already selected, scroll smoothly up to the panel
+                                  contentBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                                } else {
+                                  fetchCustomerDetail(cust.id);
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-2xs ${
+                                selectedCustomerId === cust.id
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : 'bg-slate-100 hover:bg-indigo-600 text-slate-700 hover:text-white'
+                              }`}
                             >
                               <Eye className="w-3.5 h-3.5" />
-                              <span>Inspect Activity</span>
+                              <span>{selectedCustomerId === cust.id ? 'Inspecting ↑' : 'Inspect Activity'}</span>
                             </button>
                           </td>
                         </tr>
