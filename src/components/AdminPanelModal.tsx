@@ -12,10 +12,13 @@ import {
   Mail,
   Package,
   Phone,
+  PlusCircle,
   RefreshCw,
   Search,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
+  Tag,
   TrendingUp,
   User,
   Users,
@@ -30,6 +33,7 @@ import {
   CustomerActivitySummary,
   Order,
   Product,
+  ProductCategory,
 } from '../types.js';
 
 interface AdminPanelModalProps {
@@ -44,7 +48,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onRefreshCatalog,
 }) => {
   const { token, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product'>('analytics');
   const contentBodyRef = useRef<HTMLDivElement>(null);
 
   // Summary & Customer Activity State
@@ -66,6 +70,168 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
+
+  // Add Product Form State
+  const [newProduct, setNewProduct] = useState({
+    title: '',
+    category: 'electronics' as ProductCategory,
+    subcategory: 'Smartwatches',
+    price: '',
+    compareAtPrice: '',
+    stock: '25',
+    imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+    description: '',
+    tags: 'featured, new-arrival',
+    featured: true,
+  });
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [productCreateError, setProductCreateError] = useState<string | null>(null);
+  const [productCreateSuccess, setProductCreateSuccess] = useState<string | null>(null);
+
+  const sampleProductPresets = [
+    {
+      title: 'Apple Watch Ultra 2 Titanium GPS + Cellular',
+      category: 'electronics' as ProductCategory,
+      subcategory: 'Smartwatches',
+      price: '799.00',
+      compareAtPrice: '899.00',
+      stock: '20',
+      imageUrl: 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=800&q=80',
+      description: 'Rugged titanium smartwatch with precision dual-frequency GPS, action button, and up to 36 hours of battery life.',
+      tags: 'apple, smartwatch, titanium, premium, fitness',
+      featured: true,
+    },
+    {
+      title: 'Sony WH-1000XM5 Wireless Noise-Canceling Headphones',
+      category: 'audio' as ProductCategory,
+      subcategory: 'Over-Ear Headphones',
+      price: '349.99',
+      compareAtPrice: '399.99',
+      stock: '30',
+      imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80',
+      description: 'Industry-leading noise cancellation, two processors, 8 microphones, and up to 30 hours of continuous playback.',
+      tags: 'sony, audio, headphones, noise-canceling, bluetooth',
+      featured: true,
+    },
+    {
+      title: 'Italian Wool-Cashmere Tailored Overcoat',
+      category: 'fashion' as ProductCategory,
+      subcategory: 'Outerwear',
+      price: '320.00',
+      compareAtPrice: '395.00',
+      stock: '15',
+      imageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80',
+      description: 'Handcrafted luxury overcoat made with fine Italian wool and soft cashmere blend for exceptional warmth and silhouette.',
+      tags: 'fashion, outerwear, coat, luxury, winter',
+      featured: true,
+    },
+    {
+      title: 'Maison Noir Luxury Extrait de Parfum (100ml)',
+      category: 'beauty' as ProductCategory,
+      subcategory: 'Fragrances',
+      price: '185.00',
+      compareAtPrice: '220.00',
+      stock: '25',
+      imageUrl: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?auto=format&fit=crop&w=800&q=80',
+      description: 'An alluring, long-lasting artisan perfume featuring Calabrian bergamot, dark amber, smoked vanilla, and Haitian vetiver.',
+      tags: 'beauty, perfume, luxury, fragrance, artisan',
+      featured: true,
+    },
+  ];
+
+  const handleAutoFillSample = (index?: number) => {
+    const selected =
+      index !== undefined
+        ? sampleProductPresets[index]
+        : sampleProductPresets[Math.floor(Math.random() * sampleProductPresets.length)];
+    setNewProduct({ ...selected });
+    setProductCreateError(null);
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) {
+      setProductCreateError('Authentication token missing. Please sign in as admin again.');
+      return;
+    }
+
+    if (!newProduct.title.trim()) {
+      setProductCreateError('Product title is required.');
+      return;
+    }
+
+    if (!newProduct.price || isNaN(Number(newProduct.price)) || Number(newProduct.price) <= 0) {
+      setProductCreateError('Please specify a valid price greater than $0.');
+      return;
+    }
+
+    setCreatingProduct(true);
+    setProductCreateError(null);
+    setProductCreateSuccess(null);
+
+    try {
+      const tagsArray = newProduct.tags
+        ? newProduct.tags.split(',').map(t => t.trim()).filter(Boolean)
+        : [];
+
+      const payload = {
+        title: newProduct.title.trim(),
+        category: newProduct.category,
+        subcategory: newProduct.subcategory.trim() || 'General',
+        price: parseFloat(newProduct.price),
+        compareAtPrice: newProduct.compareAtPrice ? parseFloat(newProduct.compareAtPrice) : undefined,
+        stock: parseInt(newProduct.stock || '10', 10),
+        images: [newProduct.imageUrl.trim() || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'],
+        description: newProduct.description.trim(),
+        tags: tagsArray,
+        featured: Boolean(newProduct.featured),
+      };
+
+      const res = await fetch(apiUrl('/api/admin/products'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        const createdTitle = json.data?.title || payload.title;
+        setProductCreateSuccess(`Product "${createdTitle}" created and saved to database successfully!`);
+        setSaveMessage(`Product "${createdTitle}" added to catalog & inventory!`);
+        setTimeout(() => setSaveMessage(null), 3500);
+
+        // Instantly refresh inventory list
+        await fetchInventoryAndOrders();
+
+        // Refresh global customer catalog so it renders immediately on the storefront
+        onRefreshCatalog();
+
+        // Reset form
+        setNewProduct({
+          title: '',
+          category: 'electronics',
+          subcategory: 'Smartwatches',
+          price: '',
+          compareAtPrice: '',
+          stock: '25',
+          imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+          description: '',
+          tags: 'featured, new-arrival',
+          featured: true,
+        });
+      } else {
+        setProductCreateError(json.message || 'Failed to create product in PostgreSQL');
+      }
+    } catch (err: any) {
+      console.error('[Admin Add Product Error]:', err);
+      setProductCreateError(`Network or database error: ${err.message || 'Unknown'}`);
+    } finally {
+      setCreatingProduct(false);
+    }
+  };
 
   // Fetch summary and customers list from PostgreSQL
   const fetchAnalytics = async () => {
@@ -322,6 +488,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 Inventory ({products.length})
+              </button>
+              <button
+                data-test="admin-tab-add-product"
+                data-testid="admin-tab-add-product"
+                onClick={() => setActiveTab('add-product')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  activeTab === 'add-product' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Add Product</span>
               </button>
               <button
                 data-test="admin-tab-orders"
@@ -926,16 +1103,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   />
                 </div>
 
-                <button
-                  type="button"
-                  data-test="admin-refresh-button"
-                  data-testid="admin-refresh-button"
-                  onClick={fetchInventoryAndOrders}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Refresh Stock</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-test="admin-add-product-btn"
+                    data-testid="admin-add-product-btn"
+                    onClick={() => setActiveTab('add-product')}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Add New Product</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-test="admin-refresh-button"
+                    data-testid="admin-refresh-button"
+                    onClick={fetchInventoryAndOrders}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Refresh Stock</span>
+                  </button>
+                </div>
               </div>
 
               {/* Table */}
@@ -990,6 +1180,342 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              SECTION 4.5: ADD PRODUCT FORM TAB
+             ========================================================================= */}
+          {activeTab === 'add-product' && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              {/* Header Banner */}
+              <div className="p-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl text-white flex flex-wrap items-center justify-between gap-3 shadow-sm border border-indigo-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-bold text-indigo-300 border border-white/10">
+                    <PlusCircle className="w-5 h-5 text-indigo-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                      Add New Product to Catalog
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        PostgreSQL Sync
+                      </span>
+                    </h3>
+                    <p className="text-xs text-indigo-200">
+                      Creates a new storefront item with real-time database persistence and instant customer catalog sync.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-test="btn-auto-fill-product"
+                    data-testid="btn-auto-fill-product"
+                    onClick={() => handleAutoFillSample()}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 border border-white/20 transition-all cursor-pointer shadow-xs"
+                    title="Quickly fill sample product for fast QA testing"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>⚡ Auto-Fill Sample</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('inventory')}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    View Inventory
+                  </button>
+                </div>
+              </div>
+
+              {/* Sample Preset Quick-Pills */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-slate-500 font-semibold text-[11px] flex items-center gap-1">
+                  <Tag className="w-3 h-3 text-slate-400" /> Quick Presets:
+                </span>
+                {sampleProductPresets.map((preset, idx) => (
+                  <button
+                    key={preset.title}
+                    type="button"
+                    onClick={() => handleAutoFillSample(idx)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 border border-slate-200 text-slate-700 text-[11px] font-medium transition-all cursor-pointer"
+                  >
+                    {preset.category === 'electronics' ? '⌚' : preset.category === 'audio' ? '🎧' : preset.category === 'fashion' ? '🧥' : '✨'} {preset.subcategory}
+                  </button>
+                ))}
+              </div>
+
+              {/* Error and Success Alerts */}
+              {productCreateError && (
+                <div
+                  data-test="product-create-error"
+                  data-testid="product-create-error"
+                  className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center gap-2"
+                >
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{productCreateError}</span>
+                </div>
+              )}
+
+              {productCreateSuccess && (
+                <div
+                  data-test="product-create-success"
+                  data-testid="product-create-success"
+                  className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{productCreateSuccess}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('inventory')}
+                    className="text-xs text-emerald-700 underline font-extrabold hover:text-emerald-900 cursor-pointer"
+                  >
+                    View in Inventory →
+                  </button>
+                </div>
+              )}
+
+              {/* Product Creation Form */}
+              <form onSubmit={handleCreateProduct} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Title */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Product Name / Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      data-test="add-product-title"
+                      data-testid="add-product-title"
+                      placeholder="e.g. Samsung Galaxy Watch 8 Pro (46mm, Bluetooth)"
+                      value={newProduct.title}
+                      onChange={e => setNewProduct({ ...newProduct, title: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Category <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      data-test="add-product-category"
+                      data-testid="add-product-category"
+                      value={newProduct.category}
+                      onChange={e => setNewProduct({ ...newProduct, category: e.target.value as ProductCategory })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white cursor-pointer"
+                    >
+                      <option value="electronics">Electronics</option>
+                      <option value="fashion">Fashion</option>
+                      <option value="audio">Audio</option>
+                      <option value="beauty">Beauty</option>
+                    </select>
+                  </div>
+
+                  {/* Subcategory */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Subcategory / Department
+                    </label>
+                    <input
+                      type="text"
+                      data-test="add-product-subcategory"
+                      data-testid="add-product-subcategory"
+                      placeholder="e.g. Smartwatches, Over-Ear, Outerwear"
+                      value={newProduct.subcategory}
+                      onChange={e => setNewProduct({ ...newProduct, subcategory: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Sale Price ($) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      required
+                      data-test="add-product-price"
+                      data-testid="add-product-price"
+                      placeholder="e.g. 249.99"
+                      value={newProduct.price}
+                      onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Compare At Price */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Original / Compare-At Price ($) <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      data-test="add-product-compare-price"
+                      data-testid="add-product-compare-price"
+                      placeholder="e.g. 299.99 (Strikethrough discount)"
+                      value={newProduct.compareAtPrice}
+                      onChange={e => setNewProduct({ ...newProduct, compareAtPrice: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Initial Stock Units */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Initial Stock Units
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      data-test="add-product-stock"
+                      data-testid="add-product-stock"
+                      placeholder="e.g. 25"
+                      value={newProduct.stock}
+                      onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Featured Flag */}
+                  <div className="flex items-center gap-2 pt-6">
+                    <label className="relative flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        data-test="add-product-featured"
+                        data-testid="add-product-featured"
+                        checked={newProduct.featured}
+                        onChange={e => setNewProduct({ ...newProduct, featured: e.target.checked })}
+                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                      />
+                      <span>Feature on Storefront Homepage</span>
+                    </label>
+                  </div>
+
+                  {/* Image URL with live preview */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Product Image URL
+                    </label>
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="url"
+                        data-test="add-product-image"
+                        data-testid="add-product-image"
+                        placeholder="https://images.unsplash.com/..."
+                        value={newProduct.imageUrl}
+                        onChange={e => setNewProduct({ ...newProduct, imageUrl: e.target.value })}
+                        className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      />
+                      {newProduct.imageUrl && (
+                        <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden bg-slate-100 shrink-0">
+                          <img
+                            src={newProduct.imageUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={e => {
+                              (e.target as HTMLImageElement).src =
+                                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      data-test="add-product-description"
+                      data-testid="add-product-description"
+                      placeholder="Detailed product specifications, materials, warranty, and features..."
+                      value={newProduct.description}
+                      onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Search Tags */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Tags <span className="text-slate-400 font-normal">(Comma separated)</span>
+                    </label>
+                    <input
+                      type="text"
+                      data-test="add-product-tags"
+                      data-testid="add-product-tags"
+                      placeholder="e.g. smartwatch, fitness, titanium, waterproof"
+                      value={newProduct.tags}
+                      onChange={e => setNewProduct({ ...newProduct, tags: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[11px] text-slate-400">
+                    Product will be persisted to PostgreSQL database and immediately available for storefront customers.
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewProduct({
+                          title: '',
+                          category: 'electronics',
+                          subcategory: 'Smartwatches',
+                          price: '',
+                          compareAtPrice: '',
+                          stock: '25',
+                          imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80',
+                          description: '',
+                          tags: 'featured, new-arrival',
+                          featured: true,
+                        });
+                        setProductCreateError(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingProduct}
+                      data-test="admin-submit-product-btn"
+                      data-testid="admin-submit-product-btn"
+                      className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      {creatingProduct ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Saving to PostgreSQL...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle className="w-4 h-4" />
+                          <span>Create &amp; Publish Product</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
           )}
 
