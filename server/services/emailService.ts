@@ -4,6 +4,9 @@ import { Order } from '../../src/types.js';
 
 dotenv.config();
 
+// Brevo (Sendinblue) HTTPS REST API Configuration
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+
 // Zoho Mail SMTP Configuration (with safe fallbacks to ensure cloud deployments without local .env work immediately)
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.zoho.in';
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
@@ -191,7 +194,7 @@ function wrapEmailHtml(title: string, bodyContent: string): string {
     </div>
     <div class="footer">
       <p style="margin: 0 0 8px 0;">This is an automated notification from <strong>ShopSphere</strong>.</p>
-      <p style="margin: 0;">Sent via Zoho Mail SMTP • <a href="${APP_URL}" style="color: #4f46e5; text-decoration: none;">Visit ShopSphere Live</a></p>
+      <p style="margin: 0;">Sent via ShopSphere Transactional Mail Service • <a href="${APP_URL}" style="color: #4f46e5; text-decoration: none;">Visit ShopSphere Live</a></p>
     </div>
   </div>
 </body>
@@ -563,26 +566,27 @@ export async function sendCodPaymentMarkedAdminAlert(
 }
 
 /**
- * Test SMTP Connection and send test verification email
+ * Test Connection and send test verification email
  */
 export async function sendTestEmail(recipientEmail: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const subject = `Zoho Mail SMTP Test Verification - ShopSphere`;
+  const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+  const providerLabel = brevoApiKey ? 'Brevo HTTPS REST API (Port 443)' : `Zoho Mail SMTP (${SMTP_HOST}:${SMTP_PORT})`;
+  const subject = `Email Service Test Verification - ShopSphere`;
   const html = wrapEmailHtml(
     subject,
     `
       <div style="text-align: center; margin-bottom: 20px;">
         <span style="font-size: 40px;">🧪</span>
-        <h2 style="font-size: 20px; color: #0f172a; margin: 8px 0;">Zoho Mail SMTP Connected!</h2>
+        <h2 style="font-size: 20px; color: #0f172a; margin: 8px 0;">Transactional Email Service Connected!</h2>
         <p style="color: #64748b; font-size: 14px; margin: 0;">Automated transactional email service is active.</p>
       </div>
 
       <div class="card">
-        <h4 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #4f46e5;">Active SMTP Settings</h4>
+        <h4 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #4f46e5;">Active Mailer Settings</h4>
         <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569;">
-          <li><strong>Host:</strong> ${SMTP_HOST}</li>
-          <li><strong>Port:</strong> ${SMTP_PORT} (SSL: ${SMTP_SECURE})</li>
-          <li><strong>Authenticated User:</strong> ${SMTP_USER}</li>
-          <li><strong>Sender From:</strong> ${EMAIL_FROM}</li>
+          <li><strong>Provider:</strong> ${providerLabel}</li>
+          <li><strong>Sender:</strong> ${EMAIL_FROM}</li>
+          <li><strong>Recipient:</strong> ${recipientEmail}</li>
           <li><strong>Timestamp:</strong> ${new Date().toISOString()}</li>
         </ul>
       </div>
@@ -598,6 +602,8 @@ export async function sendTestEmail(recipientEmail: string): Promise<{ success: 
 
 /**
  * Core sendEmail executor with error handling (non-blocking, never throws)
+ * Sends over HTTPS via Brevo API when BREVO_API_KEY is configured,
+ * with optional fallback to local Zoho Mail SMTP if BREVO_API_KEY is missing.
  */
 async function sendEmail(
   to: string,
@@ -605,10 +611,54 @@ async function sendEmail(
   html: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    // If no credentials configured, log and gracefully skip
+    const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+
+    // 1. Primary: Brevo HTTPS REST API (Port 443 - Bypasses Render cloud SMTP port blocking)
+    if (brevoApiKey) {
+      try {
+        const senderEmail = (process.env.EMAIL_FROM || 'sampathkumarveesam@zohomail.in').trim();
+        const payload = {
+          sender: {
+            name: 'ShopSphere',
+            email: senderEmail,
+          },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        };
+
+        const response = await fetch(BREVO_API_URL, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'api-key': brevoApiKey,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: response.statusText }));
+          console.error('[Brevo Email Error]:', response.status, errorData);
+          return {
+            success: false,
+            error: `Brevo API error ${response.status}: ${JSON.stringify(errorData)}`,
+          };
+        }
+
+        const data = (await response.json()) as { messageId?: string };
+        console.log('[Brevo Email Sent]:', data.messageId || 'Success');
+        return { success: true, messageId: data.messageId };
+      } catch (brevoErr: any) {
+        console.error('[Brevo Email Error]: Network/Transmission failure:', brevoErr?.message || brevoErr);
+        return { success: false, error: brevoErr?.message || 'Brevo network error' };
+      }
+    }
+
+    // 2. Secondary / Local Fallback: Zoho Mail SMTP
     if (!SMTP_PASS || !SMTP_USER) {
-      console.warn(`[EmailService Warning]: SMTP credentials not fully set. Email '${subject}' to <${to}> skipped.`);
-      return { success: false, error: 'SMTP credentials not configured in environment' };
+      console.warn(`[EmailService Warning]: Neither BREVO_API_KEY nor SMTP credentials configured. Email '${subject}' to <${to}> skipped.`);
+      return { success: false, error: 'No email service credentials configured' };
     }
 
     const mailOptions = {

@@ -175,6 +175,31 @@ npm run dev
 
 ---
 
+## ✉️ Transactional Email Architecture (Brevo HTTPS REST API)
+
+ShopSphere includes an automated transactional email notification pipeline triggered on key customer and order lifecycle events:
+
+- **Welcome Email**: Sent automatically upon customer registration with account highlights.
+- **Order Confirmation**: Itemized purchase receipt with subtotal, tax, shipping, and tracking reference.
+- **Order Status Updates**: Real-time delivery progress updates (`PROCESSING`, `PROCESSED`, `OUT_FOR_DELIVERY`, `DELIVERED`, and `CANCELLED`).
+- **Cash on Delivery (COD)**: Payment instruction on dispatch and administrative alert when customer marks *"Paid to Delivery Boy"*.
+
+### Cloud-Native Delivery via Brevo (Port 443 HTTPS):
+Cloud hosting providers (such as Render's free tier) restrict outbound SMTP ports (25, 465, 587). To guarantee 100% deliverability on cloud deployments, ShopSphere transmits transactional emails over secure HTTPS via the **Brevo (Sendinblue) REST API** (`POST https://api.brevo.com/v3/smtp/email`):
+
+| Environment Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `BREVO_API_KEY` | Brevo API v3 Key (activates HTTPS delivery on Port 443) | `<your_brevo_api_key>` |
+| `EMAIL_FROM` | Verified sender email address | `sampathkumarveesam@zohomail.in` |
+| `SMTP_HOST` | *(Local fallback)* SMTP server host | `smtp.zoho.in` |
+| `SMTP_PORT` | *(Local fallback)* SMTP server port | `465` (SSL) or `587` (TLS) |
+| `SMTP_USER` | *(Local fallback)* SMTP login user | `your_email@zohomail.in` |
+| `SMTP_PASS` | *(Local fallback)* SMTP application password | `<smtp_password>` |
+
+> **Architecture Note**: When `BREVO_API_KEY` is present in the environment, all transactional emails are dispatched over HTTPS (Port 443) via Brevo. If `BREVO_API_KEY` is omitted, the mailer gracefully falls back to Zoho Mail SMTP for offline/local dev.
+
+---
+
 ## ☁️ Deployment Guide (Netlify & Serverless)
 
 This repository includes native configuration files for **Netlify**:
