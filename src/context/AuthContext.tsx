@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Address, User } from '../types.js';
+import { Address, Gender, User } from '../types.js';
 import { apiUrl } from '../config/api.js';
 
 interface AuthContextType {
@@ -12,12 +12,13 @@ interface AuthContextType {
   clearOAuthError: () => void;
   configuredProviders: Record<string, boolean>;
   login: (email: string, password: string, requiredRole?: 'admin' | 'customer') => Promise<{ success: boolean; message?: string; user?: User }>;
-  register: (data: { name: string; email: string; password: string; phone?: string }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string> }>;
+  register: (data: { name: string; email: string; password: string; phone?: string; gender?: Gender }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string> }>;
   loginWithOAuth: (provider: 'google' | 'apple') => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   quickLogin: (account: 'admin' | 'customer1' | 'customer2') => Promise<void>;
   updateUserAddress: (address: Address) => Promise<void>;
-  updateProfile: (updates: { name?: string; phone?: string; avatar?: string; address?: Address }) => Promise<boolean>;
+  updateProfile: (updates: { name?: string; phone?: string; gender?: Gender; avatar?: string; avatarUrl?: string; address?: Address }) => Promise<boolean>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -230,7 +231,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateProfile = async (updates: { name?: string; phone?: string; avatar?: string; address?: Address }): Promise<boolean> => {
+  const updateProfile = async (updates: {
+    name?: string;
+    phone?: string;
+    gender?: Gender;
+    avatar?: string;
+    avatarUrl?: string;
+    address?: Address;
+  }): Promise<boolean> => {
     if (!token) return false;
     try {
       const res = await fetch(apiUrl('/api/users/profile'), {
@@ -252,6 +260,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Failed to update profile in PostgreSQL:', err);
     }
     return false;
+  };
+
+  const refreshUser = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/users/me'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setUser(json.data);
+        }
+      }
+    } catch {}
   };
 
   const updateUserAddress = async (address: Address) => {
@@ -276,6 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         quickLogin,
         updateUserAddress,
         updateProfile,
+        refreshUser,
       }}
     >
       {children}

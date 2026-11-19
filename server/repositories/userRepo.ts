@@ -1,16 +1,19 @@
 import bcrypt from 'bcryptjs';
-import { Address, User } from '../../src/types.js';
+import { Address, Gender, User } from '../../src/types.js';
 import { query } from '../db/pool.js';
 
 export function mapUserRow(row: any): User {
+  const avatar = row.avatar_url || row.avatar || undefined;
   return {
     id: row.user_code || String(row.id),
     name: row.name,
     email: row.email,
     passwordHash: row.password,
     role: row.role as 'admin' | 'customer',
+    gender: (row.gender as Gender) || 'prefer_not_to_say',
     phone: row.phone || undefined,
-    avatar: row.avatar || undefined,
+    avatar,
+    avatarUrl: avatar,
     provider: (row.provider as 'local' | 'google' | 'apple') || 'local',
     providerId: row.provider_id || undefined,
     address: row.address_line_1
@@ -276,7 +279,9 @@ export class UserRepository {
     updates: {
       name?: string;
       phone?: string;
+      gender?: Gender;
       avatar?: string;
+      avatarUrl?: string;
       address?: Address;
     }
   ): Promise<User | null> {
@@ -295,9 +300,16 @@ export class UserRepository {
       sets.push(`phone = $${idx++}`);
       values.push(updates.phone.trim());
     }
-    if (updates.avatar !== undefined) {
+    if (updates.gender !== undefined) {
+      sets.push(`gender = $${idx++}`);
+      values.push(updates.gender);
+    }
+    const av = updates.avatarUrl || updates.avatar;
+    if (av !== undefined) {
       sets.push(`avatar = $${idx++}`);
-      values.push(updates.avatar);
+      values.push(av);
+      sets.push(`avatar_url = $${idx++}`);
+      values.push(av);
     }
     if (updates.address) {
       if (updates.address.street !== undefined) {

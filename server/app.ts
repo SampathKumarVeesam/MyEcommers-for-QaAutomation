@@ -8,6 +8,7 @@ import { storeRepo } from './repositories/storeRepo.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { adminAnalyticsRouter } from './routes/adminAnalytics.js';
+import { agentRouter } from './routes/agent.js';
 import { cartsRouter } from './routes/carts.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
@@ -47,6 +48,7 @@ export function createExpressApp() {
 
   // REST API Routes
   app.use('/api/users', authRouter);
+  app.use('/api/agent', agentRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/admin/analytics', adminAnalyticsRouter);
   app.use('/api/products', productsRouter);

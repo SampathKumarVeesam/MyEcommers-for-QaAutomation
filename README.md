@@ -1,15 +1,16 @@
-# ShopSphere — Enterprise Multi-Category E-Commerce & QA Automation Platform
+# ShopSphere v2.5.0 — Enterprise Multi-Category E-Commerce & QA Automation Platform
 
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.0-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0_Swagger-85EA2D?logo=swagger&logoColor=black)](http://localhost:3000/api-docs)
 [![Netlify](https://img.shields.io/badge/Netlify-Serverless_Ready-00C7B7?logo=netlify&logoColor=white)](https://www.netlify.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **ShopSphere** is a modern, production-grade multi-category e-commerce web platform engineered for real-world online shopping experiences and comprehensive **QA Automation Testing** (Playwright, Cypress, Selenium, Postman/Newman, and REST-Assured).
 
-It features a customer-facing storefront built with **React 19**, **Tailwind CSS**, and **Vite**, accompanied by a dedicated, standalone **OpenAPI 3.0 Swagger UI** for backend API test automation and a **Graphviz DOT workflow state machine**.
+It features a customer-facing storefront built with **React 19**, **Tailwind CSS**, and **Vite**, a complete **Delivery Agent Logistics & Onboarding Portal**, a **PostgreSQL 18** transactional persistence layer, automated transactional email dispatch via **Brevo HTTPS REST API (port 443)** with Zoho SMTP fallback, an interactive **OpenAPI 3.0 Swagger UI**, and a **Graphviz DOT workflow state machine**.
 
 ---
 
@@ -55,7 +56,26 @@ It features a customer-facing storefront built with **React 19**, **Tailwind CSS
   - Payment method options (Credit/Debit Card, UPI QR, Net Banking, Cash on Delivery).
   - 2FA OTP verification gate (`123456`).
   - Order confirmation screen with tracking ID and itemized receipt.
-- **Orders & Invoice Tracking**: Real-time delivery timeline stages (*Placed* $\rightarrow$ *Processing* $\rightarrow$ *In Transit* $\rightarrow$ *Delivered*), invoice preview, and past order history.
+- **Orders & Invoice Tracking**: Real-time delivery timeline stages (*Processing* $\rightarrow$ *Processed* $\rightarrow$ *Out for Delivery* $\rightarrow$ *Delivered*, or *Cancelled* status banner), itemized invoices, and past order history.
+- **Cash on Delivery (COD) & Delivery OTP Flow**:
+  - Customer's *"Pay to Delivery Boy"* action is locked during `PROCESSING` and `PROCESSED`, activating **only** when the order status reaches `OUT_FOR_DELIVERY`.
+  - When dispatched, an automated **6-digit secure Delivery OTP** is generated, stored in PostgreSQL, and emailed to the customer.
+  - The delivery agent must verify this OTP to complete delivery and collect payment via Cash or dynamic UPI QR code.
+- **Dedicated Delivery Agent Portal (`/delivery` or `#/agent`)**:
+  - Independent delivery partner portal styled to match the ShopSphere design system.
+  - **Email-Verified Onboarding**: Agent self-registration with gender-matched avatar selection, verification email token, and automated temporary password dispatch.
+  - **Mandatory First-Login Password Change**: Secure password rotation enforced upon first login with temporary password.
+  - **Assigned Deliveries Queue & Commission Wallet**: Live order assignments with customer address, contact info, OTP validation gate, Cash/UPI payment settlement, and automatic commission wallet crediting ($15 per completed delivery).
+- **Unified Profile & Avatar Customization**:
+  - Available for both Customers and Delivery Agents via the user menu.
+  - Gender selector (`male`, `female`, `non-binary`, `prefer_not_to_say`) dynamically loading 6 matching preset avatars.
+  - Custom file upload for `.jpg` and `.png` (up to 5MB) converted to Base64 data URIs and stored in PostgreSQL `avatar_url` column for persistent cloud hosting resilience.
+- **Automated Post-Delivery Feedback Reminder**:
+  - Non-intrusive popup appearing 15 minutes after order delivery prompting customers for a 5-star rating and written review.
+  - Features an interactive star rating selector, *"Remind Me Later (1h)"* snooze, and a permanent *"No thanks"* opt-out button.
+- **Admin Delivery Agent Oversight**:
+  - Dedicated *"Delivery Agents"* tab in Admin Panel displaying all registered agents, delivery counts, earnings, and active status toggles.
+  - Order assignment and re-assignment selector in the Global Orders table.
 - **VIP Newsletter & FAQ**: Email subscription with instant promo code reward and interactive customer service FAQ accordion.
 
 ---
@@ -79,9 +99,10 @@ The platform comes pre-configured with deterministic seed credentials for automa
 
 | Role | Name | Email | Password | Permissions |
 | :--- | :--- | :--- | :--- | :--- |
-| **Administrator** | Sampath Kumar (Admin) | `admin@practicesoftwaretesting.com` | `welcome01` | Full RBAC Admin, inventory create/update/delete, global orders view |
-| **Customer 1** | Jane Customer (User 1) | `customer@practicesoftwaretesting.com` | `User01` | Customer purchases, checkout, reviews, order history |
-| **Customer 2** | Alex Rivera (User 2) | `customer2@practicesoftwaretesting.com` | `User02` | Customer purchases, checkout, reviews, order history |
+| **Administrator** | Sampath Kumar (Admin) | `admin@practicesoftwaretesting.com` | `welcome01` | Full RBAC Admin, inventory create/update/delete, agent oversight, global orders view |
+| **Delivery Agent** | Alex Rivers (Agent) | `agent.alex@shopsphere.test` | `Agent#2026!` | Dedicated delivery portal, assigned orders queue, OTP verification, Cash/UPI settlement, earnings |
+| **Customer 1** | Jane Customer (User 1) | `customer@practicesoftwaretesting.com` | `User01` | Customer purchases, checkout, reviews, order history, profile customization |
+| **Customer 2** | Alex Rivera (User 2) | `customer2@practicesoftwaretesting.com` | `User02` | Customer purchases, checkout, reviews, order history, profile customization |
 
 > **Tip**: In the storefront header, use the **"Demo Logins"** dropdown for 1-click authentication without manually typing credentials.
 
@@ -110,6 +131,8 @@ To ensure testing isolation, the OpenAPI Swagger Explorer is served **completely
 - `POST /api/users/login` — Authenticate credentials. Returns HTTP `200 OK` with a **24-hour JWT Bearer token** and profile.
 - `POST /api/users/oauth` — OAuth 2.0 social login & registration for **Google** and **Apple**. Returns HTTP `200 OK` with a **24-hour JWT Bearer token** and profile.
 - `GET /api/users/me` — Retrieve current authenticated profile (Requires `Authorization: Bearer <token>`).
+- `PUT /api/users/profile` — Update user profile details (name, gender, avatarUrl).
+- `POST /api/users/profile/avatar` — Upload custom avatar image (JPG/PNG, up to 5MB encoded as Base64 data URI).
 - `GET /api/users` — User management directory (Admin only).
 
 ### 2. Catalog & Products
@@ -136,8 +159,32 @@ To ensure testing isolation, the OpenAPI Swagger Explorer is served **completely
 - `POST /api/orders/verify-otp` — Verify simulated 2FA OTP code (`123456`). Returns HTTP `200 OK`.
 - `POST /api/orders` — Finalize order, decrement catalog inventory, and generate tracking ID. Returns HTTP `201 Created`.
 - `GET /api/orders` — Retrieve user order history or all orders (if Admin).
+- `PATCH /api/orders/:id/paid-to-delivery-boy` — Customer marks COD order as paid to delivery boy (enabled only when `OUT_FOR_DELIVERY`).
+- `GET /api/orders/pending-feedback` — Retrieve delivered orders pending customer feedback.
+- `POST /api/orders/:id/feedback` — Submit 5-star rating and review for delivered order.
+- `POST /api/orders/:id/feedback/snooze` — Snooze feedback reminder prompt for 1 hour.
+- `POST /api/orders/:id/feedback/opt-out` — Permanently opt out of review prompt for order.
 
-### 5. QA Automation Utilities
+### 5. Delivery Agent Logistics Portal (`/api/agent/*`)
+- `POST /api/agent/register` — Onboard new delivery agent and send email verification token.
+- `POST /api/agent/verify-email` — Verify email token and dispatch temporary password to inbox.
+- `POST /api/agent/login` — Authenticate agent credentials; returns JWT and onboarding flags.
+- `PATCH /api/agent/profile/password` — Mandatory password update on first login.
+- `GET /api/agent/me` — Retrieve authenticated agent profile and earnings balance.
+- `PUT /api/agent/profile` — Update agent personal and delivery vehicle settings.
+- `POST /api/agent/profile/avatar` — Upload custom agent avatar image (JPG/PNG, up to 5MB Base64).
+- `GET /api/agent/orders` — List live delivery tasks assigned to the authenticated agent.
+- `POST /api/agent/orders/:id/verify-otp` — Validate customer 6-digit delivery OTP.
+- `POST /api/agent/orders/:id/collect-payment` — Settle Cash or UPI payment, mark order DELIVERED, and credit agent wallet ($15).
+- `GET /api/agent/earnings` — Retrieve total deliveries and commission balance summary.
+
+### 6. Admin Delivery Management (`/api/admin/agents*`)
+- `GET /api/admin/agents` — List all registered delivery agents with metrics and active status.
+- `POST /api/admin/agents` — Create and activate a new delivery agent.
+- `PATCH /api/admin/agents/:id` — Update agent status (`active` / `inactive`) or commission rate.
+- `POST /api/admin/orders/:id/assign-agent` — Assign or reassign order to a specific delivery agent.
+
+### 7. QA Automation Utilities
 - `POST /api/seed/reset` — **Database Reset Hook**: Resets the entire database store back to pristine initial seed state. Run this before or after test suites for 100% repeatable tests.
 - `GET /api/health` — Application health check endpoint.
 
@@ -245,29 +292,43 @@ MyEcommers-for-QaAutomation/
 │   └── functions/
 │       └── api.ts                 # Serverless Express wrapper for Netlify
 ├── server/
+│   ├── db/
+│   │   ├── pool.ts                # PostgreSQL connection pool with SSL/Render support
+│   │   └── schema.sql             # PostgreSQL 18 table DDL definitions & indexes
 │   ├── middleware/
-│   │   └── auth.ts                # JWT authentication & admin authorization middleware
+│   │   └── auth.ts                # JWT auth (Customer, Administrator & Delivery Agent)
+│   ├── repositories/
+│   │   ├── agentRepo.ts           # Delivery agent CRUD, onboarding & wallet ledger
+│   │   ├── orderRepo.ts           # Order persistence, OTP verification & feedback tracking
+│   │   ├── productRepo.ts         # Catalog queries & stock decrement
+│   │   └── userRepo.ts            # User auth, profile & Base64 avatar persistence
 │   ├── routes/
-│   │   ├── auth.ts                # User registration, login, and profile routes
+│   │   ├── admin.ts               # Admin inventory, analytics, order fulfillment & agent management
+│   │   ├── agent.ts               # Delivery agent registration, login, OTP verification & payments
+│   │   ├── auth.ts                # Customer registration, login, profile & custom avatar upload
 │   │   ├── carts.ts               # Basket creation, items add/update/delete
-│   │   ├── orders.ts              # Order placement, OTP verification, order tracking
+│   │   ├── orders.ts              # Order placement, OTP verification & customer feedback loop
 │   │   └── products.ts            # Product catalog, filtering, and reviews endpoints
+│   ├── services/
+│   │   └── emailService.ts        # Brevo HTTPS REST mailer (port 443) with Zoho SMTP fallback
 │   ├── app.ts                     # Shared Express application setup & middleware
-│   ├── dbStore.ts                 # In-memory relational database store with seed data
 │   ├── seedData.ts                # Verified seed products, categories, and user accounts
 │   └── swaggerDoc.ts              # OpenAPI 3.0 specification & Graphviz DOT workflow
 ├── src/
 │   ├── components/
-│   │   ├── AdminPanelModal.tsx    # Admin inventory & product creation dashboard
+│   │   ├── AdminPanelModal.tsx    # Admin inventory, products, orders & delivery agents dashboard
 │   │   ├── AuthModal.tsx          # Login & registration modal
 │   │   ├── CartDrawer.tsx         # Slide-over cart drawer with coupons & shipping tracker
 │   │   ├── CheckoutModal.tsx      # Multi-step checkout with address, payment & OTP
-│   │   ├── Header.tsx             # Navbar with live search, wishlist, currency & cart
+│   │   ├── DeliveryAgentPortal.tsx# Dedicated delivery agent portal (tasks, OTP, Cash/UPI)
+│   │   ├── FeedbackReminderModal.tsx # Post-delivery 5-star rating & review prompt
+│   │   ├── Header.tsx             # Navbar with live search, wishlist, currency & user menu
 │   │   ├── HeroBanner.tsx         # Interactive promotional carousel & flash deals timer
 │   │   ├── NewsletterSection.tsx  # VIP subscription box & customer FAQ accordion
-│   │   ├── OrdersModal.tsx        # Order history, delivery timeline & invoices
+│   │   ├── OrdersModal.tsx        # Order history, delivery timeline, OTP badge & invoices
 │   │   ├── ProductCard.tsx        # Product card with wishlist heart, badges & quick-add
 │   │   ├── ProductDetailModal.tsx # Full PDP view with sizing, variants & customer reviews
+│   │   ├── ProfileModal.tsx       # Gender-matched avatars & custom JPG/PNG 5MB upload
 │   │   └── WishlistModal.tsx      # Slide-over wishlist manager with move-to-cart
 │   ├── context/
 │   │   ├── AuthContext.tsx        # Authentication & JWT session context

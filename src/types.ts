@@ -1,4 +1,6 @@
-export type Role = 'admin' | 'customer';
+export type Role = 'admin' | 'customer' | 'delivery_agent';
+
+export type Gender = 'male' | 'female' | 'non_binary' | 'prefer_not_to_say';
 
 export interface User {
   id: string;
@@ -6,12 +8,35 @@ export interface User {
   email: string;
   passwordHash: string;
   role: Role;
+  gender?: Gender;
   phone?: string;
   avatar?: string;
+  avatarUrl?: string;
   address?: Address;
   provider?: 'local' | 'google' | 'apple' | string;
   providerId?: string;
   createdAt: string;
+}
+
+export interface DeliveryAgent {
+  id: string;
+  agentCode: string;
+  name: string;
+  email: string;
+  phone?: string;
+  gender: Gender;
+  avatarUrl: string;
+  role: 'delivery_agent';
+  vehicleType: string;
+  deliveryZone: string;
+  isEmailVerified: boolean;
+  mustChangePassword: boolean;
+  isActive: boolean;
+  commissionRate: number;
+  totalEarnings: number;
+  deliveredOrdersCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Address {
@@ -108,6 +133,16 @@ export interface Order {
   grandTotal: number;
   trackingNumber: string;
   createdAt: string;
+  assignedAgentId?: string | number | null;
+  assignedAgent?: DeliveryAgent | null;
+  deliveryFee?: number;
+  codPaymentMethod?: 'cash' | 'upi' | null;
+  codPaymentStatus?: 'pending' | 'paid' | null;
+  deliveryOtp?: string | null;
+  otpVerified?: boolean;
+  deliveredAt?: string | null;
+  feedbackStatus?: 'pending' | 'submitted' | 'dismissed_forever';
+  nextFeedbackReminderAt?: string | null;
 }
 
 export interface AuthResponse {

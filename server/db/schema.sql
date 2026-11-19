@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
   role VARCHAR(50) NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
   phone VARCHAR(50),
   avatar TEXT,
+  avatar_url TEXT,
+  gender VARCHAR(50) DEFAULT 'prefer_not_to_say',
   address_line_1 TEXT,
   address_city VARCHAR(100),
   address_state VARCHAR(100),
@@ -100,7 +102,40 @@ CREATE TABLE IF NOT EXISTS "order" (
   address_city VARCHAR(100),
   address_state VARCHAR(100),
   address_country VARCHAR(100),
+  assigned_agent_id VARCHAR(100),
+  delivery_fee NUMERIC(10,2) DEFAULT 15.00,
+  cod_payment_method VARCHAR(50),
+  cod_payment_status VARCHAR(50) DEFAULT 'pending',
+  delivery_otp VARCHAR(10),
+  otp_verified BOOLEAN DEFAULT FALSE,
+  delivered_at TIMESTAMP WITH TIME ZONE,
+  feedback_status VARCHAR(50) DEFAULT 'pending',
+  next_feedback_reminder_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6b. DELIVERY_AGENTS TABLE
+CREATE TABLE IF NOT EXISTS delivery_agents (
+  id VARCHAR(100) PRIMARY KEY,
+  agent_code VARCHAR(50) UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  gender VARCHAR(50) DEFAULT 'prefer_not_to_say',
+  avatar_url TEXT,
+  role VARCHAR(50) DEFAULT 'delivery_agent',
+  vehicle_type VARCHAR(100) DEFAULT 'Motorcycle',
+  delivery_zone VARCHAR(100) DEFAULT 'North Zone',
+  is_email_verified BOOLEAN DEFAULT FALSE,
+  email_verification_token VARCHAR(255),
+  must_change_password BOOLEAN DEFAULT TRUE,
+  is_active BOOLEAN DEFAULT TRUE,
+  commission_rate NUMERIC(10,2) DEFAULT 15.00,
+  total_earnings NUMERIC(10,2) DEFAULT 0.00,
+  delivered_orders_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. ORDER_ITEM TABLE
@@ -151,6 +186,9 @@ CREATE INDEX IF NOT EXISTS idx_cart_user_id ON cart(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_store_id ON inventory(store_id);
 CREATE INDEX IF NOT EXISTS idx_order_user_id ON "order"(user_id);
 CREATE INDEX IF NOT EXISTS idx_order_number ON "order"(order_number);
+CREATE INDEX IF NOT EXISTS idx_order_assigned_agent ON "order"(assigned_agent_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_agents_email ON delivery_agents(email);
+CREATE INDEX IF NOT EXISTS idx_delivery_agents_active ON delivery_agents(is_active);
 CREATE INDEX IF NOT EXISTS idx_order_item_order_id ON order_item(order_id);
 CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);

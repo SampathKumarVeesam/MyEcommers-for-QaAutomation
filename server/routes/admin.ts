@@ -1,7 +1,9 @@
 import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { query } from '../db/pool.js';
 import { AuthenticatedRequest, requireAdmin } from '../middleware/auth.js';
+import { agentRepo } from '../repositories/agentRepo.js';
 import { inventoryRepo } from '../repositories/inventoryRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
 import { productRepo } from '../repositories/productRepo.js';
@@ -692,3 +694,136 @@ adminRouter.put('/store', async (req: AuthenticatedRequest, res: Response): Prom
     res.status(500).json({ success: false, message: `Failed to update store: ${error.message}` });
   }
 });
+
+// ============================================================================
+// 7. DELIVERY AGENT MANAGEMENT & ORDER REASSIGNMENT
+// ============================================================================
+
+/**
+ * GET /api/admin/agents
+ * List all delivery agents
+ */
+adminRouter.get('/agents', async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const agents = await agentRepo.listAll();
+    res.status(200).json({
+      success: true,
+      data: agents,
+    });
+  } catch (err: any) {
+    console.error('[Admin List Agents Error]:', err);
+    res.status(500).json({ success: false, message: 'Failed to retrieve delivery agents' });
+  }
+});
+
+/**
+ * POST /api/admin/agents
+ * Create or provision a new delivery agent directly from admin panel
+ */
+adminRouter.post('/agents', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { name, email, phone, gender, vehicleType, deliveryZone, avatarUrl, commissionRate, password } = req.body || {};
+    if (!name || !email) {
+      res.status(400).json({ success: false, message: 'Name and email are required' });
+      return;
+    }
+
+    const existing = await agentRepo.findByEmail(email);
+    if (existing) {
+      res.status(400).json({ success: false, message: 'A delivery agent with this email already exists' });
+      return;
+    }
+
+    const rawPassword = password || 'Agent@123';
+    const passwordHash = bcrypt.hashSync(rawPassword, 10);
+
+    const created = await agentRepo.createAgent({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone?.trim(),
+      gender,
+      vehicleType,
+      deliveryZone,
+      avatarUrl,
+      passwordHash,
+      isEmailVerified: true,
+      mustChangePassword: false,
+      commissionRate: commissionRate !== undefined ? parseFloat(commissionRate) : 15.00,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Delivery agent created successfully in PostgreSQL',
+      data: created,
+    });
+  } catch (err: any) {
+    console.error('[Admin Create Agent Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to create delivery agent: ${err.message}` });
+  }
+});
+
+/**
+ * PATCH /api/admin/agents/:id
+ * Toggle active status or update commission rate
+ */
+adminRouter.patch('/agents/:id', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { isActive, commissionRate } = req.body || {};
+    const updated = await agentRepo.updateStatusOrCommission(id, {
+      isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+      commissionRate: commissionRate !== undefined ? parseFloat(commissionRate) : undefined,
+    });
+
+    if (!updated) {
+      res.status(404).json({ success: false, message: `Delivery agent '${id}' not found` });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Delivery agent updated successfully in PostgreSQL',
+      data: updated,
+    });
+  } catch (err: any) {
+    console.error('[Admin Update Agent Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to update delivery agent: ${err.message}` });
+  }
+});
+
+/**
+ * POST /api/admin/orders/:id/assign-agent
+ * Manually assign / reassign an order to a delivery agent
+ */
+adminRouter.post('/orders/:id/assign-agent', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { agentId } = req.body || {};
+    if (!agentId) {
+      res.status(400).json({ success: false, message: 'agentId is required' });
+      return;
+    }
+
+    const agent = await agentRepo.findById(agentId);
+    if (!agent) {
+      res.status(404).json({ success: false, message: `Delivery agent '${agentId}' not found` });
+      return;
+    }
+
+    const updatedOrder = await orderRepo.assignAgent(id, agentId);
+    if (!updatedOrder) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found` });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Order #${updatedOrder.orderNumber} successfully assigned to agent ${agent.name}`,
+      data: updatedOrder,
+    });
+  } catch (err: any) {
+    console.error('[Admin Assign Agent Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to assign delivery agent: ${err.message}` });
+  }
+});
+

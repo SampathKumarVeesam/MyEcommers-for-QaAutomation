@@ -459,6 +459,19 @@ export async function sendOrderStatusUpdateEmail(
         ` : ''}
       </div>
 
+      ${(normStatus === 'out_for_delivery' || normStatus === 'shipped') && order.deliveryOtp ? `
+        <!-- Delivery Verification OTP Card -->
+        <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #ffffff; border-radius: 14px; padding: 22px; text-align: center; margin: 20px 0; border: 2px solid #6366f1; box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.3);">
+          <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 11px; color: #a5b4fc; font-weight: 800; margin-bottom: 6px;">Secure Delivery Verification OTP</div>
+          <div style="font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #38bdf8; font-family: monospace; margin: 8px 0; text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);">
+            ${order.deliveryOtp}
+          </div>
+          <p style="font-size: 13px; color: #e0e7ff; margin: 0; line-height: 1.5;">
+            Share this 6-digit verification code with your delivery executive upon package arrival to verify and complete delivery.
+          </p>
+        </div>
+      ` : ''}
+
       ${(normStatus === 'out_for_delivery' || normStatus === 'shipped') && isCod ? `
         <!-- COD Out for delivery Payment Notice -->
         <div class="card" style="background: #fffbeb; border: 2px dashed #f59e0b; padding: 20px;">
@@ -558,6 +571,94 @@ export async function sendCodPaymentMarkedAdminAlert(
 
       <div style="text-align: center; margin: 30px 0 10px 0;">
         <a href="${APP_URL}" class="btn">Open Admin Console</a>
+      </div>
+    `
+  );
+
+  return sendEmail(recipient, subject, html);
+}
+
+/**
+ * 5. Delivery Agent Email Verification Link / Code
+ */
+export async function sendAgentVerificationEmail(
+  agent: { name: string; email: string },
+  token: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const recipient = agent.email?.trim();
+  if (!recipient) return { success: false, error: 'Agent email is missing' };
+
+  const subject = `Verify Your ShopSphere Delivery Agent Account 🛵`;
+  const html = wrapEmailHtml(
+    subject,
+    `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 40px;">🛵</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 12px 0 6px 0;">Delivery Agent Verification</h2>
+        <p style="color: #64748b; font-size: 14px; margin: 0;">Welcome to the ShopSphere Delivery Partner Network</p>
+      </div>
+
+      <p style="font-size: 14px; color: #334155;">
+        Hi <strong>${agent.name}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #334155;">
+        Thank you for registering as a ShopSphere Delivery Partner. Please verify your email address to complete onboarding and receive your temporary login password.
+      </p>
+
+      <div style="background: #f8fafc; border: 2px dashed #4f46e5; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; font-weight: 700;">Your Verification Token</div>
+        <div style="font-size: 28px; font-weight: 800; letter-spacing: 4px; color: #4f46e5; font-family: monospace; margin: 8px 0;">
+          ${token}
+        </div>
+        <p style="font-size: 12px; color: #64748b; margin: 0;">Enter this token on the Delivery Agent Portal to activate your account.</p>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0 10px 0;">
+        <a href="${APP_URL}/#agent?verifyEmail=${encodeURIComponent(recipient)}&token=${token}" class="btn">Verify Email & Claim Account</a>
+      </div>
+    `
+  );
+
+  return sendEmail(recipient, subject, html);
+}
+
+/**
+ * 6. Delivery Agent Temporary Password Email
+ */
+export async function sendAgentTemporaryPasswordEmail(
+  agent: { name: string; email: string },
+  tempPassword: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const recipient = agent.email?.trim();
+  if (!recipient) return { success: false, error: 'Agent email is missing' };
+
+  const subject = `Your ShopSphere Delivery Agent Temporary Password 🔑`;
+  const html = wrapEmailHtml(
+    subject,
+    `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 40px;">🔑</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 12px 0 6px 0;">Account Verified! Here is Your Temporary Password</h2>
+        <p style="color: #64748b; font-size: 14px; margin: 0;">Your ShopSphere Delivery Agent account is now active.</p>
+      </div>
+
+      <p style="font-size: 14px; color: #334155;">
+        Hi <strong>${agent.name}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #334155;">
+        Your email address has been verified. Use the temporary password below to log in to the Delivery Agent Portal. You will be prompted to set a permanent password upon your first login.
+      </p>
+
+      <div style="background: #f1f5f9; border: 2px solid #0f172a; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; font-weight: 700;">Temporary Login Password</div>
+        <div style="font-size: 24px; font-weight: 800; letter-spacing: 2px; color: #0f172a; font-family: monospace; margin: 8px 0; background: #ffffff; padding: 10px 16px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-block;">
+          ${tempPassword}
+        </div>
+        <p style="font-size: 12px; color: #e11d48; margin: 8px 0 0 0; font-weight: 600;">⚠️ Mandatory password change required on initial sign-in.</p>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0 10px 0;">
+        <a href="${APP_URL}/#agent" class="btn">Login to Delivery Agent Portal</a>
       </div>
     `
   );

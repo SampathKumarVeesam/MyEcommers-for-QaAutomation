@@ -37,6 +37,8 @@ interface HeaderProps {
   onOpenOrders: () => void;
   onOpenAdmin: () => void;
   onSelectProduct?: (product: Product) => void;
+  onOpenProfile?: () => void;
+  onOpenAgentPortal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -48,6 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenOrders,
   onOpenAdmin,
   onSelectProduct,
+  onOpenProfile,
+  onOpenAgentPortal,
 }) => {
   const { user, isAuthenticated, isAdmin, logout, quickLogin } = useAuth();
   const { totalItemCount, openCart, subtotal } = useCart();
@@ -260,6 +264,19 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-1 sm:gap-2.5">
+            {/* Delivery Agent Portal Button */}
+            <button
+              data-test="nav-delivery-portal"
+              data-testid="nav-delivery-portal"
+              onClick={() => onOpenAgentPortal?.()}
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors cursor-pointer shadow-2xs"
+              title="Open Delivery Partner & COD Settlement Portal"
+            >
+              <Truck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="hidden sm:inline">Delivery Portal</span>
+              <span className="sm:hidden text-[11px]">Agent</span>
+            </button>
+
             {/* Admin Portal / Admin Dashboard Button */}
             {isAdmin ? (
               <button
@@ -414,8 +431,8 @@ export const Header: React.FC<HeaderProps> = ({
                     className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 transition-colors cursor-pointer"
                   >
                     <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs overflow-hidden">
-                      {user?.avatar ? (
-                        <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                      {user?.avatarUrl || user?.avatar ? (
+                        <img src={user.avatarUrl || user.avatar} alt="" className="w-full h-full object-cover" />
                       ) : (
                         user?.name.charAt(0) || 'U'
                       )}
@@ -444,6 +461,19 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
 
                       <div className="py-1">
+                        <button
+                          data-test="user-profile-settings-link"
+                          data-testid="user-profile-settings-link"
+                          onClick={() => {
+                            setIsAccountMenuOpen(false);
+                            onOpenProfile?.();
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-slate-50 text-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <UserIcon className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Profile &amp; Avatar Settings</span>
+                        </button>
+
                         <button
                           data-test="user-orders-link"
                           data-testid="user-orders-link"

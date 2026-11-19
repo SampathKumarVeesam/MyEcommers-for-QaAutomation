@@ -8,6 +8,7 @@ import {
   Package,
   Receipt,
   RotateCcw,
+  ShieldCheck,
   ShoppingBag,
   Truck,
   X
@@ -393,6 +394,34 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                     );
                   })()}
 
+                  {/* Delivery OTP Card for Out for Delivery orders */}
+                  {normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery' && selectedOrder.deliveryOtp && (
+                    <div
+                      data-test="delivery-otp-banner"
+                      data-testid="delivery-otp-banner"
+                      className="p-3.5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-xl border border-indigo-500/40 shadow-sm flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-indigo-300">
+                          <ShieldCheck className="w-4 h-4 text-sky-400" />
+                          <span>Secure Delivery Verification OTP</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-0.5">
+                          Share this 6-digit verification code with your delivery agent upon arrival to verify and complete delivery.
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div
+                          data-test="delivery-otp-code"
+                          data-testid="delivery-otp-code"
+                          className="font-mono text-xl sm:text-2xl font-black tracking-widest text-sky-300 bg-white/10 px-3 py-1 rounded-lg border border-white/20"
+                        >
+                          {selectedOrder.deliveryOtp}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* COD Payment Notification & Action */}
                   {selectedOrder.paymentMethod === 'cod' && (
                     <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -403,16 +432,17 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                           <p className="text-[11px] text-amber-700">
                             {selectedOrder.paymentStatus === 'paid_to_delivery_agent'
                               ? '✓ You marked this as paid to delivery boy. Waiting for admin payment approval.'
-                              : selectedOrder.orderStatus.toLowerCase() === 'delivered'
+                              : normalizeOrderStatus(selectedOrder.orderStatus) === 'delivered'
                               ? '✓ Order delivered and payment verified.'
-                              : 'Pay with Cash or UPI to the delivery executive upon arrival.'}
+                              : normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery'
+                              ? 'Out for delivery! Pay with Cash or UPI to the delivery executive upon arrival.'
+                              : 'Payment is collected only once the order is Out for Delivery. Pay via Cash or UPI to the delivery executive upon arrival.'}
                           </p>
                         </div>
                       </div>
 
                       {selectedOrder.paymentStatus !== 'paid_to_delivery_agent' &&
-                        selectedOrder.orderStatus.toLowerCase() !== 'delivered' &&
-                        selectedOrder.orderStatus.toLowerCase() !== 'cancelled' && (
+                        normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery' && (
                           <button
                             type="button"
                             data-test="btn-paid-to-delivery-boy"

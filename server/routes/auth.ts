@@ -427,11 +427,13 @@ const handleProfileUpdate = async (req: AuthenticatedRequest, res: Response): Pr
       return;
     }
 
-    const { name, phone, avatar, address } = req.body || {};
+    const { name, phone, gender, avatar, avatarUrl, address } = req.body || {};
     const updated = await userRepo.updateProfile(req.user.id, {
       name,
       phone,
-      avatar,
+      gender,
+      avatar: avatarUrl || avatar,
+      avatarUrl: avatarUrl || avatar,
       address,
     });
 
@@ -459,6 +461,62 @@ authRouter.put('/profile', requireAuth, handleProfileUpdate);
 authRouter.patch('/profile', requireAuth, handleProfileUpdate);
 authRouter.put('/me', requireAuth, handleProfileUpdate);
 authRouter.patch('/me', requireAuth, handleProfileUpdate);
+
+// POST /api/users/profile/avatar (Strictly validated JPG/PNG base64 upload, max 5MB)
+authRouter.post('/profile/avatar', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const { avatarDataUrl } = req.body || {};
+    if (!avatarDataUrl || typeof avatarDataUrl !== 'string') {
+      res.status(400).json({ success: false, message: 'avatarDataUrl (base64 string) is required' });
+      return;
+    }
+
+    // Validate image MIME type (JPG / JPEG / PNG only)
+    const match = avatarDataUrl.match(/^data:image\/(jpeg|jpg|png);base64,/i);
+    if (!match) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid image format. Only JPG (.jpg, .jpeg) and PNG (.png) files are accepted.',
+      });
+      return;
+    }
+
+    // Validate size <= 5MB
+    const base64Data = avatarDataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    if (sizeInBytes > 5 * 1024 * 1024) {
+      res.status(400).json({
+        success: false,
+        message: 'File size exceeds maximum limit of 5MB. Please choose a smaller image.',
+      });
+      return;
+    }
+
+    const updated = await userRepo.updateProfile(req.user.id, {
+      avatarUrl: avatarDataUrl,
+    });
+
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'User not found in database' });
+      return;
+    }
+
+    const { passwordHash: _, ...safeUser } = updated;
+    res.status(200).json({
+      success: true,
+      message: 'Avatar uploaded and updated successfully in PostgreSQL',
+      data: safeUser,
+    });
+  } catch (err: any) {
+    console.error('[Upload Avatar Error]:', err);
+    res.status(500).json({ success: false, message: `Avatar upload failed: ${err.message}` });
+  }
+});
 
 // POST /api/users/logout (Customer & Admin logout session invalidation)
 authRouter.post('/logout', (_req: Request, res: Response): void => {

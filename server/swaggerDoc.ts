@@ -53,6 +53,14 @@ export const SWAGGER_SPEC = {
     {
       "name": "Admin - Reviews & Moderation",
       "description": "[Requires Admin JWT] Review inspection, moderation, and content removal"
+    },
+    {
+      "name": "Delivery Agents",
+      "description": "Onboarding, email verification, temporary password issuance, delivery assignment, OTP settlement, and earnings wallet"
+    },
+    {
+      "name": "Feedback & Reviews",
+      "description": "Post-delivery review prompts, 5-star ratings, snoozing, and permanent opt-out"
     }
   ],
   "components": {
@@ -580,6 +588,7 @@ export const SWAGGER_SPEC = {
             "enum": [
               "pending",
               "processing",
+              "out_for_delivery",
               "shipped",
               "delivered",
               "cancelled"
@@ -1115,6 +1124,97 @@ export const SWAGGER_SPEC = {
             "type": "string",
             "example": "Requested resource was not found in PostgreSQL database."
           }
+        }
+      },
+      "AvatarUploadDTO": {
+        "type": "object",
+        "required": ["avatarUrl"],
+        "properties": {
+          "avatarUrl": {
+            "type": "string",
+            "description": "Base64 data URI (data:image/jpeg;base64,... or data:image/png;base64,...) or image URL up to 5MB",
+            "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+          }
+        }
+      },
+      "DeliveryAgentDTO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "agt_9x8k1" },
+          "name": { "type": "string", "example": "Alex Rivers" },
+          "email": { "type": "string", "format": "email", "example": "agent.alex@shopsphere.test" },
+          "phone": { "type": "string", "example": "+1 555-019-2831" },
+          "gender": { "type": "string", "enum": ["male", "female", "non-binary", "prefer_not_to_say"], "example": "male" },
+          "avatarUrl": { "type": "string", "example": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" },
+          "vehicleType": { "type": "string", "example": "Electric Scooter" },
+          "deliveryZone": { "type": "string", "example": "Downtown & Metro Core" },
+          "status": { "type": "string", "enum": ["active", "inactive", "busy"], "example": "active" },
+          "totalDeliveries": { "type": "integer", "example": 24 },
+          "earnings": { "type": "number", "example": 360.00 },
+          "commissionRate": { "type": "number", "example": 15.00 },
+          "emailVerified": { "type": "boolean", "example": true },
+          "mustChangePassword": { "type": "boolean", "example": false }
+        }
+      },
+      "AgentRegistrationDTO": {
+        "type": "object",
+        "required": ["name", "email", "phone", "gender"],
+        "properties": {
+          "name": { "type": "string", "example": "Jordan Lee" },
+          "email": { "type": "string", "format": "email", "example": "jordan.lee@shopsphere.test" },
+          "phone": { "type": "string", "example": "+1 555-019-9988" },
+          "gender": { "type": "string", "enum": ["male", "female", "non-binary", "prefer_not_to_say"], "example": "non-binary" },
+          "avatarUrl": { "type": "string", "example": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" },
+          "vehicleType": { "type": "string", "example": "E-Bike" },
+          "deliveryZone": { "type": "string", "example": "North District" }
+        }
+      },
+      "AgentVerifyEmailDTO": {
+        "type": "object",
+        "required": ["email", "token"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "jordan.lee@shopsphere.test" },
+          "token": { "type": "string", "example": "d7a4f910b..." }
+        }
+      },
+      "AgentLoginDTO": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "jordan.lee@shopsphere.test" },
+          "password": { "type": "string", "example": "Tmp#8f29A!" }
+        }
+      },
+      "AgentChangePasswordDTO": {
+        "type": "object",
+        "required": ["currentPassword", "newPassword"],
+        "properties": {
+          "currentPassword": { "type": "string", "example": "Tmp#8f29A!" },
+          "newPassword": { "type": "string", "example": "Secure#Pass2026" }
+        }
+      },
+      "VerifyDeliveryOtpDTO": {
+        "type": "object",
+        "required": ["otp"],
+        "properties": {
+          "otp": { "type": "string", "minLength": 6, "maxLength": 6, "example": "481920" }
+        }
+      },
+      "CollectPaymentDTO": {
+        "type": "object",
+        "required": ["method", "otp"],
+        "properties": {
+          "method": { "type": "string", "enum": ["cash", "upi"], "example": "cash" },
+          "otp": { "type": "string", "minLength": 6, "maxLength": 6, "example": "481920" },
+          "reference": { "type": "string", "example": "UPI-REF-891024" }
+        }
+      },
+      "FeedbackSubmitDTO": {
+        "type": "object",
+        "required": ["rating"],
+        "properties": {
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5, "example": 5 },
+          "comment": { "type": "string", "example": "Fast delivery, courteous agent!" }
         }
       }
     }
@@ -3363,6 +3463,332 @@ export const SWAGGER_SPEC = {
               }
             }
           }
+        }
+      }
+    },
+    "/users/profile/avatar": {
+      "post": {
+        "tags": ["Customer - Auth"],
+        "summary": "Upload custom avatar image (JPG/PNG, up to 5MB Base64)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AvatarUploadDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Avatar updated successfully" },
+          "400": { "description": "Invalid image payload or size exceeds 5MB" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/orders/pending-feedback": {
+      "get": {
+        "tags": ["Feedback & Reviews"],
+        "summary": "Retrieve delivered orders awaiting customer feedback",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of orders pending review" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/orders/{id}/feedback": {
+      "post": {
+        "tags": ["Feedback & Reviews"],
+        "summary": "Submit rating and review for delivered order",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "ORD-109434-SP" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FeedbackSubmitDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Feedback submitted successfully" },
+          "400": { "description": "Invalid rating or comment" },
+          "404": { "description": "Order not found" }
+        }
+      }
+    },
+    "/orders/{id}/feedback/snooze": {
+      "post": {
+        "tags": ["Feedback & Reviews"],
+        "summary": "Snooze feedback prompt for 1 hour",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Feedback reminder snoozed" }
+        }
+      }
+    },
+    "/orders/{id}/feedback/opt-out": {
+      "post": {
+        "tags": ["Feedback & Reviews"],
+        "summary": "Permanently opt-out of feedback for order",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Opted out of feedback" }
+        }
+      }
+    },
+    "/agent/register": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Register a new delivery agent and send email verification token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentRegistrationDTO" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Agent registered; verification email dispatched" },
+          "400": { "description": "Missing required fields or email already exists" }
+        }
+      }
+    },
+    "/agent/verify-email": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Verify agent email token and issue temporary login password via email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentVerifyEmailDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Email verified; temporary password sent to inbox" },
+          "400": { "description": "Invalid or expired verification token" }
+        }
+      }
+    },
+    "/agent/login": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Authenticate delivery agent with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentLoginDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authentication successful; returns JWT token and agent profile" },
+          "401": { "description": "Invalid credentials or email unverified" }
+        }
+      }
+    },
+    "/agent/profile/password": {
+      "patch": {
+        "tags": ["Delivery Agents"],
+        "summary": "Change delivery agent password (mandatory on first login)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentChangePasswordDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password updated successfully" },
+          "400": { "description": "Password validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/agent/me": {
+      "get": {
+        "tags": ["Delivery Agents"],
+        "summary": "Get authenticated delivery agent profile and earnings",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Current agent profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/agent/profile": {
+      "put": {
+        "tags": ["Delivery Agents"],
+        "summary": "Update agent details (name, phone, vehicle, delivery zone, gender, avatarUrl)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile updated" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/agent/profile/avatar": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Upload custom avatar image for delivery agent (JPG/PNG, up to 5MB Base64)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AvatarUploadDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Avatar updated" },
+          "400": { "description": "Invalid image format or size exceeds 5MB" }
+        }
+      }
+    },
+    "/agent/orders": {
+      "get": {
+        "tags": ["Delivery Agents"],
+        "summary": "List assigned delivery orders for the authenticated agent",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of assigned orders" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/agent/orders/{id}/verify-otp": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Validate customer 6-digit delivery OTP before completing delivery or collecting payment",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VerifyDeliveryOtpDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP verified successfully" },
+          "400": { "description": "Invalid or expired OTP" }
+        }
+      }
+    },
+    "/agent/orders/{id}/collect-payment": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Collect Cash or UPI payment, mark order DELIVERED, and credit agent commission wallet",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CollectPaymentDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Payment collected, order delivered, agent wallet credited" },
+          "400": { "description": "OTP verification required before payment collection" }
+        }
+      }
+    },
+    "/agent/earnings": {
+      "get": {
+        "tags": ["Delivery Agents"],
+        "summary": "Retrieve earnings summary, completed deliveries count, and commission balance",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Earnings and delivery statistics" }
+        }
+      }
+    },
+    "/admin/agents": {
+      "get": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Admin JWT] List all registered delivery agents with metrics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of all delivery agents" }
+        }
+      },
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Admin JWT] Create and activate a new delivery agent",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentRegistrationDTO" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Delivery agent created" }
+        }
+      }
+    },
+    "/admin/agents/{id}": {
+      "patch": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Admin JWT] Update agent status (active/inactive) or commission rate",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Agent updated" }
+        }
+      }
+    },
+    "/admin/orders/{id}/assign-agent": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Admin JWT] Reassign delivery order to a specific agent",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["agentId"],
+                "properties": {
+                  "agentId": { "type": "string", "example": "agt_9x8k1" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Agent assigned to order" }
         }
       }
     }

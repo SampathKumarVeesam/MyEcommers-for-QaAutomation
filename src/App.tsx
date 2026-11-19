@@ -31,12 +31,15 @@ import { AdminPanelModal } from './components/AdminPanelModal.js';
 import { AuthModal } from './components/AuthModal.js';
 import { CartDrawer } from './components/CartDrawer.js';
 import { CheckoutModal } from './components/CheckoutModal.js';
+import { DeliveryAgentPortal } from './components/DeliveryAgentPortal.js';
+import { FeedbackReminderModal } from './components/FeedbackReminderModal.js';
 import { Header } from './components/Header.js';
 import { HeroBanner } from './components/HeroBanner.js';
 import { NewsletterSection } from './components/NewsletterSection.js';
 import { OrdersModal } from './components/OrdersModal.js';
 import { ProductCard } from './components/ProductCard.js';
 import { ProductDetailModal } from './components/ProductDetailModal.js';
+import { ProfileModal } from './components/ProfileModal.js';
 import { WishlistModal } from './components/WishlistModal.js';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { CartProvider } from './context/CartContext.js';
@@ -75,6 +78,8 @@ function ShopSphereMain() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isAgentPortalOpen, setIsAgentPortalOpen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(false);
 
   // Intercept checkout for unauthenticated users: ask to sign in first, then smoothly proceed to checkout
@@ -91,7 +96,7 @@ function ShopSphereMain() {
     }
   };
 
-  // URL Hash/Route protection for Admin Dashboard
+  // URL Hash/Route protection for Admin Dashboard and Delivery Agent Portal
   useEffect(() => {
     const handleUrlRoute = () => {
       const hash = window.location.hash;
@@ -104,6 +109,8 @@ function ShopSphereMain() {
         } else {
           setAuthModal({ open: true, tab: 'admin' });
         }
+      } else if (hash === '#agent' || hash === '#delivery' || search.includes('agent') || search.includes('delivery')) {
+        setIsAgentPortalOpen(true);
       }
     };
     handleUrlRoute();
@@ -207,6 +214,8 @@ function ShopSphereMain() {
         onOpenAuth={tab => setAuthModal({ open: true, tab: tab || 'login' })}
         onOpenOrders={() => setIsOrdersOpen(true)}
         onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenAgentPortal={() => setIsAgentPortalOpen(true)}
         onSelectProduct={p => setSelectedProduct(p)}
       />
 
@@ -675,6 +684,21 @@ function ShopSphereMain() {
         onClose={() => setIsAdminOpen(false)}
         onRefreshCatalog={fetchProducts}
       />
+
+      {/* Profile & Avatar Customization Modal */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
+
+      {/* Dedicated Delivery Agent Portal Modal */}
+      <DeliveryAgentPortal
+        isOpen={isAgentPortalOpen}
+        onClose={() => setIsAgentPortalOpen(false)}
+      />
+
+      {/* Automated Post-Delivery Feedback Reminder Modal */}
+      <FeedbackReminderModal />
     </div>
   );
 }

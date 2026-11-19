@@ -241,6 +241,15 @@ ordersRouter.post('/:id/paid-to-delivery-boy', optionalAuth, async (req: Authent
       return;
     }
 
+    const normStatus = String(order.orderStatus).toLowerCase().replace(/[\s-]+/g, '_');
+    if (normStatus !== 'out_for_delivery') {
+      res.status(400).json({
+        success: false,
+        message: 'Payment to delivery agent can only be confirmed once the order is Out for Delivery.',
+      });
+      return;
+    }
+
     if (order.orderStatus === 'cancelled') {
       res.status(400).json({
         success: false,
@@ -331,4 +340,89 @@ ordersRouter.patch('/:id/cancel', optionalAuth, async (req: AuthenticatedRequest
     });
   }
 });
+
+// GET /api/orders/pending-feedback (Retrieve orders pending post-delivery feedback for current customer)
+ordersRouter.get('/pending-feedback', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id || (req.query.userId as string);
+    if (!userId) {
+      res.status(200).json({ success: true, data: [] });
+      return;
+    }
+
+    const pending = await orderRepo.getPendingFeedbackOrders(userId);
+    res.status(200).json({
+      success: true,
+      data: pending,
+    });
+  } catch (err: any) {
+    console.error('[Pending Feedback Error]:', err);
+    res.status(500).json({ success: false, message: 'Failed to retrieve pending feedback orders' });
+  }
+});
+
+// POST /api/orders/:id/feedback (Submit post-delivery rating & review)
+ordersRouter.post('/:id/feedback', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body || {};
+
+    if (!rating || Number(rating) < 1 || Number(rating) > 5) {
+      res.status(400).json({ success: false, message: 'Rating must be an integer between 1 and 5' });
+      return;
+    }
+
+    const result = await orderRepo.submitFeedback(id, parseInt(rating, 10), comment || 'Great product!');
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Submit Feedback Error]:', err);
+    res.status(500).json({ success: false, message: 'Failed to submit feedback' });
+  }
+});
+
+// POST /api/orders/:id/feedback/snooze (Snooze feedback reminder by 1 hour)
+ordersRouter.post('/:id/feedback/snooze', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const updated = await orderRepo.snoozeFeedback(id);
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'Order not found' });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Feedback reminder snoozed for 1 hour',
+      data: updated,
+    });
+  } catch (err: any) {
+    console.error('[Snooze Feedback Error]:', err);
+    res.status(500).json({ success: false, message: 'Failed to snooze feedback reminder' });
+  }
+});
+
+// POST /api/orders/:id/feedback/opt-out (Permanently dismiss automated feedback reminders for this order)
+ordersRouter.post('/:id/feedback/opt-out', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const updated = await orderRepo.optOutFeedback(id);
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'Order not found' });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: "Automated feedback reminders permanently dismissed for this order. You can still leave a review anytime via the product page.",
+      data: updated,
+    });
+  } catch (err: any) {
+    console.error('[Opt Out Feedback Error]:', err);
+    res.status(500).json({ success: false, message: 'Failed to opt-out of feedback reminders' });
+  }
+});
+
 

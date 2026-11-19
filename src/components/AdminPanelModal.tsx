@@ -20,6 +20,7 @@ import {
   Sparkles,
   Tag,
   TrendingUp,
+  Truck,
   User,
   Users,
   X,
@@ -31,6 +32,7 @@ import {
   AnalyticsSummary,
   CustomerActivityDetail,
   CustomerActivitySummary,
+  DeliveryAgent,
   Order,
   Product,
   ProductCategory,
@@ -48,8 +50,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onRefreshCatalog,
 }) => {
   const { token, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product' | 'agents'>('analytics');
   const contentBodyRef = useRef<HTMLDivElement>(null);
+
+  // Delivery Agents State
+  const [agents, setAgents] = useState<DeliveryAgent[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+  const [showAddAgentForm, setShowAddAgentForm] = useState(false);
+  const [creatingAgent, setCreatingAgent] = useState(false);
+  const [newAgentName, setNewAgentName] = useState('');
+  const [newAgentEmail, setNewAgentEmail] = useState('');
+  const [newAgentPhone, setNewAgentPhone] = useState('');
+  const [newAgentGender, setNewAgentGender] = useState<string>('male');
+  const [newAgentVehicle, setNewAgentVehicle] = useState('Motorcycle');
+  const [newAgentZone, setNewAgentZone] = useState('Central Hub');
+  const [newAgentRate, setNewAgentRate] = useState('15.00');
 
   // Summary & Customer Activity State
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -321,9 +336,131 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
+  // Fetch delivery agents
+  const fetchAgents = async () => {
+    if (!token) return;
+    setLoadingAgents(true);
+    try {
+      const res = await fetch(apiUrl('/api/admin/agents'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAgents(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('[Admin Agents Fetch Error]:', err);
+    } finally {
+      setLoadingAgents(false);
+    }
+  };
+
+  const handleToggleAgentActive = async (agentId: string, currentStatus: boolean) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/agents/${agentId}`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isActive: !currentStatus }),
+      });
+      if (res.ok) {
+        setSaveMessage('Delivery agent status updated successfully!');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchAgents();
+      }
+    } catch (err) {
+      console.error('Failed to update agent status:', err);
+    }
+  };
+
+  const handleUpdateCommissionRate = async (agentId: string, rate: number) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/agents/${agentId}`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ commissionRate: rate }),
+      });
+      if (res.ok) {
+        setSaveMessage('Commission rate updated in PostgreSQL!');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchAgents();
+      }
+    } catch (err) {
+      console.error('Failed to update commission rate:', err);
+    }
+  };
+
+  const handleAssignOrderAgent = async (orderId: string, agentId: string) => {
+    if (!token || !agentId) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/orders/${orderId}/assign-agent`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ agentId }),
+      });
+      if (res.ok) {
+        setSaveMessage('Order assigned to delivery agent successfully!');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchInventoryAndOrders();
+      }
+    } catch (err) {
+      console.error('Failed to assign agent to order:', err);
+    }
+  };
+
+  const handleCreateAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !newAgentName || !newAgentEmail) return;
+    setCreatingAgent(true);
+    try {
+      const res = await fetch(apiUrl('/api/admin/agents'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newAgentName,
+          email: newAgentEmail,
+          phone: newAgentPhone,
+          gender: newAgentGender,
+          vehicleType: newAgentVehicle,
+          deliveryZone: newAgentZone,
+          commissionRate: parseFloat(newAgentRate) || 15.00,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSaveMessage('Delivery agent created successfully!');
+        setShowAddAgentForm(false);
+        setNewAgentName('');
+        setNewAgentEmail('');
+        setNewAgentPhone('');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchAgents();
+      }
+    } catch (err) {
+      console.error('Failed to create agent:', err);
+    } finally {
+      setCreatingAgent(false);
+    }
+  };
+
   // Refresh all data
   const handleRefreshAll = async () => {
-    await Promise.all([fetchAnalytics(), fetchInventoryAndOrders()]);
+    await Promise.all([fetchAnalytics(), fetchInventoryAndOrders(), fetchAgents()]);
   };
 
   useEffect(() => {
@@ -509,6 +646,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 }`}
               >
                 <span className="hidden sm:inline">Global </span>Orders ({orders.length})
+              </button>
+              <button
+                data-test="admin-tab-agents"
+                data-testid="admin-tab-agents"
+                onClick={() => setActiveTab('agents')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  activeTab === 'agents' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>Delivery Agents ({agents.length})</span>
               </button>
             </div>
 
@@ -1533,6 +1681,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <th className="p-3">Destination</th>
                       <th className="p-3">Payment</th>
                       <th className="p-3">Grand Total</th>
+                      <th className="p-3">Assigned Agent</th>
                       <th className="p-3">Status</th>
                     </tr>
                   </thead>
@@ -1556,6 +1705,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           <span className="uppercase font-semibold text-slate-700">{o.paymentMethod}</span>
                         </td>
                         <td className="p-3 font-bold text-slate-900">${o.grandTotal.toFixed(2)}</td>
+                        <td className="p-3">
+                          <select
+                            data-test={`admin-order-agent-select-${o.orderNumber}`}
+                            data-testid={`admin-order-agent-select-${o.orderNumber}`}
+                            value={o.assignedAgentId || ''}
+                            onChange={e => handleAssignOrderAgent(o.orderNumber || o.id, e.target.value)}
+                            className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 outline-none cursor-pointer max-w-[150px]"
+                            title="Reassign order to delivery agent"
+                          >
+                            <option value="">Unassigned</option>
+                            {agents.map(ag => (
+                              <option key={ag.id} value={ag.id}>
+                                {ag.name} ({ag.vehicleType})
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                         <td className="p-3">
                           <select
                             data-test={`admin-order-status-select-${o.orderNumber}`}
@@ -1587,6 +1753,221 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </button>
                             </div>
                           )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+              SECTION 6: DELIVERY AGENTS MANAGEMENT TAB
+             ========================================================================= */}
+          {activeTab === 'agents' && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">Delivery Agent Fleet &amp; Commission Rates</h4>
+                  <p className="text-xs text-slate-500">
+                    Manage active delivery partners, toggle status, set custom payout rates, and add new agents
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  data-test="btn-toggle-add-agent"
+                  data-testid="btn-toggle-add-agent"
+                  onClick={() => setShowAddAgentForm(!showAddAgentForm)}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>{showAddAgentForm ? 'Close Form' : 'Provision New Agent'}</span>
+                </button>
+              </div>
+
+              {/* Add Agent Form */}
+              {showAddAgentForm && (
+                <form onSubmit={handleCreateAgent} className="p-4 bg-white border border-indigo-200 rounded-2xl shadow-sm space-y-3">
+                  <h5 className="text-xs font-bold text-indigo-900 uppercase">Provision New Delivery Agent</h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newAgentName}
+                        onChange={e => setNewAgentName(e.target.value)}
+                        placeholder="Alex Rivers"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Email</label>
+                      <input
+                        type="email"
+                        required
+                        value={newAgentEmail}
+                        onChange={e => setNewAgentEmail(e.target.value)}
+                        placeholder="agent@shopsphere.test"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={newAgentPhone}
+                        onChange={e => setNewAgentPhone(e.target.value)}
+                        placeholder="+1 (555) 789-0123"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Gender</label>
+                      <select
+                        value={newAgentGender}
+                        onChange={e => setNewAgentGender(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="non_binary">Non-Binary</option>
+                        <option value="prefer_not_to_say">Prefer Not to Say</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Vehicle</label>
+                      <select
+                        value={newAgentVehicle}
+                        onChange={e => setNewAgentVehicle(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      >
+                        <option value="Motorcycle">Motorcycle</option>
+                        <option value="Electric Scooter">Electric Scooter</option>
+                        <option value="Bicycle">Bicycle</option>
+                        <option value="Car">Car</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Zone</label>
+                      <select
+                        value={newAgentZone}
+                        onChange={e => setNewAgentZone(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      >
+                        <option value="Central Hub">Central Hub</option>
+                        <option value="North Zone">North Zone</option>
+                        <option value="South Zone">South Zone</option>
+                        <option value="Downtown">Downtown</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Payout ($/Order)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={newAgentRate}
+                        onChange={e => setNewAgentRate(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={creatingAgent}
+                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                    >
+                      {creatingAgent ? 'Creating...' : 'Confirm & Save Agent'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Agents Table */}
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
+                <table className="w-full text-left divide-y divide-slate-200 min-w-[700px]">
+                  <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="p-3">Agent</th>
+                      <th className="p-3">Contact</th>
+                      <th className="p-3">Vehicle &amp; Zone</th>
+                      <th className="p-3">Verification</th>
+                      <th className="p-3">Commission Rate</th>
+                      <th className="p-3">Earnings</th>
+                      <th className="p-3 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {agents.map(ag => (
+                      <tr
+                        key={ag.id}
+                        data-test={`admin-agent-row-${ag.id}`}
+                        data-testid={`admin-agent-row-${ag.id}`}
+                        className="hover:bg-slate-50/50"
+                      >
+                        <td className="p-3 flex items-center gap-2.5">
+                          <img
+                            src={ag.avatarUrl}
+                            alt=""
+                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                          />
+                          <div>
+                            <p className="font-bold text-slate-900">{ag.name}</p>
+                            <span className="font-mono text-[10px] text-slate-400">{ag.agentCode}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-slate-600">
+                          <p>{ag.email}</p>
+                          <p className="text-[10px] text-slate-400">{ag.phone || 'No phone'}</p>
+                        </td>
+                        <td className="p-3 text-slate-600">
+                          <p className="font-semibold">{ag.vehicleType}</p>
+                          <p className="text-[10px] text-slate-400">{ag.deliveryZone}</p>
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              ag.isEmailVerified
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {ag.isEmailVerified ? 'Email Verified ✓' : 'Pending Verification'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1 font-mono font-bold text-slate-900">
+                            <span>$</span>
+                            <input
+                              type="number"
+                              defaultValue={ag.commissionRate}
+                              onBlur={e => handleUpdateCommissionRate(ag.id, parseFloat(e.target.value))}
+                              className="w-16 px-1.5 py-0.5 border border-slate-200 rounded text-xs bg-slate-50"
+                            />
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <p className="font-mono font-bold text-emerald-700">${ag.totalEarnings.toFixed(2)}</p>
+                          <p className="text-[10px] text-slate-400">{ag.deliveredOrdersCount} delivered</p>
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            data-test={`btn-toggle-agent-status-${ag.id}`}
+                            data-testid={`btn-toggle-agent-status-${ag.id}`}
+                            onClick={() => handleToggleAgentActive(ag.id, ag.isActive)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                              ag.isActive
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                            }`}
+                          >
+                            {ag.isActive ? 'Active' : 'Inactive'}
+                          </button>
                         </td>
                       </tr>
                     ))}
