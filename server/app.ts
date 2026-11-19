@@ -171,7 +171,6 @@ export function createExpressApp() {
   };
 
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(SWAGGER_SPEC, swaggerCustomOptions));
-  app.get('/', (_req, res) => res.redirect('/api-docs/'));
   app.get('/docs', (_req, res) => res.redirect('/api-docs/'));
   app.get('/swagger', (_req, res) => res.redirect('/api-docs/'));
 
