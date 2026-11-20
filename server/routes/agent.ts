@@ -3,6 +3,7 @@ import { Request, Response, Router } from 'express';
 import { AuthenticatedAgentRequest, generateAgentToken, requireAgentAuth } from '../middleware/auth.js';
 import { agentRepo } from '../repositories/agentRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
+import { notificationRepo } from '../repositories/notificationRepo.js';
 import {
   sendAgentTemporaryPasswordEmail,
   sendAgentVerificationEmail,
@@ -58,22 +59,19 @@ agentRouter.post('/register', async (req: Request, res: Response): Promise<void>
       commissionRate: 15.00,
     });
 
+    // Dispatch verification OTP email to agent's registered email address
+    try {
+      await sendAgentVerificationEmail({ name: created.name, email: created.email }, verificationToken);
+    } catch (e) {
+      console.error('[Agent Verification Email Error]:', e);
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Registration successful! Verification token sent to your email address.',
+      message: 'Registration successful! A 6-digit verification code has been sent to your registered email address. Please check your inbox and enter the code to verify your account.',
       data: {
         agent: created,
-        verificationToken, // Provided for instant QA testing
       },
-    });
-
-    // Send verification email in background
-    setImmediate(async () => {
-      try {
-        await sendAgentVerificationEmail({ name: created.name, email: created.email }, verificationToken);
-      } catch (e) {
-        console.error('[Agent Verification Email Error]:', e);
-      }
     });
   } catch (error: any) {
     console.error('[Agent Register Error]:', error);
@@ -101,22 +99,19 @@ agentRouter.post('/verify-email', async (req: Request, res: Response): Promise<v
     const tempHash = bcrypt.hashSync(tempPassword, 10);
     const updated = await agentRepo.setTemporaryPassword(verifyResult.agent.id, tempHash);
 
+    // Dispatch temporary password to verified email
+    try {
+      await sendAgentTemporaryPasswordEmail({ name: verifyResult.agent!.name, email: verifyResult.agent!.email }, tempPassword);
+    } catch (e) {
+      console.error('[Agent Temp Password Email Error]:', e);
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Email verified successfully! A temporary login password has been sent to your email.',
+      message: 'Email verified successfully! A temporary login password has been sent to your registered email address. Please check your inbox and use it to sign in.',
       data: {
         agent: updated,
-        tempPassword, // Included for instant QA workflow verification
       },
-    });
-
-    // Dispatch temporary password to verified email
-    setImmediate(async () => {
-      try {
-        await sendAgentTemporaryPasswordEmail({ name: verifyResult.agent!.name, email: verifyResult.agent!.email }, tempPassword);
-      } catch (e) {
-        console.error('[Agent Temp Password Email Error]:', e);
-      }
     });
   } catch (error: any) {
     console.error('[Agent Verify Email Error]:', error);
@@ -481,6 +476,67 @@ agentRouter.post('/orders/:id/mark-cash-deposited', requireAgentAuth, async (req
   } catch (error: any) {
     console.error('[Agent Mark Cash Deposited Error]:', error);
     res.status(500).json({ success: false, message: `Failed to mark cash deposited: ${error.message}` });
+  }
+});
+
+// POST /api/agent/cash-deposit/submit (Agent submits entire pending cash balance deposited at Hyderabad store)
+agentRouter.post('/cash-deposit/submit', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const agent = await agentRepo.findById(req.agent!.id);
+    if (!agent) {
+      res.status(404).json({ success: false, message: 'Delivery agent not found' });
+      return;
+    }
+    if ((agent.pendingCashAmount || 0) <= 0 && !agent.hasPendingCashDeposit) {
+      res.status(400).json({ success: false, message: 'No pending cash deposit required for your account' });
+      return;
+    }
+    const result = await orderRepo.submitAgentCashDeposit(req.agent!.id);
+    res.status(result.success ? 200 : 400).json(result);
+  } catch (error: any) {
+    console.error('[Agent Submit Cash Deposit Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to submit store cash deposit: ${error.message}` });
+  }
+});
+
+// GET /api/agent/notifications (Retrieve real-time alerts for the authenticated delivery agent)
+agentRouter.get('/notifications', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const notifications = await notificationRepo.listForAgent(req.agent!.id, 50);
+    const unreadCount = await notificationRepo.getUnreadCountForAgent(req.agent!.id);
+    res.status(200).json({
+      success: true,
+      data: {
+        notifications,
+        unreadCount,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Agent Notifications Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to retrieve notifications: ${error.message}` });
+  }
+});
+
+// PATCH /api/agent/notifications/:id/read (Mark a single agent alert as read)
+agentRouter.patch('/notifications/:id/read', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const ok = await notificationRepo.markAsRead(id);
+    res.status(200).json({ success: ok, message: ok ? 'Alert marked as read' : 'Notification not found' });
+  } catch (error: any) {
+    console.error('[Agent Mark Alert Read Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to update notification: ${error.message}` });
+  }
+});
+
+// PATCH /api/agent/notifications/mark-all-read (Mark all agent alerts as read)
+agentRouter.patch('/notifications/mark-all-read', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    await notificationRepo.markAllAsReadForAgent(req.agent!.id);
+    res.status(200).json({ success: true, message: 'All alerts marked as read' });
+  } catch (error: any) {
+    console.error('[Agent Mark All Alerts Read Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to mark alerts read: ${error.message}` });
   }
 });
 

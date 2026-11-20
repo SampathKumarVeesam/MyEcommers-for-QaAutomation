@@ -606,15 +606,15 @@ export async function sendAgentVerificationEmail(
       </p>
 
       <div style="background: #f8fafc; border: 2px dashed #4f46e5; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; font-weight: 700;">Your Verification Token</div>
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; font-weight: 700;">Your 6-Digit Verification Code (OTP)</div>
         <div style="font-size: 28px; font-weight: 800; letter-spacing: 4px; color: #4f46e5; font-family: monospace; margin: 8px 0;">
           ${token}
         </div>
-        <p style="font-size: 12px; color: #64748b; margin: 0;">Enter this token on the Delivery Agent Portal to activate your account.</p>
+        <p style="font-size: 12px; color: #64748b; margin: 0;">Enter this 6-digit code in the Delivery Agent Verification textbox to activate your account.</p>
       </div>
 
       <div style="text-align: center; margin: 30px 0 10px 0;">
-        <a href="${APP_URL}/#agent?verifyEmail=${encodeURIComponent(recipient)}&token=${token}" class="btn">Verify Email & Claim Account</a>
+        <a href="${APP_URL}/#agent?verifyEmail=${encodeURIComponent(recipient)}" class="btn">Go to Delivery Agent Verification</a>
       </div>
     `
   );

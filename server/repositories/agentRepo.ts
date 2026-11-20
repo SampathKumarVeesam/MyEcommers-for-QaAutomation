@@ -23,6 +23,8 @@ export function mapAgentRow(row: any): DeliveryAgent {
     fifoQueueJoinedAt: row.fifo_queue_joined_at ? new Date(row.fifo_queue_joined_at).toISOString() : new Date().toISOString(),
     hasPendingCashDeposit: Boolean(row.has_pending_cash_deposit),
     pendingCashAmount: parseFloat(row.pending_cash_amount || '0.00'),
+    cashDepositStatus: (row.cash_deposit_status as any) || 'NONE',
+    depositRejectionReason: row.deposit_rejection_reason || null,
     currentLat: row.current_lat ? parseFloat(row.current_lat) : 17.4486,
     currentLng: row.current_lng ? parseFloat(row.current_lng) : 78.3908,
     commissionRate: parseFloat(row.commission_rate || '15.00'),
@@ -286,22 +288,53 @@ export class AgentRepository {
       `UPDATE delivery_agents
        SET has_pending_cash_deposit = TRUE,
            pending_cash_amount = pending_cash_amount + $1,
+           cash_deposit_status = 'PENDING_STORE_DEPOSIT',
+           deposit_rejection_reason = NULL,
            updated_at = NOW()
        WHERE id = $2`,
       [amount, agentId]
     );
   }
 
-  async confirmCashDeposit(agentId: string): Promise<void> {
+  async submitCashDeposit(agentId: string): Promise<void> {
+    await query(
+      `UPDATE delivery_agents
+       SET cash_deposit_status = 'DEPOSIT_SUBMITTED_FOR_APPROVAL',
+           deposit_rejection_reason = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [agentId]
+    );
+  }
+
+  async approveCashDeposit(agentId: string): Promise<void> {
     await query(
       `UPDATE delivery_agents
        SET has_pending_cash_deposit = FALSE,
            pending_cash_amount = 0.00,
+           cash_deposit_status = 'APPROVED',
+           deposit_rejection_reason = NULL,
            fifo_queue_joined_at = NOW(),
            updated_at = NOW()
        WHERE id = $1`,
       [agentId]
     );
+  }
+
+  async rejectCashDeposit(agentId: string, reason: string): Promise<void> {
+    await query(
+      `UPDATE delivery_agents
+       SET has_pending_cash_deposit = TRUE,
+           cash_deposit_status = 'REJECTED_RESUBMIT_REQUIRED',
+           deposit_rejection_reason = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [reason || 'Cash deposit not received at Hyderabad store', agentId]
+    );
+  }
+
+  async confirmCashDeposit(agentId: string): Promise<void> {
+    await this.approveCashDeposit(agentId);
   }
 
   async resetFifoQueue(agentId: string): Promise<void> {

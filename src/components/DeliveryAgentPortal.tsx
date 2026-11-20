@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Banknote,
+  Bell,
   Check,
   CheckCircle2,
   Clock,
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../config/api.js';
-import { DeliveryAgent, Gender, Order } from '../types.js';
+import { AppNotification, DeliveryAgent, Gender, Order } from '../types.js';
 import { LiveRouteMap } from './LiveRouteMap.js';
 import { GENDER_PRESET_AVATARS, ProfileModal } from './ProfileModal.js';
 
@@ -57,7 +58,6 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // Verification form
   const [verifyEmail, setVerifyEmail] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
-  const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null);
 
   // Mandatory / voluntary password update
   const [newPassword, setNewPassword] = useState('');
@@ -65,9 +65,15 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
   // Portal dashboard
-  const [activeTab, setActiveTab] = useState<'deliveries' | 'earnings'>('deliveries');
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'earnings' | 'store-deposit'>('deliveries');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // In-App Notifications
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [submittingDeposit, setSubmittingDeposit] = useState(false);
 
   // Settlement action states
   const [inputOtp, setInputOtp] = useState<Record<string, string>>({});
@@ -85,11 +91,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     if (isOpen) {
       const searchParams = new URLSearchParams(window.location.search);
       const urlEmail = searchParams.get('verifyEmail');
-      const urlToken = searchParams.get('token');
-      if (urlEmail && urlToken) {
+      if (urlEmail) {
         setAuthTab('verify');
         setVerifyEmail(decodeURIComponent(urlEmail));
-        setVerifyToken(urlToken);
+        setVerifyToken(''); // Never auto-populate verification OTP from URL
       }
     }
   }, [isOpen]);
@@ -100,29 +105,100 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
       setAgent(null);
       return;
     }
+    fetchAgentProfile();
+  }, [token]);
 
-    const fetchAgentProfile = async () => {
-      try {
-        const res = await fetch(apiUrl('/api/agent/me'), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            setAgent(json.data);
-          } else {
-            handleLogout();
-          }
+  const fetchAgentProfile = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/agent/me'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAgent(json.data);
         } else {
           handleLogout();
         }
-      } catch {
+      } else {
         handleLogout();
       }
-    };
+    } catch {
+      handleLogout();
+    }
+  };
 
-    fetchAgentProfile();
-  }, [token]);
+  // Fetch agent alerts & notifications
+  const fetchAgentNotifications = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/agent/notifications'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setNotifications(json.data.notifications || []);
+          setUnreadNotifs(json.data.unreadCount || 0);
+        }
+      }
+    } catch (err) {
+      console.error('[Agent Notifs Fetch Error]:', err);
+    }
+  };
+
+  const handleMarkAgentNotifRead = async (id: number | string) => {
+    if (!token) return;
+    try {
+      await fetch(apiUrl(`/api/agent/notifications/${id}/read`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setUnreadNotifs(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Failed to mark alert as read:', err);
+    }
+  };
+
+  const handleMarkAllAgentNotifsRead = async () => {
+    if (!token) return;
+    try {
+      await fetch(apiUrl('/api/agent/notifications/mark-all-read'), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadNotifs(0);
+    } catch (err) {
+      console.error('Failed to mark all alerts as read:', err);
+    }
+  };
+
+  // Agent submits cash deposited at Hyderabad store counter
+  const handleSubmitStoreDeposit = async () => {
+    if (!token) return;
+    setSubmittingDeposit(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(apiUrl('/api/agent/cash-deposit/submit'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('Cash deposit submitted! Store Admin has been alerted to confirm receipt and unlock your account.');
+        await Promise.all([fetchAgentProfile(), fetchAssignedOrders(), fetchAgentNotifications()]);
+      } else {
+        setErrorMsg(data.message || 'Failed to submit cash deposit');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error');
+    } finally {
+      setSubmittingDeposit(false);
+    }
+  };
 
   // Fetch assigned deliveries
   const fetchAssignedOrders = async () => {
@@ -149,6 +225,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   useEffect(() => {
     if (agent && token) {
       fetchAssignedOrders();
+      fetchAgentNotifications();
     }
   }, [agent, token]);
 
@@ -172,13 +249,15 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     return () => clearInterval(interval);
   }, [token, agent]);
 
-  // Auto-refresh orders every 10 seconds for real-time FIFO acceptance & assignment
+  // Real-time polling every 6s for FIFO orders, deposit status approvals, and notifications
   useEffect(() => {
     if (!token || !agent) return;
-    const orderInterval = setInterval(() => {
+    const syncInterval = setInterval(() => {
       fetchAssignedOrders();
-    }, 10000);
-    return () => clearInterval(orderInterval);
+      fetchAgentProfile();
+      fetchAgentNotifications();
+    }, 6000);
+    return () => clearInterval(syncInterval);
   }, [token, agent]);
 
   if (!isOpen) return null;
@@ -277,11 +356,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
       const data = await res.json();
       if (res.ok && data.success) {
         setVerifyEmail(regEmail);
-        if (data.data?.verificationToken) {
-          setVerifyToken(data.data.verificationToken);
-        }
+        setVerifyToken(''); // Never auto-populate OTP in the verification box!
         setAuthTab('verify');
-        setSuccessMsg('Registration submitted! Enter your verification token below.');
+        setSuccessMsg('Registration submitted! A 6-digit verification code (OTP) has been sent to your registered email address. Please check your mailbox and enter it below.');
       } else {
         setErrorMsg(data.message || 'Registration failed');
       }
@@ -294,6 +371,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!verifyToken.trim()) {
+      setErrorMsg('Please enter the 6-digit verification code sent to your email');
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -302,16 +383,15 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
       const res = await fetch(apiUrl('/api/agent/verify-email'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: verifyEmail, token: verifyToken }),
+        body: JSON.stringify({ email: verifyEmail, token: verifyToken.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setIssuedTempPassword(data.data?.tempPassword || null);
+        setVerifyToken('');
         setLoginEmail(verifyEmail);
-        if (data.data?.tempPassword) {
-          setLoginPassword(data.data.tempPassword);
-        }
-        setSuccessMsg('Email verified! Temporary password issued. You can now login.');
+        setLoginPassword(''); // Clean empty password field! Never pre-fill temporary password.
+        setAuthTab('login');
+        setSuccessMsg('Email verified successfully! A secure temporary login password has been sent to your registered email address. Please check your inbox, sign in with your temporary password, and you will be asked to set a new permanent password.');
       } else {
         setErrorMsg(data.message || 'Verification failed');
       }
@@ -902,7 +982,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     <span>Check Your Registered Mailbox</span>
                   </p>
                   <p className="text-[11px] text-amber-700 mt-0.5">
-                    Enter the 6-digit verification token sent via Brevo/SMTP. Once verified, a secure temporary login password will be generated for you.
+                    Enter the 6-digit verification code (OTP) sent to your registered email address. Once verified, your temporary login password will be delivered directly to your mailbox (not shown in the UI).
                   </p>
                 </div>
 
@@ -924,38 +1004,19 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    6-Digit Verification Token
+                    6-Digit Verification Code (OTP)
                   </label>
                   <input
                     type="text"
                     required
                     value={verifyToken}
                     onChange={e => setVerifyToken(e.target.value)}
-                    placeholder="123456"
+                    placeholder="Enter 6-digit OTP from email"
                     data-test="input-verify-token"
                     data-testid="input-verify-token"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono font-bold tracking-widest text-center"
                   />
                 </div>
-
-                {issuedTempPassword && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-center space-y-1">
-                    <p className="text-xs font-bold text-emerald-900">Your Temporary Login Password:</p>
-                    <p className="font-mono text-base font-extrabold text-emerald-700 bg-white p-2 rounded-lg border border-emerald-200 inline-block">
-                      {issuedTempPassword}
-                    </p>
-                    <p className="text-[11px] text-emerald-600">
-                      We have pre-filled this on the sign-in tab. Click below to login!
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setAuthTab('login')}
-                      className="mt-2 px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer"
-                    >
-                      Go to Sign In
-                    </button>
-                  </div>
-                )}
 
                 <button
                   type="submit"
@@ -964,7 +1025,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   data-testid="btn-verify-agent-email"
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  {loading ? 'Verifying...' : 'Verify Email & Issue Temporary Password'}
+                  {loading ? 'Verifying...' : 'Verify Email & Send Temporary Password'}
                 </button>
               </form>
             )}
@@ -1031,16 +1092,32 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Cash Deposit Lock Alert Banner */}
             {agent.hasPendingCashDeposit && (
-              <div className="p-3 bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-between gap-2 shadow-inner">
+              <div className={`p-3 font-bold text-xs flex items-center justify-between gap-2 shadow-inner ${
+                agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                  ? 'bg-rose-500 text-white'
+                  : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
+                  ? 'bg-amber-400 text-slate-950'
+                  : 'bg-amber-500 text-slate-950'
+              }`}>
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-slate-950 shrink-0" />
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
                   <span>
-                    🔒 <strong>ACCOUNT LOCKED:</strong> ₹{(agent.pendingCashAmount || 0).toFixed(2)} cash pending deposit at Hyderabad Store. New delivery assignments are paused until Store Admin confirms your cash deposit.
+                    {agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED' ? (
+                      <>❌ <strong>DEPOSIT REJECTED:</strong> {agent.depositRejectionReason || 'Cash mismatch'}. Please deposit ₹{(agent.pendingCashAmount || 0).toFixed(2)} at store counter and resubmit.</>
+                    ) : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL' ? (
+                      <>⏳ <strong>DEPOSIT SUBMITTED:</strong> ₹{(agent.pendingCashAmount || 0).toFixed(2)} awaiting Store Admin verification. Your account will automatically unlock once approved.</>
+                    ) : (
+                      <>🔒 <strong>ACCOUNT LOCKED:</strong> ₹{(agent.pendingCashAmount || 0).toFixed(2)} cash pending deposit at Hyderabad Store. New delivery assignments are paused until Store Admin confirms your cash deposit.</>
+                    )}
                   </span>
                 </div>
-                <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-950 text-amber-300 font-extrabold uppercase">
-                  Deposit Required
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('store-deposit')}
+                  className="font-mono text-[10px] px-2.5 py-1 rounded bg-slate-950 text-white hover:bg-slate-800 font-extrabold uppercase shrink-0 cursor-pointer"
+                >
+                  View Deposit
+                </button>
               </div>
             )}
 
@@ -1077,6 +1154,72 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   <div className="text-sm font-extrabold text-emerald-900 font-mono">
                     ₹{agent.totalEarnings.toFixed(2)}
                   </div>
+                </div>
+
+                {/* Agent In-App Notification Bell */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                    title="Alerts & Notifications"
+                    className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {unreadNotifs > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                        {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                      </span>
+                    )}
+                  </button>
+
+                  {showNotifDropdown && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs">
+                      <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5 text-indigo-600" />
+                          Alerts ({unreadNotifs} unread)
+                        </span>
+                        {unreadNotifs > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleMarkAllAgentNotifsRead}
+                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                        {notifications.length === 0 ? (
+                          <div className="p-6 text-center text-slate-400">No alerts yet</div>
+                        ) : (
+                          notifications.map(n => (
+                            <div
+                              key={n.id}
+                              onClick={() => !n.isRead && handleMarkAgentNotifRead(n.id)}
+                              className={`p-3 transition-colors cursor-pointer ${
+                                n.isRead ? 'bg-white text-slate-500' : 'bg-indigo-50/50 text-slate-800'
+                              } hover:bg-slate-50`}
+                            >
+                              <div className="flex items-start justify-between gap-1">
+                                <span className="font-bold text-slate-900">{n.title}</span>
+                                {n.amount && (
+                                  <span className="font-mono text-emerald-700 font-bold text-[11px]">
+                                    ₹{Number(n.amount).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-600 mt-0.5">{n.message}</p>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                                <span>{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                {!n.isRead && <span className="text-rose-500 font-bold">● New</span>}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -1127,6 +1270,25 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               >
                 <DollarSign className="w-4 h-4" />
                 <span>Earnings &amp; Payouts</span>
+              </button>
+              <button
+                type="button"
+                data-test="tab-store-deposit"
+                data-testid="tab-store-deposit"
+                onClick={() => setActiveTab('store-deposit')}
+                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'store-deposit'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Banknote className="w-4 h-4" />
+                <span>Store Cash Deposit</span>
+                {agent.hasPendingCashDeposit && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                    🔒 Locked
+                  </span>
+                )}
               </button>
             </div>
 
@@ -1536,6 +1698,156 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                           </div>
                         ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STORE CASH DEPOSIT TAB */}
+              {activeTab === 'store-deposit' && (
+                <div className="space-y-4">
+                  {/* Status Banner */}
+                  <div className={`p-4 rounded-2xl border ${
+                    agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                      ? 'bg-rose-50 border-rose-300'
+                      : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
+                      ? 'bg-amber-50 border-amber-300'
+                      : agent.hasPendingCashDeposit
+                      ? 'bg-amber-50/70 border-amber-300'
+                      : 'bg-emerald-50 border-emerald-300'
+                  }`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Banknote className={`w-5 h-5 ${
+                            agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                              ? 'text-rose-600'
+                              : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
+                              ? 'text-amber-600'
+                              : agent.hasPendingCashDeposit
+                              ? 'text-amber-600'
+                              : 'text-emerald-600'
+                          }`} />
+                          <h4 className="font-extrabold text-slate-900 text-sm">
+                            {agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                              ? 'Deposit Rejected by Store Admin'
+                              : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
+                              ? 'Deposit Submitted — Awaiting Store Admin Approval'
+                              : agent.hasPendingCashDeposit
+                              ? 'Cash Store-Deposit Required (Account Locked)'
+                              : 'Account Unlocked & Ready for Orders'}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1">
+                          {agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED' ? (
+                            <>
+                              <strong>Rejection Reason:</strong> {agent.depositRejectionReason || 'Cash mismatch'}. Please visit the Hyderabad Flagship Store counter to rectify and resubmit confirmation.
+                            </>
+                          ) : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL' ? (
+                            <>
+                              Your cash deposit confirmation of ₹{(agent.pendingCashAmount || 0).toFixed(2)} has been submitted. The store counter admin will verify the physical cash and unlock your account.
+                            </>
+                          ) : agent.hasPendingCashDeposit ? (
+                            <>
+                              You are holding ₹{(agent.pendingCashAmount || 0).toFixed(2)} from physical Cash on Delivery orders. Hand over this cash at the Hyderabad Flagship Store counter to unlock your account into the active FIFO queue.
+                            </>
+                          ) : (
+                            <>
+                              You have ₹0 pending cash deposits. Your account is online and eligible to receive new delivery assignments.
+                            </>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] uppercase font-bold text-slate-500">Cash Balance</div>
+                        <div className={`font-mono text-xl font-extrabold ${
+                          agent.hasPendingCashDeposit ? 'text-rose-700' : 'text-emerald-700'
+                        }`}>
+                          ₹{(agent.pendingCashAmount || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    {agent.hasPendingCashDeposit && (
+                      <div className="mt-4 pt-3 border-t border-slate-200/80">
+                        {agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL' ? (
+                          <div className="p-2.5 bg-amber-100/80 rounded-xl text-center text-xs font-bold text-amber-950 flex items-center justify-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
+                            <span>Submitted to Store Counter. Waiting for Admin verification...</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={submittingDeposit}
+                            onClick={handleSubmitStoreDeposit}
+                            className={`w-full py-2.5 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-2 ${
+                              agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                                ? 'bg-rose-600 hover:bg-rose-700'
+                                : 'bg-emerald-600 hover:bg-emerald-700'
+                            }`}
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>
+                              {submittingDeposit
+                                ? 'Submitting Confirmation...'
+                                : agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                                ? 'Re-submit Store Cash Deposit Confirmation'
+                                : 'Mark Cash Deposited at Store (Submit for Approval)'}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hyderabad Store Details Card */}
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-slate-800">
+                      <MapPin className="w-4 h-4 text-indigo-600" />
+                      <span>ShopSphere Hyderabad Flagship Store &amp; Dispatch Hub</span>
+                    </div>
+                    <p className="text-slate-600">
+                      Address: Plot 42, Hitech City Main Rd, Madhapur, Hyderabad, Telangana 500081<br />
+                      Counter Hours: 08:00 AM – 10:00 PM IST | Cashier Desk: Counter #3 (Logistics Settlement)
+                    </p>
+                  </div>
+
+                  {/* Breakdown of Linked COD Cash Orders */}
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                    <h4 className="font-bold text-slate-900 text-xs uppercase mb-3">
+                      Cash on Delivery Orders in Hand ({orders.filter(o => o.codPaymentMethod === 'cash' || o.paymentMethod === 'cod').length})
+                    </h4>
+                    {orders.filter(o => o.codPaymentMethod === 'cash' || o.paymentMethod === 'cod').length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-4">No COD cash orders recorded</p>
+                    ) : (
+                      <div className="divide-y divide-slate-100 text-xs">
+                        {orders
+                          .filter(o => o.codPaymentMethod === 'cash' || o.paymentMethod === 'cod')
+                          .map(o => (
+                            <div key={o.id} className="py-2.5 flex items-center justify-between">
+                              <div>
+                                <p className="font-mono font-bold text-slate-900">#{o.orderNumber}</p>
+                                <p className="text-slate-500 text-[11px]">{o.userName} • {o.shippingAddress.city}</p>
+                                <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.2 rounded-full font-bold ${
+                                  o.paymentSettlementStatus === 'CASH_DEPOSITED_AT_STORE' || o.paymentSettlementStatus === 'SETTLED'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : o.paymentSettlementStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}>
+                                  {o.paymentSettlementStatus || 'CASH_COLLECTED'}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono font-extrabold text-slate-900">
+                                  ₹{Number(o.grandTotal).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

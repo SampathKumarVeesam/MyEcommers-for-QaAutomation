@@ -1,4 +1,4 @@
-# ShopSphere v2.6.0 — Enterprise Multi-Category E-Commerce & QA Automation Platform
+# ShopSphere v2.7.0 — Enterprise Multi-Category E-Commerce & QA Automation Platform
 
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -11,7 +11,7 @@
 
 **ShopSphere** is a modern, production-grade multi-category e-commerce web platform engineered for real-world online shopping experiences and comprehensive **QA Automation Testing** (Playwright, Cypress, Selenium, Postman/Newman, and REST-Assured).
 
-It features a customer-facing storefront built with **React 19**, **Tailwind CSS**, and **Vite**, a complete **Delivery Agent Logistics & Onboarding Portal**, **Interactive Leaflet Live Map Tracking**, **FIFO Auto-Assignment & Acceptance Rotation**, **Privacy-Masked Logistics Views**, **Universal OTP Gates**, **Cash Store-Deposit Settlement Lockout**, a **PostgreSQL 18** transactional persistence layer, automated transactional email dispatch via **Brevo HTTPS REST API (port 443)** with Zoho SMTP fallback, an interactive **OpenAPI 3.0 Swagger UI**, and a **Graphviz DOT workflow state machine**.
+It features a customer-facing storefront built with **React 19**, **Tailwind CSS**, and **Vite**, a complete **Delivery Agent Logistics & Onboarding Portal**, **Interactive Leaflet Live Map Tracking**, **FIFO Auto-Assignment & Acceptance Rotation**, **Privacy-Masked Logistics Views**, **Universal OTP Gates**, **Cash Store-Deposit Settlement Lockout**, **Admin Amount Collection & Cash Handling Dashboard**, **Real-Time In-App Notifications**, a **PostgreSQL 18** transactional persistence layer, automated transactional email dispatch via **Brevo HTTPS REST API (port 443)** with Zoho SMTP fallback, an interactive **OpenAPI 3.0 Swagger UI**, and a **Graphviz DOT workflow state machine**.
 
 ---
 
@@ -64,9 +64,10 @@ It features a customer-facing storefront built with **React 19**, **Tailwind CSS
   - The delivery agent must verify this OTP to complete delivery and collect payment via Cash or dynamic UPI QR code.
 - **Dedicated Delivery Agent Portal (`/delivery` or `#/agent`)**:
   - Independent delivery partner portal styled to match the ShopSphere design system.
-  - **Email-Verified Onboarding**: Agent self-registration with gender-matched avatar selection, verification email token, and automated temporary password dispatch.
-  - **Mandatory First-Login Password Change**: Secure password rotation enforced upon first login with temporary password.
-  - **Assigned Deliveries Queue & Commission Wallet**: Live order assignments with customer address, contact info, OTP validation gate, Cash/UPI payment settlement, and automatic commission wallet crediting ($15 per completed delivery).
+  - **Email-Verified Onboarding & Mailbox OTP**: Agent self-registration with gender-matched avatar selection. A 6-digit verification code is dispatched strictly to the agent's mailbox (never auto-filled in the UI), requiring manual entry. Upon OTP verification, a secure random temporary login password is generated on the server and dispatched directly to the agent's email address (never exposed in the UI or client API response).
+  - **Mandatory First-Login Password Change**: Secure password rotation enforced upon first login with the emailed temporary password before dashboard access is granted.
+  - **Dedicated Store Cash Deposit Dashboard**: Real-time lock banner displaying held cash amount, Admin rejection notes, and 1-click "Mark Cash Deposited at Store" / "Re-submit Store Deposit" action workflow.
+  - **Assigned Deliveries Queue & Commission Wallet**: Live order assignments with customer address, contact info, OTP validation gate, Cash/UPI payment settlement, and automatic commission wallet crediting (₹150 per completed delivery).
 - **Unified Profile & Avatar Customization**:
   - Available for both Customers and Delivery Agents via the user menu.
   - Gender selector (`male`, `female`, `non-binary`, `prefer_not_to_say`) dynamically loading 6 matching preset avatars.
@@ -86,11 +87,16 @@ It features a customer-facing storefront built with **React 19**, **Tailwind CSS
 - **Universal OTP Delivery Gate**:
   - When an order transitions to `OUT_FOR_DELIVERY`, a secure 6-digit Delivery OTP is generated, persisted in PostgreSQL, and synchronized across customer email and the Customer Order Tracking view.
   - Delivery agents must input and verify this 6-digit OTP before completing delivery for **both Prepaid and Cash on Delivery (COD)** orders.
-- **COD Settlement Workflows & Store Cash-Deposit Lockout**:
+- **COD Settlement Workflows, Store Cash-Deposit Lockout & Re-Submit Loop**:
   - **Option 1 (Dynamic UPI QR)**: Generates dynamic UPI QR code (`upi://pay?pa=shop.sphere@upi&...`); agent submits payment (`QR_PAID_AWAITING_ADMIN`), and store admin confirms receipt (`QR_AMOUNT_RECEIVED`).
-  - **Option 2 (Physical Cash Lockout)**: Agent records cash collection (`CASH_COLLECTED_BY_AGENT`); agent account enters a **LOCKED** state, disabling new delivery assignments until cash is physically deposited at the Hyderabad Flagship Store (`CASH_DEPOSIT_REQUESTED` $\rightarrow$ `CASH_DEPOSITED_AT_STORE`) and confirmed by Store Admin.
-- **Admin Tracking, Reassignment & Financial Settlement Console**:
-  - Full visibility into agent online presence, FIFO queue ranking, cash lock status, manual order reassignment, and one-click financial settlements.
+  - **Option 2 (Physical Cash Lockout & Verification)**: Agent records cash collection (`CASH_COLLECTED_BY_AGENT`); agent account enters a **LOCKED** state, pausing new FIFO assignments until cash is deposited at the Hyderabad Flagship Store (`DEPOSIT_SUBMITTED_FOR_APPROVAL`).
+  - **Store Admin Approve / Reject Workflow**: Store Admin verifies physical cash at the counter and clicks *"Approve Deposit"* to clear the agent's balance and instantly unlock them into the active FIFO queue. If rejected, Admin enters a rejection reason, keeping the agent locked with an alert prompting re-submission.
+- **Admin Amount Collection & Cash Handling Console**:
+  - Dedicated financial dashboard featuring 3 KPI cards (Total UPI QR Confirmed vs. Awaiting Verification, Physical Cash in Hand vs. Approved, and Grand Total Reconciled COD Revenue).
+  - UPI QR Verification Queue for confirming customer UPI payments.
+  - Store Cash Deposit Approval Queue with linked order breakdowns and 1-click Approve / Reject actions.
+- **Real-Time In-App Notifications**:
+  - Persistent alert bells in both Store Admin and Delivery Agent portals backed by PostgreSQL `notifications` table, featuring real-time polling (every 6 seconds) for instant order alerts and deposit status updates without page refresh.
 - **Automated Post-Delivery Feedback Reminder**:
   - Non-intrusive popup appearing 15 minutes after order delivery prompting customers for a 5-star rating and written review.
   - Features an interactive star rating selector, *"Remind Me Later (1h)"* snooze, and a permanent *"No thanks"* opt-out button.

@@ -3944,6 +3944,133 @@ export const SWAGGER_SPEC = {
           "200": { "description": "Agent assigned to order" }
         }
       }
+    },
+    "/admin/notifications": {
+      "get": {
+        "tags": ["Notifications & Amount Handling"],
+        "summary": "[Requires Admin JWT] List persistent in-app notifications and alerts for Store Admin",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Admin notifications list and unread count" }
+        }
+      }
+    },
+    "/admin/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Notifications & Amount Handling"],
+        "summary": "[Requires Admin JWT] Mark specific Admin notification as read",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification marked read" }
+        }
+      }
+    },
+    "/admin/notifications/mark-all-read": {
+      "patch": {
+        "tags": ["Notifications & Amount Handling"],
+        "summary": "[Requires Admin JWT] Mark all Admin notifications as read",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All notifications marked read" }
+        }
+      }
+    },
+    "/admin/amount-handling": {
+      "get": {
+        "tags": ["Notifications & Amount Handling"],
+        "summary": "[Requires Admin JWT] Retrieve Amount Collection & Cash Handling dashboard KPI summary, pending UPI QR orders, and cash deposit agents",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Amount handling summary and queues" }
+        }
+      }
+    },
+    "/admin/agents/{agentId}/approve-cash-deposit": {
+      "post": {
+        "tags": ["Notifications & Amount Handling"],
+        "summary": "[Requires Admin JWT] Approve physical store cash deposit for delivery agent, reset held cash, and unlock into active FIFO queue",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "agentId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Cash deposit approved and delivery agent unlocked into active queue" },
+          "400": { "description": "Agent has no pending cash deposit" }
+        }
+      }
+    },
+    "/admin/agents/{agentId}/reject-cash-deposit": {
+      "post": {
+        "tags": ["Notifications & Amount Handling"],
+        "summary": "[Requires Admin JWT] Reject delivery agent's store cash deposit with reason, keep agent locked, and send real-time in-app notification",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "agentId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": { "type": "string", "example": "Cash short by ₹200 at store counter" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Deposit rejected and agent notified to resubmit" }
+        }
+      }
+    },
+    "/agent/cash-deposit/submit": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Agent JWT] Delivery Agent submits confirmation that physical cash was deposited at Hyderabad store counter",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Deposit submitted for Admin verification" },
+          "400": { "description": "No pending cash deposit required" }
+        }
+      }
+    },
+    "/agent/notifications": {
+      "get": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Agent JWT] List in-app alerts and notifications for the authenticated delivery agent",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Agent notifications and unread count" }
+        }
+      }
+    },
+    "/agent/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Agent JWT] Mark specific agent notification as read",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification marked read" }
+        }
+      }
+    },
+    "/agent/notifications/mark-all-read": {
+      "patch": {
+        "tags": ["Delivery Agents"],
+        "summary": "[Requires Agent JWT] Mark all agent notifications as read",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All notifications marked read" }
+        }
+      }
     }
   }
 };

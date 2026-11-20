@@ -63,6 +63,27 @@ async function startServer() {
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS pending_cash_amount NUMERIC(10,2) DEFAULT 0.00;
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS current_lat DOUBLE PRECISION DEFAULT 17.4486;
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS current_lng DOUBLE PRECISION DEFAULT 78.3908;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS cash_deposit_status VARCHAR(50) DEFAULT 'NONE';
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS deposit_rejection_reason TEXT;
+      `);
+
+      // Ensure persistent notifications table exists for Admin & Delivery Agents
+      await query(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id SERIAL PRIMARY KEY,
+          recipient_role VARCHAR(50) NOT NULL,
+          recipient_id VARCHAR(100),
+          order_id VARCHAR(100),
+          agent_id VARCHAR(100),
+          type VARCHAR(100) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          message TEXT NOT NULL,
+          amount NUMERIC(10,2) DEFAULT 0.00,
+          is_read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_role, recipient_id, is_read);
+        CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
       `);
 
       // Ensure order table columns for delivery agent, COD and feedback scheduler exist
@@ -85,6 +106,9 @@ async function startServer() {
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_settlement_status VARCHAR(50) DEFAULT 'PENDING';
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lat DOUBLE PRECISION DEFAULT 17.4375;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lng DOUBLE PRECISION DEFAULT 78.4482;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_submitted_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_verified_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_rejection_note TEXT;
       `);
 
       const tableCheck = await query(`

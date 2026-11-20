@@ -37,6 +37,8 @@ export interface DeliveryAgent {
   fifoQueueJoinedAt?: string;
   hasPendingCashDeposit?: boolean;
   pendingCashAmount?: number;
+  cashDepositStatus?: 'NONE' | 'PENDING_STORE_DEPOSIT' | 'DEPOSIT_SUBMITTED_FOR_APPROVAL' | 'REJECTED_RESUBMIT_REQUIRED' | 'APPROVED';
+  depositRejectionReason?: string | null;
   currentLat?: number;
   currentLng?: number;
   fifoRank?: number;
@@ -169,6 +171,9 @@ export interface Order {
   deliveryOtp?: string | null;
   otpVerified?: boolean;
   deliveredAt?: string | null;
+  depositSubmittedAt?: string | null;
+  depositVerifiedAt?: string | null;
+  depositRejectionNote?: string | null;
   feedbackStatus?: 'pending' | 'submitted' | 'dismissed_forever';
   nextFeedbackReminderAt?: string | null;
 }
@@ -288,5 +293,53 @@ export interface CustomerActivityDetail {
     category: string;
     price: number;
     createdAt: string;
+  }[];
+}
+
+export type NotificationType =
+  | 'COD_QR_COLLECTED'
+  | 'COD_CASH_COLLECTED'
+  | 'CASH_DEPOSIT_SUBMITTED'
+  | 'CASH_DEPOSIT_APPROVED'
+  | 'CASH_DEPOSIT_REJECTED';
+
+export interface AppNotification {
+  id: number | string;
+  recipientRole: 'ADMIN' | 'DELIVERY_AGENT';
+  recipientId?: string | number | null;
+  orderId?: string | null;
+  agentId?: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  amount?: number;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface AmountHandlingSummary {
+  upiQrTotal: number;
+  upiQrConfirmed: number;
+  upiQrAwaitingAdmin: number;
+  cashTotal: number;
+  cashApprovedAtStore: number;
+  cashSubmittedAwaitingApproval: number;
+  cashHeldByAgents: number;
+  grandTotalCodRevenue: number;
+  qrPendingOrders: Order[];
+  depositApprovalAgents: {
+    agentId: string;
+    agentName: string;
+    agentPhone: string;
+    agentCode: string;
+    avatarUrl: string;
+    pendingCashAmount: number;
+    cashDepositStatus: string;
+    depositRejectionReason?: string | null;
+    linkedOrders: {
+      orderNumber: string;
+      grandTotal: number;
+      depositSubmittedAt?: string | null;
+    }[];
   }[];
 }

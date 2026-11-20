@@ -1,7 +1,8 @@
-import { Address, BasketItem, DeliveryAgent, Order, OrderStatus, PaymentMethod } from '../../src/types.js';
+import { Address, AmountHandlingSummary, BasketItem, DeliveryAgent, Order, OrderStatus, PaymentMethod } from '../../src/types.js';
 import { getClient, query } from '../db/pool.js';
 import { agentRepo } from './agentRepo.js';
 import { inventoryRepo } from './inventoryRepo.js';
+import { notificationRepo } from './notificationRepo.js';
 import { mapProductRow, productRepo } from './productRepo.js';
 import { userRepo } from './userRepo.js';
 
@@ -52,6 +53,9 @@ export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: D
     deliveryOtp: row.delivery_otp || null,
     otpVerified: Boolean(row.otp_verified),
     deliveredAt: row.delivered_at ? new Date(row.delivered_at).toISOString() : null,
+    depositSubmittedAt: row.deposit_submitted_at ? new Date(row.deposit_submitted_at).toISOString() : null,
+    depositVerifiedAt: row.deposit_verified_at ? new Date(row.deposit_verified_at).toISOString() : null,
+    depositRejectionNote: row.deposit_rejection_note || null,
     feedbackStatus: row.feedback_status || 'pending',
     nextFeedbackReminderAt: row.next_feedback_reminder_at ? new Date(row.next_feedback_reminder_at).toISOString() : null,
   };
@@ -650,6 +654,21 @@ export class OrderRepository {
     const agent = await agentRepo.findById(agentId);
     const updated = mapOrderRow(row, items, agent);
 
+    // Notify Admin of COD UPI QR payment
+    try {
+      await notificationRepo.createNotification({
+        recipientRole: 'ADMIN',
+        orderId: updated.orderNumber,
+        agentId: agent?.id,
+        type: 'COD_QR_COLLECTED',
+        title: 'UPI QR Payment Collected',
+        message: `Order #${updated.orderNumber}: Agent ${agent?.name || 'Partner'} reported ₹${updated.grandTotal.toFixed(2)} received via UPI QR. Please verify and confirm.`,
+        amount: updated.grandTotal,
+      });
+    } catch (notifErr) {
+      console.error('[Notification Error - QR Collected]:', notifErr);
+    }
+
     return {
       success: true,
       message: 'UPI QR Payment submitted! Awaiting Admin verification in Admin Dashboard.',
@@ -688,6 +707,21 @@ export class OrderRepository {
       agent = await agentRepo.findById(row.assigned_agent_id);
     }
     const updated = mapOrderRow(row, items, agent);
+
+    // Notify Delivery Agent that QR payment was verified & approved
+    if (row.assigned_agent_id) {
+      try {
+        await notificationRepo.createNotification({
+          recipientRole: 'DELIVERY_AGENT',
+          recipientId: row.assigned_agent_id,
+          orderId: updated.orderNumber,
+          type: 'CASH_DEPOSIT_APPROVED',
+          title: 'UPI QR Payment Approved',
+          message: `Admin verified and approved UPI QR payment of ₹${updated.grandTotal.toFixed(2)} for Order #${updated.orderNumber}. Delivery fee credited.`,
+          amount: updated.grandTotal,
+        });
+      } catch {}
+    }
 
     try {
       const { sendOrderStatusUpdateEmail } = await import('../services/emailService.js');
@@ -737,6 +771,21 @@ export class OrderRepository {
     const agent = await agentRepo.findById(agentId);
     const updated = mapOrderRow(row, items, agent);
 
+    // Immediately insert persistent notification for ADMIN
+    try {
+      await notificationRepo.createNotification({
+        recipientRole: 'ADMIN',
+        orderId: updated.orderNumber,
+        agentId: agentId,
+        type: 'COD_CASH_COLLECTED',
+        title: 'Cash Collected by Agent',
+        message: `Cash Alert: Agent ${agent?.name || 'Partner'} collected ₹${updated.grandTotal.toFixed(2)} cash for Order #${updated.orderNumber} and must deposit it at the Hyderabad store.`,
+        amount: updated.grandTotal,
+      });
+    } catch (notifErr) {
+      console.error('[Notification Error - Cash Collected]:', notifErr);
+    }
+
     try {
       const { sendOrderStatusUpdateEmail } = await import('../services/emailService.js');
       await sendOrderStatusUpdateEmail(updated, 'delivered');
@@ -778,27 +827,234 @@ export class OrderRepository {
   }
 
   async markCashDepositedAtStore(orderId: string | number, agentId: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    await this.submitAgentCashDeposit(agentId, String(orderId));
     const order = await this.getOrderById(orderId);
-    if (!order) return { success: false, message: 'Order not found' };
+    return {
+      success: true,
+      message: 'Cash marked as deposited at Hyderabad store! Submitted for Admin verification.',
+      order: order || undefined,
+    };
+  }
 
-    const isNum = !isNaN(Number(orderId));
-    const res = await query(
+  async submitAgentCashDeposit(agentId: string, orderNumberOrId?: string): Promise<{ success: boolean; message: string }> {
+    const agent = await agentRepo.findById(agentId);
+    if (!agent) return { success: false, message: 'Delivery agent not found' };
+
+    // Update agent's orders with CASH_COLLECTED_BY_AGENT or DEPOSIT_REJECTED to DEPOSIT_SUBMITTED_FOR_APPROVAL
+    await query(
       `UPDATE "order"
-       SET payment_settlement_status = 'CASH_DEPOSITED_AT_STORE'
-       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
-       RETURNING *`,
-      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+       SET payment_settlement_status = 'DEPOSIT_SUBMITTED_FOR_APPROVAL',
+           deposit_submitted_at = NOW(),
+           deposit_rejection_note = NULL
+       WHERE assigned_agent_id = $1 
+         AND (payment_settlement_status IN ('CASH_COLLECTED_BY_AGENT', 'DEPOSIT_REJECTED', 'CASH_DEPOSIT_REQUESTED', 'CASH_DEPOSITED_AT_STORE')
+              OR cod_collection_method = 'CASH')`,
+      [agentId]
     );
 
-    const row = res.rows[0];
-    const items = await this.getOrderItems(row.id);
-    const agent = await agentRepo.findById(agentId);
-    const updated = mapOrderRow(row, items, agent);
+    await agentRepo.submitCashDeposit(agentId);
+
+    const pendingAmount = agent.pendingCashAmount || 0;
+
+    // Immediately insert persistent notification for ADMIN
+    try {
+      await notificationRepo.createNotification({
+        recipientRole: 'ADMIN',
+        agentId: agentId,
+        orderId: orderNumberOrId || null,
+        type: 'CASH_DEPOSIT_SUBMITTED',
+        title: 'Cash Deposit Verification Needed',
+        message: `Deposit Verification Needed: Agent ${agent.name} marked ₹${pendingAmount.toFixed(2)} cash as deposited at the Hyderabad store. Approve or Reject in Amount Handling Dashboard.`,
+        amount: pendingAmount,
+      });
+    } catch (notifErr) {
+      console.error('[Notification Error - Deposit Submitted]:', notifErr);
+    }
 
     return {
       success: true,
-      message: 'Cash marked as deposited at Hyderabad store! Awaiting Admin confirmation to unlock future orders.',
-      order: updated,
+      message: `Store cash deposit of ₹${pendingAmount.toFixed(2)} submitted for Store Admin approval.`,
+    };
+  }
+
+  async approveAgentCashDeposit(agentId: string): Promise<{ success: boolean; message: string }> {
+    const agent = await agentRepo.findById(agentId);
+    if (!agent) return { success: false, message: 'Delivery agent not found' };
+
+    const depositAmount = agent.pendingCashAmount || 0;
+
+    // Update linked orders to CASH_DEPOSITED_AT_STORE and verified
+    await query(
+      `UPDATE "order"
+       SET payment_settlement_status = 'CASH_DEPOSITED_AT_STORE',
+           deposit_verified_at = NOW()
+       WHERE assigned_agent_id = $1
+         AND (cod_collection_method = 'CASH' 
+              OR payment_settlement_status IN ('DEPOSIT_SUBMITTED_FOR_APPROVAL', 'CASH_COLLECTED_BY_AGENT', 'CASH_DEPOSITED_AT_STORE', 'DEPOSIT_REJECTED'))`,
+      [agentId]
+    );
+
+    // Unlock agent in repository and reset pending amount & rejoin FIFO
+    await agentRepo.approveCashDeposit(agentId);
+
+    // Notify Delivery Agent
+    try {
+      await notificationRepo.createNotification({
+        recipientRole: 'DELIVERY_AGENT',
+        recipientId: agentId,
+        agentId: agentId,
+        type: 'CASH_DEPOSIT_APPROVED',
+        title: 'Store Cash Deposit Approved',
+        message: `Store cash deposit of ₹${depositAmount.toFixed(2)} approved by Admin! Your account is unlocked for next orders.`,
+        amount: depositAmount,
+      });
+    } catch (notifErr) {
+      console.error('[Notification Error - Deposit Approved]:', notifErr);
+    }
+
+    return {
+      success: true,
+      message: `Deposit of ₹${depositAmount.toFixed(2)} approved! Delivery partner ${agent.name} is now unlocked and re-entered into active FIFO queue.`,
+    };
+  }
+
+  async rejectAgentCashDeposit(agentId: string, reason: string): Promise<{ success: boolean; message: string }> {
+    const agent = await agentRepo.findById(agentId);
+    if (!agent) return { success: false, message: 'Delivery agent not found' };
+
+    const finalReason = reason?.trim() || 'Cash deposit not received at Hyderabad store';
+
+    // Update linked orders
+    await query(
+      `UPDATE "order"
+       SET payment_settlement_status = 'DEPOSIT_REJECTED',
+           deposit_rejection_note = $1
+       WHERE assigned_agent_id = $2
+         AND (cod_collection_method = 'CASH' 
+              OR payment_settlement_status IN ('DEPOSIT_SUBMITTED_FOR_APPROVAL', 'CASH_COLLECTED_BY_AGENT', 'CASH_DEPOSITED_AT_STORE'))`,
+      [finalReason, agentId]
+    );
+
+    // Keep agent locked and record rejection reason
+    await agentRepo.rejectCashDeposit(agentId, finalReason);
+
+    // High priority notification for Delivery Agent
+    try {
+      await notificationRepo.createNotification({
+        recipientRole: 'DELIVERY_AGENT',
+        recipientId: agentId,
+        agentId: agentId,
+        type: 'CASH_DEPOSIT_REJECTED',
+        title: 'Store Cash Deposit Rejected',
+        message: `Deposit Rejected: Store deposit of ₹${(agent.pendingCashAmount || 0).toFixed(2)} was not received. Reason: ${finalReason}. Please deposit the cash at the store and resend your approval request.`,
+        amount: agent.pendingCashAmount || 0,
+      });
+    } catch (notifErr) {
+      console.error('[Notification Error - Deposit Rejected]:', notifErr);
+    }
+
+    return {
+      success: true,
+      message: `Store deposit for ${agent.name} rejected. Agent notified to resubmit upon cash delivery.`,
+    };
+  }
+
+  async getAmountHandlingSummary(): Promise<AmountHandlingSummary> {
+    // 1. UPI QR metrics
+    const qrRes = await query(`
+      SELECT 
+        COALESCE(SUM(total_amount), 0) AS upi_total,
+        COALESCE(SUM(CASE WHEN payment_settlement_status IN ('QR_AMOUNT_RECEIVED', 'SETTLED') THEN total_amount ELSE 0 END), 0) AS upi_confirmed,
+        COALESCE(SUM(CASE WHEN payment_settlement_status = 'QR_PAID_AWAITING_ADMIN' THEN total_amount ELSE 0 END), 0) AS upi_awaiting
+      FROM "order"
+      WHERE cod_collection_method = 'UPI_QR' OR payment_settlement_status LIKE 'QR_%'
+    `);
+
+    // 2. Cash metrics
+    const cashRes = await query(`
+      SELECT 
+        COALESCE(SUM(total_amount), 0) AS cash_total,
+        COALESCE(SUM(CASE WHEN payment_settlement_status IN ('CASH_DEPOSITED_AT_STORE', 'SETTLED') THEN total_amount ELSE 0 END), 0) AS cash_approved,
+        COALESCE(SUM(CASE WHEN payment_settlement_status = 'DEPOSIT_SUBMITTED_FOR_APPROVAL' THEN total_amount ELSE 0 END), 0) AS cash_submitted,
+        COALESCE(SUM(CASE WHEN payment_settlement_status IN ('CASH_COLLECTED_BY_AGENT', 'DEPOSIT_REJECTED', 'CASH_DEPOSIT_REQUESTED') THEN total_amount ELSE 0 END), 0) AS cash_held
+      FROM "order"
+      WHERE cod_collection_method = 'CASH' OR payment_settlement_status LIKE 'CASH_%' OR payment_settlement_status LIKE 'DEPOSIT_%'
+    `);
+
+    const upiQrTotal = parseFloat(qrRes.rows[0]?.upi_total || '0');
+    const upiQrConfirmed = parseFloat(qrRes.rows[0]?.upi_confirmed || '0');
+    const upiQrAwaitingAdmin = parseFloat(qrRes.rows[0]?.upi_awaiting || '0');
+
+    const cashTotal = parseFloat(cashRes.rows[0]?.cash_total || '0');
+    const cashApprovedAtStore = parseFloat(cashRes.rows[0]?.cash_approved || '0');
+    const cashSubmittedAwaitingApproval = parseFloat(cashRes.rows[0]?.cash_submitted || '0');
+    const cashHeldByAgents = parseFloat(cashRes.rows[0]?.cash_held || '0');
+
+    const grandTotalCodRevenue = upiQrConfirmed + cashApprovedAtStore;
+
+    // 3. QR pending orders list
+    const qrOrdersRes = await query(`
+      SELECT * FROM "order"
+      WHERE payment_settlement_status = 'QR_PAID_AWAITING_ADMIN'
+      ORDER BY created_at DESC
+    `);
+    const qrPendingOrders: Order[] = [];
+    for (const r of qrOrdersRes.rows) {
+      const items = await this.getOrderItems(r.id);
+      let ag: DeliveryAgent | null = null;
+      if (r.assigned_agent_id) ag = await agentRepo.findById(r.assigned_agent_id);
+      qrPendingOrders.push(mapOrderRow(r, items, ag));
+    }
+
+    // 4. Deposit approval agents list
+    const agentsRes = await query(`
+      SELECT * FROM delivery_agents
+      WHERE has_pending_cash_deposit = TRUE 
+         OR cash_deposit_status IN ('DEPOSIT_SUBMITTED_FOR_APPROVAL', 'REJECTED_RESUBMIT_REQUIRED', 'PENDING_STORE_DEPOSIT')
+         OR pending_cash_amount > 0
+      ORDER BY 
+        CASE WHEN cash_deposit_status = 'DEPOSIT_SUBMITTED_FOR_APPROVAL' THEN 1 ELSE 2 END,
+        updated_at DESC
+    `);
+
+    const depositApprovalAgents = [];
+    for (const ag of agentsRes.rows) {
+      const linkedOrdersRes = await query(`
+        SELECT order_number, total_amount, deposit_submitted_at
+        FROM "order"
+        WHERE assigned_agent_id = $1
+          AND (cod_collection_method = 'CASH' OR payment_settlement_status IN ('CASH_COLLECTED_BY_AGENT', 'DEPOSIT_SUBMITTED_FOR_APPROVAL', 'DEPOSIT_REJECTED', 'CASH_DEPOSIT_REQUESTED', 'CASH_DEPOSITED_AT_STORE'))
+        ORDER BY created_at DESC
+      `, [ag.id]);
+
+      depositApprovalAgents.push({
+        agentId: String(ag.id),
+        agentName: ag.name,
+        agentPhone: ag.phone || '+91 98765 43210',
+        agentCode: ag.agent_code,
+        avatarUrl: ag.avatar_url,
+        pendingCashAmount: parseFloat(ag.pending_cash_amount || '0.00'),
+        cashDepositStatus: ag.cash_deposit_status || 'PENDING_STORE_DEPOSIT',
+        depositRejectionReason: ag.deposit_rejection_reason || null,
+        linkedOrders: linkedOrdersRes.rows.map(o => ({
+          orderNumber: o.order_number,
+          grandTotal: parseFloat(o.total_amount),
+          depositSubmittedAt: o.deposit_submitted_at ? new Date(o.deposit_submitted_at).toISOString() : null,
+        })),
+      });
+    }
+
+    return {
+      upiQrTotal,
+      upiQrConfirmed,
+      upiQrAwaitingAdmin,
+      cashTotal,
+      cashApprovedAtStore,
+      cashSubmittedAwaitingApproval,
+      cashHeldByAgents,
+      grandTotalCodRevenue,
+      qrPendingOrders,
+      depositApprovalAgents,
     };
   }
 

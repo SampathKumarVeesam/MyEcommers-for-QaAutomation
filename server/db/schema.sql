@@ -120,6 +120,9 @@ CREATE TABLE IF NOT EXISTS "order" (
   payment_settlement_status VARCHAR(50) DEFAULT 'PENDING',
   delivery_lat DOUBLE PRECISION DEFAULT 17.4375,
   delivery_lng DOUBLE PRECISION DEFAULT 78.4482,
+  deposit_submitted_at TIMESTAMP WITH TIME ZONE,
+  deposit_verified_at TIMESTAMP WITH TIME ZONE,
+  deposit_rejection_note TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -145,6 +148,8 @@ CREATE TABLE IF NOT EXISTS delivery_agents (
   fifo_queue_joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   has_pending_cash_deposit BOOLEAN DEFAULT FALSE,
   pending_cash_amount NUMERIC(10,2) DEFAULT 0.00,
+  cash_deposit_status VARCHAR(50) DEFAULT 'NONE',
+  deposit_rejection_reason TEXT,
   current_lat DOUBLE PRECISION DEFAULT 17.4486,
   current_lng DOUBLE PRECISION DEFAULT 78.3908,
   commission_rate NUMERIC(10,2) DEFAULT 15.00,
@@ -152,6 +157,21 @@ CREATE TABLE IF NOT EXISTS delivery_agents (
   delivered_orders_count INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6c. NOTIFICATIONS TABLE (Admin & Delivery Agent Real-Time Alerts)
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  recipient_role VARCHAR(50) NOT NULL,
+  recipient_id VARCHAR(100),
+  order_id VARCHAR(100),
+  agent_id VARCHAR(100),
+  type VARCHAR(100) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  amount NUMERIC(10,2) DEFAULT 0.00,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. ORDER_ITEM TABLE
@@ -208,3 +228,5 @@ CREATE INDEX IF NOT EXISTS idx_delivery_agents_active ON delivery_agents(is_acti
 CREATE INDEX IF NOT EXISTS idx_order_item_order_id ON order_item(order_id);
 CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_role, recipient_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);

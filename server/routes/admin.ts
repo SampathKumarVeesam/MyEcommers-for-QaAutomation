@@ -7,6 +7,7 @@ import { agentRepo } from '../repositories/agentRepo.js';
 import { inventoryRepo } from '../repositories/inventoryRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
 import { productRepo } from '../repositories/productRepo.js';
+import { notificationRepo } from '../repositories/notificationRepo.js';
 import { storeRepo } from '../repositories/storeRepo.js';
 import { userRepo } from '../repositories/userRepo.js';
 import { sendOrderStatusUpdateEmail, sendTestEmail } from '../services/emailService.js';
@@ -890,6 +891,128 @@ adminRouter.patch('/orders/:id/confirm-cash-deposited', async (req: Authenticate
   } catch (err: any) {
     console.error('[Admin Confirm Cash Deposited Error]:', err);
     res.status(500).json({ success: false, message: `Failed to confirm cash deposit: ${err.message}` });
+  }
+});
+
+/**
+ * ============================================================================
+ * 6. ADMIN REAL-TIME NOTIFICATIONS & AMOUNT COLLECTION DASHBOARD
+ * ============================================================================
+ */
+
+/**
+ * GET /api/admin/notifications
+ * Retrieve persistent in-app notifications for Admin and unread badge count
+ */
+adminRouter.get('/notifications', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const notifications = await notificationRepo.listForAdmin(50);
+    const unreadCount = await notificationRepo.getUnreadCountForAdmin();
+    res.status(200).json({
+      success: true,
+      data: {
+        notifications,
+        unreadCount,
+      },
+    });
+  } catch (err: any) {
+    console.error('[Admin Notifications Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to fetch notifications: ${err.message}` });
+  }
+});
+
+/**
+ * PATCH /api/admin/notifications/:id/read
+ * Mark a single admin notification as read
+ */
+adminRouter.patch('/notifications/:id/read', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const ok = await notificationRepo.markAsRead(id);
+    res.status(200).json({ success: ok, message: ok ? 'Notification marked as read' : 'Notification not found' });
+  } catch (err: any) {
+    console.error('[Admin Mark Notification Read Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to mark notification read: ${err.message}` });
+  }
+});
+
+/**
+ * PATCH /api/admin/notifications/mark-all-read
+ * Mark all admin notifications as read
+ */
+adminRouter.patch('/notifications/mark-all-read', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    await notificationRepo.markAllAsReadForAdmin();
+    res.status(200).json({ success: true, message: 'All notifications marked as read' });
+  } catch (err: any) {
+    console.error('[Admin Mark All Notifications Read Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to mark all notifications read: ${err.message}` });
+  }
+});
+
+/**
+ * GET /api/admin/amount-handling
+ * Comprehensive Amount Collection & Cash Handling Dashboard summary:
+ * - Summary KPI cards (UPI QR, Cash, Total COD Revenue)
+ * - UPI QR verification queue
+ * - Store Cash Deposit approval queue with delivery agents
+ */
+adminRouter.get('/amount-handling', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const summary = await orderRepo.getAmountHandlingSummary();
+    res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  } catch (err: any) {
+    console.error('[Admin Amount Handling Summary Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to fetch amount handling summary: ${err.message}` });
+  }
+});
+
+/**
+ * POST /api/admin/agents/:agentId/approve-cash-deposit
+ * Admin approves cash deposited by agent at store:
+ * - Marks linked orders CASH_DEPOSITED_AT_STORE and verified
+ * - Unlocks delivery agent (has_pending_cash_deposit = false, pending_cash_amount = 0.00, status = 'APPROVED')
+ * - Re-enters agent into active FIFO queue (fifo_queue_joined_at = NOW())
+ * - Sends notification to delivery agent
+ */
+adminRouter.post('/agents/:agentId/approve-cash-deposit', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { agentId } = req.params;
+    const result = await orderRepo.approveAgentCashDeposit(agentId);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Admin Approve Cash Deposit Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to approve cash deposit: ${err.message}` });
+  }
+});
+
+/**
+ * POST /api/admin/agents/:agentId/reject-cash-deposit
+ * Admin rejects cash deposit request (e.g. money not received at store counter):
+ * - Keeps agent LOCKED from next deliveries
+ * - Sets status = 'REJECTED_RESUBMIT_REQUIRED' with reason
+ * - Sends urgent notification to agent to resubmit upon cash delivery
+ */
+adminRouter.post('/agents/:agentId/reject-cash-deposit', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { agentId } = req.params;
+    const { reason } = req.body;
+    const result = await orderRepo.rejectAgentCashDeposit(agentId, reason);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Admin Reject Cash Deposit Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to reject cash deposit: ${err.message}` });
   }
 });
 

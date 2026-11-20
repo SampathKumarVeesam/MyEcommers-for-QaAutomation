@@ -1,6 +1,9 @@
 import {
   AlertTriangle,
+  Banknote,
+  Bell,
   Boxes,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -13,6 +16,7 @@ import {
   Package,
   Phone,
   PlusCircle,
+  QrCode,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -30,7 +34,9 @@ import { apiUrl } from '../config/api.js';
 import { useAuth } from '../context/AuthContext.js';
 import { LiveRouteMap } from './LiveRouteMap.js';
 import {
+  AmountHandlingSummary,
   AnalyticsSummary,
+  AppNotification,
   CustomerActivityDetail,
   CustomerActivitySummary,
   DeliveryAgent,
@@ -51,10 +57,23 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onRefreshCatalog,
 }) => {
   const { token, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product' | 'agents'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product' | 'agents' | 'amount-handling'>('analytics');
   const contentBodyRef = useRef<HTMLDivElement>(null);
 
   const [viewMapOrderId, setViewMapOrderId] = useState<string | null>(null);
+
+  // In-App Notifications State
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  // Amount Collection & Cash Handling Dashboard State
+  const [amountSummary, setAmountSummary] = useState<AmountHandlingSummary | null>(null);
+  const [loadingAmountSummary, setLoadingAmountSummary] = useState(false);
+  const [rejectModalAgent, setRejectModalAgent] = useState<AmountHandlingSummary['depositApprovalAgents'][0] | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [rejectingDeposit, setRejectingDeposit] = useState(false);
+  const [approvingDepositAgentId, setApprovingDepositAgentId] = useState<string | null>(null);
 
   // Delivery Agents State
   const [agents, setAgents] = useState<DeliveryAgent[]>([]);
@@ -433,7 +452,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       if (res.ok) {
         setSaveMessage('QR payment confirmed by Store Admin! Order marked settled.');
         setTimeout(() => setSaveMessage(null), 2500);
-        await fetchInventoryAndOrders();
+        await Promise.all([fetchInventoryAndOrders(), fetchAmountHandling(), fetchNotifications()]);
       }
     } catch (err) {
       console.error('Failed to confirm QR payment:', err);
@@ -450,7 +469,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       if (res.ok) {
         setSaveMessage('Cash deposit requested from agent at Hyderabad store!');
         setTimeout(() => setSaveMessage(null), 2500);
-        await fetchInventoryAndOrders();
+        await Promise.all([fetchInventoryAndOrders(), fetchAmountHandling()]);
       }
     } catch (err) {
       console.error('Failed to request cash deposit:', err);
@@ -467,11 +486,124 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       if (res.ok) {
         setSaveMessage('Cash deposit confirmed at Hyderabad store! Delivery partner UNLOCKED.');
         setTimeout(() => setSaveMessage(null), 2500);
-        await fetchInventoryAndOrders();
-        await fetchAgents();
+        await Promise.all([fetchInventoryAndOrders(), fetchAgents(), fetchAmountHandling(), fetchNotifications()]);
       }
     } catch (err) {
       console.error('Failed to confirm cash deposit:', err);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/admin/notifications'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setNotifications(json.data.notifications || []);
+          setUnreadNotifs(json.data.unreadCount || 0);
+        }
+      }
+    } catch (err) {
+      // Ignore background notification fetch errors
+    }
+  };
+
+  const handleMarkNotifRead = async (id: number | string) => {
+    if (!token) return;
+    try {
+      await fetch(apiUrl(`/api/admin/notifications/${id}/read`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n => (n.id === id ? { ...n, isRead: true } : n)));
+      setUnreadNotifs(prev => Math.max(0, prev - 1));
+    } catch {}
+  };
+
+  const handleMarkAllNotifsRead = async () => {
+    if (!token) return;
+    try {
+      await fetch(apiUrl('/api/admin/notifications/mark-all-read'), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadNotifs(0);
+    } catch {}
+  };
+
+  const fetchAmountHandling = async () => {
+    if (!token) return;
+    setLoadingAmountSummary(true);
+    try {
+      const res = await fetch(apiUrl('/api/admin/amount-handling'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAmountSummary(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('[Admin Amount Handling Fetch Error]:', err);
+    } finally {
+      setLoadingAmountSummary(false);
+    }
+  };
+
+  const handleApproveAgentCashDeposit = async (agentId: string) => {
+    if (!token) return;
+    setApprovingDepositAgentId(agentId);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/agents/${agentId}/approve-cash-deposit`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSaveMessage(data.message || 'Cash deposit approved! Delivery partner unlocked.');
+        setTimeout(() => setSaveMessage(null), 3500);
+        await Promise.all([fetchAmountHandling(), fetchAgents(), fetchInventoryAndOrders(), fetchNotifications()]);
+      } else {
+        alert(data.message || 'Failed to approve cash deposit');
+      }
+    } catch (err: any) {
+      alert(`Approval error: ${err.message}`);
+    } finally {
+      setApprovingDepositAgentId(null);
+    }
+  };
+
+  const handleRejectAgentCashDeposit = async () => {
+    if (!token || !rejectModalAgent) return;
+    setRejectingDeposit(true);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/agents/${rejectModalAgent.agentId}/reject-cash-deposit`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason: rejectionReasonInput || 'Cash deposit not received at Hyderabad store' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSaveMessage('Store deposit rejected. Notification dispatched to Delivery Agent to resubmit.');
+        setTimeout(() => setSaveMessage(null), 3500);
+        setRejectModalAgent(null);
+        setRejectionReasonInput('');
+        await Promise.all([fetchAmountHandling(), fetchAgents(), fetchInventoryAndOrders(), fetchNotifications()]);
+      } else {
+        alert(data.message || 'Failed to reject cash deposit');
+      }
+    } catch (err: any) {
+      alert(`Rejection error: ${err.message}`);
+    } finally {
+      setRejectingDeposit(false);
     }
   };
 
@@ -515,7 +647,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   // Refresh all data
   const handleRefreshAll = async () => {
-    await Promise.all([fetchAnalytics(), fetchInventoryAndOrders(), fetchAgents()]);
+    await Promise.all([
+      fetchAnalytics(),
+      fetchInventoryAndOrders(),
+      fetchAgents(),
+      fetchNotifications(),
+      fetchAmountHandling(),
+    ]);
   };
 
   useEffect(() => {
@@ -524,8 +662,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     } else {
       setSelectedCustomerId(null);
       setCustomerDetail(null);
+      setShowNotifDropdown(false);
     }
   }, [isOpen, token]);
+
+  // Real-time polling for notifications and amount handling
+  useEffect(() => {
+    if (!isOpen || !token) return;
+    const interval = setInterval(() => {
+      fetchNotifications();
+      if (activeTab === 'amount-handling') {
+        fetchAmountHandling();
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [isOpen, token, activeTab]);
 
   if (!isOpen) return null;
 
@@ -623,8 +774,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   );
 
   return (
-    <div
-      data-test="admin-modal"
+    <>
+      <div
+        data-test="admin-modal"
       data-testid="admin-modal"
       className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
     >
@@ -713,6 +865,89 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <Truck className="w-3.5 h-3.5" />
                 <span>Delivery Agents ({agents.length})</span>
               </button>
+              <button
+                data-test="admin-tab-amount-handling"
+                data-testid="admin-tab-amount-handling"
+                onClick={() => setActiveTab('amount-handling')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'amount-handling' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Banknote className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Amount Handling</span>
+                {(((amountSummary?.depositApprovalAgents?.length || 0) + (amountSummary?.qrPendingOrders?.length || 0)) > 0) && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
+                    {(amountSummary?.depositApprovalAgents?.length || 0) + (amountSummary?.qrPendingOrders?.length || 0)}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Notification Bell Dropdown */}
+            <div className="relative">
+              <button
+                data-test="admin-notifications-bell"
+                data-testid="admin-notifications-bell"
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                title="Notifications & Alerts"
+                className="relative w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotifs > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                    {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                  </span>
+                )}
+              </button>
+
+              {showNotifDropdown && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs">
+                  <div className="p-3 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-indigo-400" />
+                      Alerts &amp; Notifications ({unreadNotifs} unread)
+                    </span>
+                    {unreadNotifs > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllNotifsRead}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-800">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-500">No notifications yet</div>
+                    ) : (
+                      notifications.map(n => (
+                        <div
+                          key={n.id}
+                          onClick={() => !n.isRead && handleMarkNotifRead(n.id)}
+                          className={`p-3 transition-colors cursor-pointer ${
+                            n.isRead ? 'bg-slate-900/60 text-slate-400' : 'bg-slate-800/60 text-slate-200'
+                          } hover:bg-slate-800`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-bold text-white">{n.title}</span>
+                            {n.amount && (
+                              <span className="font-mono text-emerald-400 font-extrabold text-[11px]">
+                                ₹{Number(n.amount).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-300 mt-0.5">{n.message}</p>
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                            <span>{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {!n.isRead && <span className="text-rose-400 font-bold">● New</span>}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
@@ -2143,8 +2378,347 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* TAB 6: AMOUNT COLLECTION & CASH HANDLING DASHBOARD */}
+          {activeTab === 'amount-handling' && (
+            <div className="space-y-6">
+              {/* Header & Refresh */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                    <Banknote className="w-5 h-5 text-emerald-600" />
+                    <span>Amount Collection &amp; Cash Handling Console</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Dual COD settlement reconciliation: Verify UPI QR bank receipts and approve Hyderabad Store physical cash deposits to unlock agents into the active FIFO queue.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchAmountHandling}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh Queue</span>
+                </button>
+              </div>
+
+              {/* 3 Summary KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* UPI QR Metric */}
+                <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-2xl">
+                  <div className="flex items-center justify-between text-indigo-900 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider">UPI QR Collections</span>
+                    <QrCode className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div className="text-xl font-extrabold text-indigo-950 font-mono">
+                    ₹{(amountSummary?.upiQrConfirmed || 0).toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-indigo-700 mt-1 flex items-center justify-between">
+                    <span>Awaiting Admin Verification:</span>
+                    <strong className="font-mono text-amber-700">
+                      ₹{(amountSummary?.upiQrAwaitingAdmin || 0).toFixed(2)} ({amountSummary?.qrPendingOrders?.length || 0})
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Cash Handling Metric */}
+                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl">
+                  <div className="flex items-center justify-between text-amber-900 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider">Cash in Hand / Store</span>
+                    <Banknote className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="text-xl font-extrabold text-amber-950 font-mono">
+                    ₹{(amountSummary?.cashApprovedAtStore || 0).toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-amber-800 mt-1 space-y-0.5">
+                    <div className="flex justify-between">
+                      <span>Submitted Deposit Awaiting Approval:</span>
+                      <strong className="font-mono text-indigo-700">₹{(amountSummary?.cashSubmittedAwaitingApproval || 0).toFixed(2)}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cash Held by Active Agents:</span>
+                      <strong className="font-mono text-rose-700">₹{(amountSummary?.cashHeldByAgents || 0).toFixed(2)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grand Total Revenue Metric */}
+                <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
+                  <div className="flex items-center justify-between text-emerald-900 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider">Total Reconciled COD</span>
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="text-xl font-extrabold text-emerald-950 font-mono">
+                    ₹{(amountSummary?.grandTotalCodRevenue || 0).toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-emerald-700 mt-1 flex items-center justify-between">
+                    <span>Total In-Flight / Unsettled:</span>
+                    <strong className="font-mono text-slate-700">
+                      ₹{(((amountSummary?.upiQrAwaitingAdmin || 0) + (amountSummary?.cashSubmittedAwaitingApproval || 0) + (amountSummary?.cashHeldByAgents || 0))).toFixed(2)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 1: Store Cash Deposit Approval Queue (Priority!) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <Lock className="w-4 h-4 text-amber-600" />
+                    <span>Store Cash Deposit Approvals &amp; Agent Queue Unlocks</span>
+                    <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                      {amountSummary?.depositApprovalAgents?.length || 0} Agents
+                    </span>
+                  </h4>
+                </div>
+
+                {(!amountSummary?.depositApprovalAgents || amountSummary.depositApprovalAgents.length === 0) ? (
+                  <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center text-slate-500 text-xs">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                    <p className="font-bold text-slate-700">All Agent Cash Collections Settled</p>
+                    <p className="text-[11px] mt-0.5">No delivery agents currently locked with pending physical cash deposits.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {amountSummary.depositApprovalAgents.map(agentItem => (
+                      <div
+                        key={agentItem.agentId}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          agentItem.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
+                            ? 'bg-amber-50/60 border-amber-300 ring-2 ring-amber-400/20 shadow-xs'
+                            : agentItem.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                            ? 'bg-rose-50/60 border-rose-200'
+                            : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={agentItem.avatarUrl}
+                              alt=""
+                              className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                            />
+                            <div>
+                              <p className="font-extrabold text-slate-900 text-sm">{agentItem.agentName}</p>
+                              <p className="text-[11px] font-mono text-slate-500">{agentItem.agentCode} • {agentItem.agentPhone}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase font-bold text-slate-500">Cash to Deposit</div>
+                            <div className="font-mono text-base font-extrabold text-rose-700">
+                              ₹{(agentItem.pendingCashAmount || 0).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Alert Banner */}
+                        <div className="mt-3">
+                          {agentItem.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL' ? (
+                            <div className="p-2.5 bg-amber-100/80 border border-amber-300 rounded-xl text-xs text-amber-950 flex items-center justify-between">
+                              <span className="font-bold flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
+                                Deposit Submitted at Store Counter
+                              </span>
+                              <span className="font-mono text-[10px] bg-amber-200 px-1.5 py-0.5 rounded font-bold">
+                                Action Needed
+                              </span>
+                            </div>
+                          ) : agentItem.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED' ? (
+                            <div className="p-2.5 bg-rose-100/80 border border-rose-300 rounded-xl text-xs text-rose-950">
+                              <p className="font-bold">❌ Rejected — Awaiting Agent Re-submission</p>
+                              <p className="text-[11px] text-rose-800 mt-0.5">Reason: {agentItem.depositRejectionReason || 'Cash mismatch'}</p>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-700 flex items-center justify-between">
+                              <span className="font-bold">🔒 Locked — Cash In Hand</span>
+                              <span className="text-[10px] text-slate-500">Agent must deposit at store</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Linked Orders List */}
+                        {agentItem.linkedOrders && agentItem.linkedOrders.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-200/80 text-[11px] space-y-1">
+                            <div className="font-bold text-slate-600 uppercase text-[10px]">Linked Delivered Orders:</div>
+                            {agentItem.linkedOrders.map(o => (
+                              <div key={o.orderNumber} className="flex justify-between items-center text-slate-700">
+                                <span className="font-mono font-bold">#{o.orderNumber}</span>
+                                <span className="font-mono font-bold text-slate-900">₹{Number(o.grandTotal).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="mt-4 pt-3 border-t border-slate-200 flex gap-2">
+                          <button
+                            type="button"
+                            disabled={approvingDepositAgentId === agentItem.agentId}
+                            onClick={() => handleApproveAgentCashDeposit(agentItem.agentId)}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>
+                              {approvingDepositAgentId === agentItem.agentId ? 'Approving...' : 'Approve Deposit (Unlock Agent)'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectModalAgent(agentItem);
+                              setRejectionReasonInput('');
+                            }}
+                            className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: UPI QR Verification Queue */}
+              <div className="space-y-3 pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-indigo-600" />
+                    <span>UPI QR Payment Verification Queue</span>
+                    <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                      {amountSummary?.qrPendingOrders?.length || 0} Orders
+                    </span>
+                  </h4>
+                </div>
+
+                {(!amountSummary?.qrPendingOrders || amountSummary.qrPendingOrders.length === 0) ? (
+                  <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center text-slate-500 text-xs">
+                    <CheckCircle2 className="w-8 h-8 text-indigo-500 mx-auto mb-2" />
+                    <p className="font-bold text-slate-700">No Pending UPI QR Payments</p>
+                    <p className="text-[11px] mt-0.5">All customer UPI QR transactions have been verified by Store Admin.</p>
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
+                    <table className="w-full text-left divide-y divide-slate-200 min-w-[700px]">
+                      <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="p-3">Order #</th>
+                          <th className="p-3">Customer</th>
+                          <th className="p-3">Delivery Agent</th>
+                          <th className="p-3">Amount</th>
+                          <th className="p-3">Scanned / Paid At</th>
+                          <th className="p-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {amountSummary.qrPendingOrders.map(order => (
+                          <tr key={order.id} className="hover:bg-slate-50/50">
+                            <td className="p-3 font-mono font-bold text-indigo-600">
+                              #{order.orderNumber}
+                            </td>
+                            <td className="p-3">
+                              <p className="font-bold text-slate-900">{order.userName}</p>
+                              <p className="text-[10px] text-slate-500">{order.userEmail}</p>
+                            </td>
+                            <td className="p-3">
+                              <p className="font-bold text-slate-800">{order.assignedAgentName || 'Agent'}</p>
+                              <span className="text-[10px] font-mono text-slate-400">ID: {order.assignedAgentId}</span>
+                            </td>
+                            <td className="p-3 font-mono font-extrabold text-slate-900">
+                              ₹{Number(order.grandTotal).toFixed(2)}
+                            </td>
+                            <td className="p-3 text-slate-500 text-[11px]">
+                              {order.depositSubmittedAt || order.deliveredAt ? new Date(order.depositSubmittedAt || order.deliveredAt || '').toLocaleString() : 'Just now'}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmQrPayment(order.id)}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Confirm ₹{Number(order.grandTotal).toFixed(2)} Received</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
+
+      {/* Deposit Rejection Modal Dialog */}
+      {rejectModalAgent && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-60 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <span>Reject Store Cash Deposit</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRejectModalAgent(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 space-y-2">
+              <p>
+                Agent: <strong>{rejectModalAgent.agentName}</strong> ({rejectModalAgent.agentCode})
+              </p>
+              <p>
+                Pending Cash Amount: <strong className="font-mono text-rose-600">₹{(rejectModalAgent.pendingCashAmount || 0).toFixed(2)}</strong>
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Rejecting will keep the delivery agent locked and send them an instant in-app notification with your reason.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Rejection Reason / Note to Agent
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={rejectionReasonInput}
+                  onChange={e => setRejectionReasonInput(e.target.value)}
+                  placeholder="e.g. Short of ₹200 at store counter, counterfeit note detected, or deposit slip mismatch."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-rose-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setRejectModalAgent(null)}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={rejectingDeposit}
+                onClick={handleRejectAgentCashDeposit}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                {rejectingDeposit ? 'Rejecting...' : 'Confirm Rejection & Keep Agent Locked'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
