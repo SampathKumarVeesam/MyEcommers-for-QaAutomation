@@ -1781,6 +1781,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             type="button"
                             disabled={submittingDeposit}
                             onClick={handleSubmitStoreDeposit}
+                            data-test="btn-submit-store-deposit"
+                            data-testid="btn-submit-store-deposit"
                             className={`w-full py-2.5 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-2 ${
                               agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                                 ? 'bg-rose-600 hover:bg-rose-700'

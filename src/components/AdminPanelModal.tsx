@@ -2556,6 +2556,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             type="button"
                             disabled={approvingDepositAgentId === agentItem.agentId}
                             onClick={() => handleApproveAgentCashDeposit(agentItem.agentId)}
+                            data-test={`btn-approve-deposit-${agentItem.agentId}`}
+                            data-testid={`btn-approve-deposit-${agentItem.agentId}`}
                             className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                           >
                             <Check className="w-3.5 h-3.5" />
@@ -2569,6 +2571,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               setRejectModalAgent(agentItem);
                               setRejectionReasonInput('');
                             }}
+                            data-test={`btn-reject-deposit-${agentItem.agentId}`}
+                            data-testid={`btn-reject-deposit-${agentItem.agentId}`}
                             className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -2636,6 +2640,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleConfirmQrPayment(order.id)}
+                                data-test={`btn-confirm-qr-${order.orderNumber}`}
+                                data-testid={`btn-confirm-qr-${order.orderNumber}`}
                                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer inline-flex items-center gap-1"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -2693,6 +2699,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   rows={3}
                   value={rejectionReasonInput}
                   onChange={e => setRejectionReasonInput(e.target.value)}
+                  data-test="input-deposit-rejection-reason"
+                  data-testid="input-deposit-rejection-reason"
                   placeholder="e.g. Short of ₹200 at store counter, counterfeit note detected, or deposit slip mismatch."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-rose-500 focus:bg-white"
                 />
@@ -2703,6 +2711,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <button
                 type="button"
                 onClick={() => setRejectModalAgent(null)}
+                data-test="btn-cancel-deposit-rejection"
+                data-testid="btn-cancel-deposit-rejection"
                 className="px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 Cancel
@@ -2711,6 +2721,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 type="button"
                 disabled={rejectingDeposit}
                 onClick={handleRejectAgentCashDeposit}
+                data-test="btn-confirm-deposit-rejection"
+                data-testid="btn-confirm-deposit-rejection"
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
                 {rejectingDeposit ? 'Rejecting...' : 'Confirm Rejection & Keep Agent Locked'}
