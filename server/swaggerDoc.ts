@@ -3726,6 +3726,159 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/agent/logout": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Logout delivery agent and remove from active FIFO rotation queue",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Agent logged out successfully" }
+        }
+      }
+    },
+    "/agent/heartbeat": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Send agent heartbeat with real-time GPS coordinates to maintain online presence",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentLat": { "type": "number", "example": 17.4486 },
+                  "currentLng": { "type": "number", "example": 78.3908 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Heartbeat acknowledged" }
+        }
+      }
+    },
+    "/agent/orders/{id}/accept": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Accept assigned order within 3-minute window (moves order to OUT_FOR_DELIVERY & dispatches OTP)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Order accepted and moved to OUT_FOR_DELIVERY" },
+          "400": { "description": "Acceptance window expired or order unavailable" }
+        }
+      }
+    },
+    "/agent/orders/{id}/reject": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Reject assigned order (immediately reassigns to next available FIFO agent)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Order rejected and rotated in FIFO queue" }
+        }
+      }
+    },
+    "/agent/orders/{id}/complete-delivery": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Mark prepaid order DELIVERED following OTP verification and credit agent commission",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Delivery completed and commission credited" },
+          "400": { "description": "OTP verification required prior to completion" }
+        }
+      }
+    },
+    "/agent/orders/{id}/cod-qr-submitted": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Submit UPI QR payment proof (sets order to DELIVERED and QR_PAID_AWAITING_ADMIN)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "UPI QR payment submitted for Admin verification" }
+        }
+      }
+    },
+    "/agent/orders/{id}/cod-cash-collected": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Record physical cash collection and lock agent account until deposited at store",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Cash recorded; agent account locked for store deposit" }
+        }
+      }
+    },
+    "/agent/orders/{id}/mark-cash-deposited": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Agent marks collected cash deposited at the Hyderabad flagship store",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Cash marked deposited; awaiting Admin confirmation" }
+        }
+      }
+    },
+    "/admin/orders/{id}/confirm-qr-payment": {
+      "patch": {
+        "tags": ["Delivery Agents", "Admin - Orders"],
+        "summary": "[Requires Admin JWT] Confirm customer UPI QR payment received",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "QR payment confirmed and settled" }
+        }
+      }
+    },
+    "/admin/orders/{id}/request-cash-deposit": {
+      "patch": {
+        "tags": ["Delivery Agents", "Admin - Orders"],
+        "summary": "[Requires Admin JWT] Request physical cash deposit from delivery agent",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Cash deposit requested at store" }
+        }
+      }
+    },
+    "/admin/orders/{id}/confirm-cash-deposited": {
+      "patch": {
+        "tags": ["Delivery Agents", "Admin - Orders"],
+        "summary": "[Requires Admin JWT] Confirm cash received at store and UNLOCK delivery agent",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Cash verified and agent account unlocked" }
+        }
+      }
+    },
     "/admin/agents": {
       "get": {
         "tags": ["Delivery Agents"],

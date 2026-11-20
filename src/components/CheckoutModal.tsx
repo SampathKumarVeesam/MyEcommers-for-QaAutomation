@@ -38,13 +38,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
   // Step 1: Address
   const [address, setAddress] = useState<Address>({
-    fullName: user?.name || 'Jane Customer',
-    street: user?.address?.street || '742 Evergreen Terrace',
-    city: user?.address?.city || 'Austin',
-    state: user?.address?.state || 'TX',
-    postalCode: user?.address?.postalCode || '78701',
-    country: user?.address?.country || 'United States',
-    phone: user?.phone || '+1 (555) 482-9102',
+    fullName: user?.name || 'Sampath Kumar',
+    street: user?.address?.street || 'Road No. 36, Jubilee Hills',
+    city: user?.address?.city || 'Hyderabad',
+    state: user?.address?.state || 'Telangana',
+    postalCode: user?.address?.postalCode || '500033',
+    country: user?.address?.country || 'India',
+    phone: user?.phone || '+91 98765 43210',
   });
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
 
@@ -55,12 +55,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [cardDetails, setCardDetails] = useState({
     number: '4242 •••• •••• 4242',
-    name: user?.name || 'Jane Customer',
+    name: user?.name || 'Sampath Kumar',
     expiry: '12/28',
     cvv: '888',
   });
   const [upiId, setUpiId] = useState('customer@okhdfcbank');
-  const [selectedBank, setSelectedBank] = useState('JPMorgan Chase Bank');
+  const [selectedBank, setSelectedBank] = useState('HDFC Bank');
 
   // Step 4: OTP Verification
   const [otpCode, setOtpCode] = useState('');
@@ -378,24 +378,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 {[
                   {
                     id: 'standard',
-                    title: 'Standard Ground Shipping',
-                    duration: '3-5 Business Days',
-                    price: subtotal > 75 ? 'FREE' : '$9.99',
-                    desc: 'Tracked delivery via USPS or FedEx Ground',
+                    title: 'Standard Surface Shipping',
+                    duration: '2-4 Days in Telangana',
+                    price: subtotal > 750 ? 'FREE' : '₹99.00',
+                    desc: 'Tracked delivery from Hyderabad Flagship Store',
                   },
                   {
                     id: 'express',
-                    title: 'Express 2-Day Air',
-                    duration: '2 Business Days Guaranteed',
-                    price: '$14.99',
-                    desc: 'Expedited air courier with SMS tracking alerts',
+                    title: 'Hyderabad Express Hub Courier',
+                    duration: 'Same-Day / Next-Day Delivery',
+                    price: '₹149.00',
+                    desc: 'Expedited courier with live map tracking',
                   },
                   {
                     id: 'priority',
-                    title: 'Next-Day Priority Courier',
-                    duration: 'Next Business Morning Delivery',
-                    price: '$24.99',
-                    desc: 'Priority cold-pack packaging for fragrances and tech',
+                    title: 'Priority 2-Hour Express',
+                    duration: 'Guaranteed 2-Hour Delivery (Hyderabad)',
+                    price: '₹249.00',
+                    desc: 'Direct dispatch via dedicated delivery partner',
                   },
                 ].map(m => (
                   <label
@@ -641,7 +641,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                   />
                 </div>
                 {otpError && <p data-test="checkout-otp-error" data-testid="checkout-otp-error" className="text-xs text-rose-600 font-semibold">{otpError}</p>}
-                <p className="text-[11px] text-slate-400">Total charge: ${currentGrandTotal.toFixed(2)}</p>
+                <p className="text-[11px] text-slate-400">Total charge: ₹{currentGrandTotal.toFixed(2)}</p>
               </div>
 
               <div className="pt-4 flex justify-between">
@@ -670,7 +670,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                   ) : (
                     <>
                       <Check className="w-4 h-4" />
-                      <span>Verify OTP &amp; Authorize (${currentGrandTotal.toFixed(2)})</span>
+                      <span>Verify OTP &amp; Authorize (₹{currentGrandTotal.toFixed(2)})</span>
                     </>
                   )}
                 </button>
@@ -708,7 +708,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 </div>
                 <div className="flex justify-between pt-1 font-bold text-slate-900 text-sm">
                   <span>Total Amount Paid:</span>
-                  <span data-test="order-total-paid" data-testid="order-total-paid" className="text-indigo-700">${createdOrder.grandTotal.toFixed(2)}</span>
+                  <span data-test="order-total-paid" data-testid="order-total-paid" className="text-indigo-700">₹{createdOrder.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -721,7 +721,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       <span className="text-slate-700 truncate max-w-xs">
                         {it.quantity}x {it.product.title}
                       </span>
-                      <span className="font-semibold text-slate-900">${it.totalPrice.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-900">₹{it.totalPrice.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>

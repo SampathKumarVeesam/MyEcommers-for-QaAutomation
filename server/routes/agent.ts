@@ -161,8 +161,11 @@ agentRouter.post('/login', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Set online presence and join FIFO queue
+    const loggedInAgent = await agentRepo.setLoginStatus(agentWithCreds.id, true);
+
     const token = generateAgentToken(agentWithCreds);
-    const { passwordHash: _, verificationToken: __, ...safeAgent } = agentWithCreds;
+    const { passwordHash: _, verificationToken: __, ...safeAgent } = (loggedInAgent || agentWithCreds) as any;
 
     res.status(200).json({
       success: true,
@@ -174,9 +177,62 @@ agentRouter.post('/login', async (req: Request, res: Response): Promise<void> =>
         expiresIn: '24h',
       },
     });
+
+    // Check if there are unassigned PROCESSED orders waiting for an active agent
+    setImmediate(async () => {
+      try {
+        const { query } = await import('../db/pool.js');
+        const waitingOrders = await query(
+          `SELECT id FROM "order" 
+           WHERE LOWER(status) = 'processed' 
+             AND (assigned_agent_id IS NULL OR assignment_status = 'UNASSIGNED')
+           ORDER BY created_at ASC LIMIT 1`
+        );
+        if (waitingOrders.rows.length > 0) {
+          await orderRepo.assignNextActiveAgentFIFO(waitingOrders.rows[0].id);
+        }
+      } catch (err) {
+        console.warn('[FIFO Post-Login Order Assignment Notice]:', err);
+      }
+    });
   } catch (error: any) {
     console.error('[Agent Login Error]:', error);
     res.status(500).json({ success: false, message: `Login failed: ${error.message}` });
+  }
+});
+
+// POST /api/agent/logout (Delivery Agent Logout & queue release)
+agentRouter.post('/logout', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const agentId = req.agent!.id;
+    await agentRepo.setLoginStatus(agentId, false);
+
+    // If agent had any PENDING_ACCEPTANCE order, release and rotate it immediately
+    const { query } = await import('../db/pool.js');
+    const pending = await query(
+      `SELECT id FROM "order" WHERE assigned_agent_id = $1 AND assignment_status = 'PENDING_ACCEPTANCE'`,
+      [agentId]
+    );
+    for (const p of pending.rows) {
+      await orderRepo.rejectAssignment(p.id, agentId);
+    }
+
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
+  } catch (error: any) {
+    console.error('[Agent Logout Error]:', error);
+    res.status(500).json({ success: false, message: `Logout failed: ${error.message}` });
+  }
+});
+
+// POST /api/agent/heartbeat (Heartbeat every 60s from frontend to maintain active presence)
+agentRouter.post('/heartbeat', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { lat, lng } = req.body || {};
+    const coords = (lat && lng) ? { lat: parseFloat(lat), lng: parseFloat(lng) } : undefined;
+    await agentRepo.heartbeat(req.agent!.id, coords);
+    res.status(200).json({ success: true, timestamp: new Date().toISOString() });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: `Heartbeat failed: ${error.message}` });
   }
 });
 
@@ -289,18 +345,58 @@ agentRouter.post('/profile/avatar', requireAgentAuth, async (req: AuthenticatedA
   }
 });
 
-// GET /api/agent/orders (Get assigned orders for authenticated agent)
+// GET /api/agent/orders (Get assigned orders for authenticated agent with Product Privacy Masking)
 agentRouter.get('/orders', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
   try {
     const orders = await orderRepo.getOrdersByAgent(req.agent!.id);
-    res.status(200).json({ success: true, data: orders });
+    // Task 5: Privacy-Masked Delivery Agent View — Product IDs only, no titles, descriptions, or images
+    const maskedOrders = orders.map(order => ({
+      ...order,
+      items: order.items.map(it => ({
+        id: it.id,
+        productId: it.productId,
+        productCode: (it.product as any)?.productCode || `PROD-#${it.productId}`,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        totalPrice: it.totalPrice,
+      })),
+    }));
+    res.status(200).json({ success: true, data: maskedOrders });
   } catch (error: any) {
     console.error('[Agent Get Orders Error]:', error);
     res.status(500).json({ success: false, message: `Failed to retrieve assigned orders: ${error.message}` });
   }
 });
 
-// POST /api/agent/orders/:id/verify-otp (Verify customer 6-digit delivery OTP)
+// POST /api/agent/orders/:id/accept (Accept assignment within 3-minute window)
+agentRouter.post('/orders/:id/accept', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.acceptAssignment(id, req.agent!.id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Accept Order Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to accept order: ${error.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/reject (Reject assignment and rotate to next FIFO agent)
+agentRouter.post('/orders/:id/reject', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.rejectAssignment(id, req.agent!.id);
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Reject Order Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to reject order: ${error.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/verify-otp (Verify customer 6-digit delivery OTP for Prepaid & COD)
 agentRouter.post('/orders/:id/verify-otp', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -323,39 +419,89 @@ agentRouter.post('/orders/:id/verify-otp', requireAgentAuth, async (req: Authent
   }
 });
 
-// POST /api/agent/orders/:id/collect-payment (Settle Cash / UPI payment, mark DELIVERED & credit earnings)
+// POST /api/agent/orders/:id/complete-delivery (Complete PREPAID delivery once OTP is verified)
+agentRouter.post('/orders/:id/complete-delivery', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.completePrepaidDelivery(id, req.agent!.id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Complete Prepaid Delivery Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to complete prepaid delivery: ${error.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/cod-qr-submitted (Customer scanned dynamic UPI QR and paid)
+agentRouter.post('/orders/:id/cod-qr-submitted', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { reference } = req.body || {};
+    const result = await orderRepo.submitCodQrPayment(id, req.agent!.id, reference);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Submit COD QR Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to submit COD QR payment: ${error.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/cod-cash-collected (Customer paid via physical Cash — LOCKS agent until deposited)
+agentRouter.post('/orders/:id/cod-cash-collected', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.collectCodCash(id, req.agent!.id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Collect Cash Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to collect COD cash: ${error.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/mark-cash-deposited (Agent physically hands cash at Hyderabad Store)
+agentRouter.post('/orders/:id/mark-cash-deposited', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.markCashDepositedAtStore(id, req.agent!.id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Mark Cash Deposited Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to mark cash deposited: ${error.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/collect-payment (Backward compatibility alias for settlement)
 agentRouter.post('/orders/:id/collect-payment', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { paymentMethod } = req.body || {};
-    if (paymentMethod !== 'cash' && paymentMethod !== 'upi') {
-      res.status(400).json({ success: false, message: "paymentMethod must be either 'cash' or 'upi'" });
-      return;
+    if (paymentMethod === 'cash') {
+      const result = await orderRepo.collectCodCash(id, req.agent!.id);
+      res.status(result.success ? 200 : 400).json(result);
+    } else {
+      const result = await orderRepo.submitCodQrPayment(id, req.agent!.id);
+      res.status(result.success ? 200 : 400).json(result);
     }
-
-    const result = await orderRepo.collectPayment(id, paymentMethod, req.agent!.id);
-    if (!result.success || !result.order) {
-      res.status(400).json(result);
-      return;
-    }
-
-    res.status(200).json(result);
-
-    // Send customer DELIVERED confirmation email in background
-    setImmediate(async () => {
-      try {
-        await sendOrderStatusUpdateEmail(result.order!, 'delivered');
-      } catch (e) {
-        console.error('[Delivered Status Email Error]:', e);
-      }
-    });
   } catch (error: any) {
-    console.error('[Agent Collect Payment Error]:', error);
     res.status(500).json({ success: false, message: `Payment settlement failed: ${error.message}` });
   }
 });
 
-// GET /api/agent/earnings (Get wallet earnings summary)
+// GET /api/agent/earnings (Get wallet earnings summary in INR with Cash Deposit Lock status)
 agentRouter.get('/earnings', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
   try {
     const agent = await agentRepo.findById(req.agent!.id);
@@ -365,7 +511,9 @@ agentRouter.get('/earnings', requireAgentAuth, async (req: AuthenticatedAgentReq
         totalEarnings: agent?.totalEarnings || 0,
         deliveredOrdersCount: agent?.deliveredOrdersCount || 0,
         commissionRate: agent?.commissionRate || 15.00,
-        currency: 'USD',
+        currency: 'INR',
+        hasPendingCashDeposit: agent?.hasPendingCashDeposit || false,
+        pendingCashAmount: agent?.pendingCashAmount || 0.00,
       },
     });
   } catch (error: any) {

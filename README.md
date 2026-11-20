@@ -1,16 +1,17 @@
-# ShopSphere v2.5.0 — Enterprise Multi-Category E-Commerce & QA Automation Platform
+# ShopSphere v2.6.0 — Enterprise Multi-Category E-Commerce & QA Automation Platform
 
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.0-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9_Live_Map-199900?logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0_Swagger-85EA2D?logo=swagger&logoColor=black)](http://localhost:3000/api-docs)
 [![Netlify](https://img.shields.io/badge/Netlify-Serverless_Ready-00C7B7?logo=netlify&logoColor=white)](https://www.netlify.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **ShopSphere** is a modern, production-grade multi-category e-commerce web platform engineered for real-world online shopping experiences and comprehensive **QA Automation Testing** (Playwright, Cypress, Selenium, Postman/Newman, and REST-Assured).
 
-It features a customer-facing storefront built with **React 19**, **Tailwind CSS**, and **Vite**, a complete **Delivery Agent Logistics & Onboarding Portal**, a **PostgreSQL 18** transactional persistence layer, automated transactional email dispatch via **Brevo HTTPS REST API (port 443)** with Zoho SMTP fallback, an interactive **OpenAPI 3.0 Swagger UI**, and a **Graphviz DOT workflow state machine**.
+It features a customer-facing storefront built with **React 19**, **Tailwind CSS**, and **Vite**, a complete **Delivery Agent Logistics & Onboarding Portal**, **Interactive Leaflet Live Map Tracking**, **FIFO Auto-Assignment & Acceptance Rotation**, **Privacy-Masked Logistics Views**, **Universal OTP Gates**, **Cash Store-Deposit Settlement Lockout**, a **PostgreSQL 18** transactional persistence layer, automated transactional email dispatch via **Brevo HTTPS REST API (port 443)** with Zoho SMTP fallback, an interactive **OpenAPI 3.0 Swagger UI**, and a **Graphviz DOT workflow state machine**.
 
 ---
 
@@ -70,12 +71,29 @@ It features a customer-facing storefront built with **React 19**, **Tailwind CSS
   - Available for both Customers and Delivery Agents via the user menu.
   - Gender selector (`male`, `female`, `non-binary`, `prefer_not_to_say`) dynamically loading 6 matching preset avatars.
   - Custom file upload for `.jpg` and `.png` (up to 5MB) converted to Base64 data URIs and stored in PostgreSQL `avatar_url` column for persistent cloud hosting resilience.
+- **Hyderabad Logistics Dispatch Hub & Indian Localization (+91 🇮🇳)**:
+  - **Flagship Dispatch Origin**: Mindspace Madhapur / Hitech City, Hyderabad, Telangana 500081 (`17.4486, 78.3908`).
+  - **Authentic Indian Addressing & Validation**: Localized PIN codes (`500xxx`), 10-digit phone verification (`+91 98765 43210`), and INR (`₹`) currency across all customer, agent, and admin interfaces.
+- **Interactive Leaflet Live Order Route Map**:
+  - OpenStreetMap & Leaflet interactive map rendered across Customer Order Tracking, Delivery Agent Dashboard, and Admin Logistics console.
+  - Features Hyderabad Flagship Store origin pin, customer destination marker, polyline route, and animated delivery partner courier marker.
+- **Active Agent FIFO Queue & 3-Minute Acceptance Rotation**:
+  - Online presence tracking (`is_logged_in`, 60-second heartbeat ping, 15-minute active window).
+  - When an order transitions to `PROCESSED`, the backend FIFO auto-dispatcher sequentially assigns the order to the highest-ranking active, unlocked agent.
+  - 3-minute accept/reject timer window: If the agent rejects or does not accept within 3 minutes, the order automatically rotates to the next available FIFO agent.
+- **Privacy-Masked Delivery Logistics View**:
+  - Safeguards customer privacy by masking product titles, descriptions, and images in the Agent view, exposing only SKU Product IDs (`#104`), quantities, and order totals.
+- **Universal OTP Delivery Gate**:
+  - When an order transitions to `OUT_FOR_DELIVERY`, a secure 6-digit Delivery OTP is generated, persisted in PostgreSQL, and synchronized across customer email and the Customer Order Tracking view.
+  - Delivery agents must input and verify this 6-digit OTP before completing delivery for **both Prepaid and Cash on Delivery (COD)** orders.
+- **COD Settlement Workflows & Store Cash-Deposit Lockout**:
+  - **Option 1 (Dynamic UPI QR)**: Generates dynamic UPI QR code (`upi://pay?pa=shop.sphere@upi&...`); agent submits payment (`QR_PAID_AWAITING_ADMIN`), and store admin confirms receipt (`QR_AMOUNT_RECEIVED`).
+  - **Option 2 (Physical Cash Lockout)**: Agent records cash collection (`CASH_COLLECTED_BY_AGENT`); agent account enters a **LOCKED** state, disabling new delivery assignments until cash is physically deposited at the Hyderabad Flagship Store (`CASH_DEPOSIT_REQUESTED` $\rightarrow$ `CASH_DEPOSITED_AT_STORE`) and confirmed by Store Admin.
+- **Admin Tracking, Reassignment & Financial Settlement Console**:
+  - Full visibility into agent online presence, FIFO queue ranking, cash lock status, manual order reassignment, and one-click financial settlements.
 - **Automated Post-Delivery Feedback Reminder**:
   - Non-intrusive popup appearing 15 minutes after order delivery prompting customers for a 5-star rating and written review.
   - Features an interactive star rating selector, *"Remind Me Later (1h)"* snooze, and a permanent *"No thanks"* opt-out button.
-- **Admin Delivery Agent Oversight**:
-  - Dedicated *"Delivery Agents"* tab in Admin Panel displaying all registered agents, delivery counts, earnings, and active status toggles.
-  - Order assignment and re-assignment selector in the Global Orders table.
 - **VIP Newsletter & FAQ**: Email subscription with instant promo code reward and interactive customer service FAQ accordion.
 
 ---

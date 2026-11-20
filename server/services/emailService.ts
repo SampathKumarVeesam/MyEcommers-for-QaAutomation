@@ -390,7 +390,7 @@ export async function sendOrderStatusUpdateEmail(
     statusTitle = 'Your Order Has Been Processed! ⚙️';
     statusBadgeClass = 'badge-processed';
     statusIcon = '🏭';
-    statusDescription = 'Great news! Your order has been processed by our warehouse and is being carefully packaged for shipment.';
+    statusDescription = 'Great news! Your order has been processed at our ShopSphere Hyderabad Flagship Store (Hitech City / Madhapur) and assigned for dispatch in Hyderabad, Telangana.';
   } else if (normStatus === 'out_for_delivery' || normStatus === 'shipped') {
     statusTitle = isCod
       ? 'Your COD Order is Out for Delivery! 🚚'
@@ -398,8 +398,8 @@ export async function sendOrderStatusUpdateEmail(
     statusBadgeClass = 'badge-out_for_delivery';
     statusIcon = '🚚';
     statusDescription = isCod
-      ? `Exciting news! Your Cash on Delivery order is out for delivery. Please keep cash (${order.grandTotal.toFixed(2)}) or UPI ready to pay the delivery executive upon arrival.`
-      : 'Exciting news! Your package is currently out for delivery and will arrive at your shipping address soon.';
+      ? `Exciting news! Your Cash on Delivery order is out for delivery from our Hyderabad store. Please keep cash (₹${order.grandTotal.toFixed(2)}) or UPI QR payment ready to pay the delivery executive upon arrival.`
+      : `Exciting news! Your package is currently out for delivery from our Hyderabad hub and will arrive at your address soon. Please share the 6-digit delivery OTP with your agent upon arrival.`;
   } else if (normStatus === 'delivered' || normStatus === 'completed') {
     statusTitle = isCod
       ? 'Your COD Order Has Been Delivered & Paid! 🎉'
@@ -407,8 +407,8 @@ export async function sendOrderStatusUpdateEmail(
     statusBadgeClass = 'badge-delivered';
     statusIcon = '🏡';
     statusDescription = isCod
-      ? `Your package has been safely delivered and your Cash/UPI payment of ${order.grandTotal.toFixed(2)} has been verified and confirmed. Thank you for shopping with ShopSphere!`
-      : 'Your package has been safely delivered to your address. Thank you for shopping with ShopSphere!';
+      ? `Your package has been safely delivered and your Cash/UPI payment of ₹${order.grandTotal.toFixed(2)} has been confirmed at the Hyderabad store. Thank you for shopping with ShopSphere!`
+      : 'Your package has been safely delivered to your address in Hyderabad. Thank you for shopping with ShopSphere!';
   } else if (normStatus === 'cancelled') {
     statusTitle = 'Your Order Has Been Cancelled ❌';
     statusBadgeClass = 'badge-cancelled';
@@ -422,7 +422,7 @@ export async function sendOrderStatusUpdateEmail(
 
   const itemsList = order.items.map(item => `
     <li style="margin-bottom: 6px;">
-      <strong>${item.product?.title || item.productId}</strong> (Qty: ${item.quantity}) - ${item.totalPrice.toFixed(2)}
+      <strong>${item.product?.title || item.productId}</strong> (Qty: ${item.quantity}) - ₹${item.totalPrice.toFixed(2)}
     </li>
   `).join('');
 

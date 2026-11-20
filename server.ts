@@ -34,17 +34,35 @@ async function startServer() {
           avatar_url TEXT,
           role VARCHAR(50) DEFAULT 'delivery_agent',
           vehicle_type VARCHAR(100) DEFAULT 'Motorcycle',
-          delivery_zone VARCHAR(100) DEFAULT 'North Zone',
+          delivery_zone VARCHAR(100) DEFAULT 'Hitech City / Madhapur, Hyderabad',
           is_email_verified BOOLEAN DEFAULT FALSE,
           email_verification_token VARCHAR(255),
           must_change_password BOOLEAN DEFAULT TRUE,
           is_active BOOLEAN DEFAULT TRUE,
+          is_logged_in BOOLEAN DEFAULT FALSE,
+          last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          fifo_queue_joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          has_pending_cash_deposit BOOLEAN DEFAULT FALSE,
+          pending_cash_amount NUMERIC(10,2) DEFAULT 0.00,
+          current_lat DOUBLE PRECISION DEFAULT 17.4486,
+          current_lng DOUBLE PRECISION DEFAULT 78.3908,
           commission_rate NUMERIC(10,2) DEFAULT 15.00,
           total_earnings NUMERIC(10,2) DEFAULT 0.00,
           delivered_orders_count INTEGER DEFAULT 0,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+      `);
+
+      // Idempotently add missing columns to delivery_agents if table was created in an earlier migration
+      await query(`
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS is_logged_in BOOLEAN DEFAULT FALSE;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS fifo_queue_joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS has_pending_cash_deposit BOOLEAN DEFAULT FALSE;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS pending_cash_amount NUMERIC(10,2) DEFAULT 0.00;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS current_lat DOUBLE PRECISION DEFAULT 17.4486;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS current_lng DOUBLE PRECISION DEFAULT 78.3908;
       `);
 
       // Ensure order table columns for delivery agent, COD and feedback scheduler exist
@@ -58,6 +76,15 @@ async function startServer() {
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS feedback_status VARCHAR(50) DEFAULT 'pending';
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS next_feedback_reminder_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_status VARCHAR(50) DEFAULT 'UNASSIGNED';
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS acceptance_deadline TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS rejected_or_expired_agent_ids JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'COD';
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_collection_method VARCHAR(50);
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_settlement_status VARCHAR(50) DEFAULT 'PENDING';
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lat DOUBLE PRECISION DEFAULT 17.4375;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lng DOUBLE PRECISION DEFAULT 78.4482;
       `);
 
       const tableCheck = await query(`
@@ -114,6 +141,16 @@ async function startServer() {
       res.sendFile(path.resolve(distPath, 'index.html'));
     });
   }
+
+  // 15-second FIFO assignment timeout watcher: checks for expired acceptances and auto-rotates
+  setInterval(async () => {
+    try {
+      const { orderRepo } = await import('./server/repositories/orderRepo.js');
+      await orderRepo.checkAndRotateExpiredAssignments();
+    } catch {
+      // background interval error ignored safely
+    }
+  }, 15000);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 ShopSphere PostgreSQL Full-Stack App running at http://localhost:${PORT}`);

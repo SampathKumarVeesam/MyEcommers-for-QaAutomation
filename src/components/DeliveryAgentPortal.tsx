@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Banknote,
   Check,
@@ -19,11 +20,12 @@ import {
   Sparkles,
   Truck,
   User as UserIcon,
-  X
+  X,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../config/api.js';
 import { DeliveryAgent, Gender, Order } from '../types.js';
+import { LiveRouteMap } from './LiveRouteMap.js';
 import { GENDER_PRESET_AVATARS, ProfileModal } from './ProfileModal.js';
 
 interface DeliveryAgentPortalProps {
@@ -46,10 +48,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // Register form
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
+  const [regPhone, setRegPhone] = useState('+91 98765 43210');
   const [regGender, setRegGender] = useState<Gender>('male');
   const [regVehicle, setRegVehicle] = useState('Motorcycle');
-  const [regZone, setRegZone] = useState('Central Hub');
+  const [regZone, setRegZone] = useState('Hitech City, Hyderabad');
   const [regAvatar, setRegAvatar] = useState(GENDER_PRESET_AVATARS.male[0]);
 
   // Verification form
@@ -68,10 +70,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Settlement action states
-  const [inputOtp, setInputOtp] = useState('');
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<'cash' | 'upi'>('cash');
-  const [settling, setSettling] = useState(false);
+  const [inputOtp, setInputOtp] = useState<Record<string, string>>({});
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
   // Profile modal trigger
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -152,9 +152,48 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     }
   }, [agent, token]);
 
+  // Periodic heartbeat every 60s when logged in
+  useEffect(() => {
+    if (!token || !agent) return;
+    const interval = setInterval(async () => {
+      try {
+        await fetch(apiUrl('/api/agent/heartbeat'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ currentLat: 17.4486, currentLng: 78.3908 }),
+        });
+      } catch (e) {
+        // Heartbeat error ignored
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [token, agent]);
+
+  // Auto-refresh orders every 10 seconds for real-time FIFO acceptance & assignment
+  useEffect(() => {
+    if (!token || !agent) return;
+    const orderInterval = setInterval(() => {
+      fetchAssignedOrders();
+    }, 10000);
+    return () => clearInterval(orderInterval);
+  }, [token, agent]);
+
   if (!isOpen) return null;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (token) {
+      try {
+        await fetch(apiUrl('/api/agent/logout'), {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (e) {
+        // Ignore logout error
+      }
+    }
     setToken(null);
     setAgent(null);
     localStorage.removeItem(AGENT_TOKEN_KEY);
@@ -179,7 +218,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
         localStorage.setItem(AGENT_TOKEN_KEY, data.data.token);
         setToken(data.data.token);
         setAgent(data.data.agent);
-        setSuccessMsg('Signed in successfully!');
+        setSuccessMsg('Signed in successfully! Joined active Hyderabad FIFO queue.');
       } else {
         setErrorMsg(data.message || 'Login failed');
       }
@@ -204,7 +243,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
         localStorage.setItem(AGENT_TOKEN_KEY, data.data.token);
         setToken(data.data.token);
         setAgent(data.data.agent);
-        setSuccessMsg('Logged in as verified demo delivery agent Alex Rivers!');
+        setSuccessMsg('Logged in as verified Hyderabad delivery partner Alex Rivers!');
       } else {
         setErrorMsg(data.message || 'Demo login failed');
       }
@@ -321,16 +360,62 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     }
   };
 
+  // FIFO Accept Assignment
+  const handleAcceptAssignment = async (orderId: string | number) => {
+    setActionLoading(prev => ({ ...prev, [`accept-${orderId}`]: true }));
+    setErrorMsg(null);
+    try {
+      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/accept`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('Order accepted! Status changed to OUT FOR DELIVERY. Delivery OTP dispatched to customer.');
+        await fetchAssignedOrders();
+      } else {
+        setErrorMsg(data.message || 'Failed to accept assignment');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`accept-${orderId}`]: false }));
+    }
+  };
+
+  // FIFO Reject Assignment
+  const handleRejectAssignment = async (orderId: string | number) => {
+    setActionLoading(prev => ({ ...prev, [`reject-${orderId}`]: true }));
+    setErrorMsg(null);
+    try {
+      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/reject`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('Assignment rejected. Reassigned to next available FIFO agent.');
+        await fetchAssignedOrders();
+      } else {
+        setErrorMsg(data.message || 'Failed to reject assignment');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`reject-${orderId}`]: false }));
+    }
+  };
+
+  // Universal OTP verification
   const handleVerifyDeliveryOtp = async (orderId: string | number) => {
-    if (!inputOtp || inputOtp.trim().length !== 6) {
+    const code = inputOtp[orderId];
+    if (!code || code.trim().length !== 6) {
       setErrorMsg('Please enter a valid 6-digit Delivery OTP');
       return;
     }
 
-    setVerifyingOtp(true);
+    setActionLoading(prev => ({ ...prev, [`otp-${orderId}`]: true }));
     setErrorMsg(null);
-    setSuccessMsg(null);
-
     try {
       const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/verify-otp`), {
         method: 'POST',
@@ -338,12 +423,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ otp: inputOtp.trim() }),
+        body: JSON.stringify({ otp: code.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSuccessMsg(data.message);
-        setInputOtp('');
+        setSuccessMsg(data.message || 'OTP verified successfully! You may now complete delivery or collect payment.');
+        setInputOtp(prev => ({ ...prev, [orderId]: '' }));
         await fetchAssignedOrders();
       } else {
         setErrorMsg(data.message || 'OTP verification failed');
@@ -351,43 +436,125 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     } catch (err: any) {
       setErrorMsg(err.message || 'Network error');
     } finally {
-      setVerifyingOtp(false);
+      setActionLoading(prev => ({ ...prev, [`otp-${orderId}`]: false }));
     }
   };
 
-  const handleCollectPaymentAndDeliver = async (orderId: string | number) => {
-    setSettling(true);
+  // Complete prepaid delivery
+  const handleCompletePrepaidDelivery = async (orderId: string | number) => {
+    setActionLoading(prev => ({ ...prev, [`prepaid-${orderId}`]: true }));
     setErrorMsg(null);
-    setSuccessMsg(null);
-
     try {
-      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/collect-payment`), {
+      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/complete-delivery`), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ paymentMethod: paymentMode }),
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSuccessMsg(data.message);
+        setSuccessMsg('Prepaid delivery successfully completed! Commission credited to your wallet.');
         await fetchAssignedOrders();
-        // Refresh agent profile for latest totalEarnings
-        const meRes = await fetch(apiUrl('/api/agent/me'), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          if (meData.data) setAgent(meData.data);
-        }
+        refreshMe();
       } else {
-        setErrorMsg(data.message || 'Payment settlement failed');
+        setErrorMsg(data.message || 'Failed to complete delivery');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Network error');
     } finally {
-      setSettling(false);
+      setActionLoading(prev => ({ ...prev, [`prepaid-${orderId}`]: false }));
+    }
+  };
+
+  // Submit UPI QR payment
+  const handleCodQrPaid = async (orderId: string | number) => {
+    setActionLoading(prev => ({ ...prev, [`qr-${orderId}`]: true }));
+    setErrorMsg(null);
+    try {
+      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/cod-qr-submitted`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('UPI QR payment recorded! Order marked DELIVERED, awaiting Admin QR verification.');
+        await fetchAssignedOrders();
+        refreshMe();
+      } else {
+        setErrorMsg(data.message || 'Failed to record QR payment');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`qr-${orderId}`]: false }));
+    }
+  };
+
+  // Collect physical Cash (Locks agent)
+  const handleCodCashCollected = async (orderId: string | number) => {
+    if (
+      !window.confirm(
+        'Warning: Collecting physical cash will LOCK your account from new delivery assignments until you deposit the amount at the Hyderabad Store. Proceed?'
+      )
+    ) {
+      return;
+    }
+    setActionLoading(prev => ({ ...prev, [`cash-${orderId}`]: true }));
+    setErrorMsg(null);
+    try {
+      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/cod-cash-collected`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('Cash collected! Account is now LOCKED until physical deposit at Hyderabad Flagship Store.');
+        await fetchAssignedOrders();
+        refreshMe();
+      } else {
+        setErrorMsg(data.message || 'Failed to record cash collection');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`cash-${orderId}`]: false }));
+    }
+  };
+
+  // Mark cash deposited at store
+  const handleMarkCashDeposited = async (orderId: string | number) => {
+    setActionLoading(prev => ({ ...prev, [`deposit-${orderId}`]: true }));
+    setErrorMsg(null);
+    try {
+      const res = await fetch(apiUrl(`/api/agent/orders/${orderId}/mark-cash-deposited`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('Cash deposit submitted! Awaiting Store Admin confirmation to unlock your account.');
+        await fetchAssignedOrders();
+        refreshMe();
+      } else {
+        setErrorMsg(data.message || 'Failed to submit deposit');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`deposit-${orderId}`]: false }));
+    }
+  };
+
+  const refreshMe = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/agent/me'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) setAgent(json.data);
+      }
+    } catch (e) {
+      // Ignore
     }
   };
 
@@ -413,14 +580,14 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight">
-                  ShopSphere Delivery Partner Portal
+                  ShopSphere Delivery Partner Portal 🇮🇳
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
-                  Agent Console
+                  Hyderabad Hub
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Email-Verified Onboarding, OTP Delivery Gate &amp; COD Cash / UPI QR Settlement
+                FIFO Queue Auto-Assignment, Masked Logistics, OTP Gates &amp; Hyderabad Store Settlements
               </p>
             </div>
           </div>
@@ -512,10 +679,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900">
                   <p className="font-bold flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                    <span>Email-Verified Agent Portal</span>
+                    <span>Email-Verified Agent Portal (Hyderabad Hub)</span>
                   </p>
                   <p className="text-[11px] text-indigo-700 mt-0.5">
-                    New agents receive a temporary password in their email after completing verification.
+                    Logging in activates your online presence and places you in the active FIFO assignment rotation.
                   </p>
                 </div>
 
@@ -558,7 +725,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   data-testid="btn-agent-login"
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
                 >
-                  {loading ? 'Authenticating...' : 'Sign In to Agent Portal'}
+                  {loading ? 'Authenticating & Joining Queue...' : 'Sign In to Agent Portal'}
                 </button>
 
                 <div className="pt-3 border-t border-slate-200 text-center">
@@ -589,7 +756,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       required
                       value={regName}
                       onChange={e => setRegName(e.target.value)}
-                      placeholder="e.g. Jordan Smith"
+                      placeholder="e.g. Ramesh Reddy"
                       data-test="input-agent-reg-name"
                       data-testid="input-agent-reg-name"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
@@ -604,7 +771,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       required
                       value={regEmail}
                       onChange={e => setRegEmail(e.target.value)}
-                      placeholder="jordan.delivery@example.com"
+                      placeholder="ramesh.reddy@example.com"
                       data-test="input-agent-reg-email"
                       data-testid="input-agent-reg-email"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
@@ -614,12 +781,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone</label>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone (+91 🇮🇳)</label>
                     <input
                       type="tel"
                       value={regPhone}
                       onChange={e => setRegPhone(e.target.value)}
-                      placeholder="+1 (555) 345-6789"
+                      placeholder="+91 98765 43210"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                     />
                   </div>
@@ -631,8 +798,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                     >
                       <option value="Motorcycle">Motorcycle</option>
-                      <option value="Bicycle">Bicycle / E-Bike</option>
                       <option value="Electric Scooter">Electric Scooter</option>
+                      <option value="Bicycle">Bicycle / E-Bike</option>
                       <option value="Car">Sedan / Hatchback</option>
                     </select>
                   </div>
@@ -643,10 +810,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       onChange={e => setRegZone(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                     >
-                      <option value="Central Hub">Central Hub</option>
-                      <option value="North Zone">North Zone</option>
-                      <option value="South Zone">South Zone</option>
-                      <option value="Downtown">Downtown Express</option>
+                      <option value="Hitech City, Hyderabad">Hitech City, Hyderabad</option>
+                      <option value="Madhapur, Hyderabad">Madhapur, Hyderabad</option>
+                      <option value="Gachibowli, Hyderabad">Gachibowli, Hyderabad</option>
+                      <option value="Jubilee Hills, Hyderabad">Jubilee Hills, Hyderabad</option>
+                      <option value="Banjara Hills, Hyderabad">Banjara Hills, Hyderabad</option>
+                      <option value="Kukatpally, Hyderabad">Kukatpally, Hyderabad</option>
                     </select>
                   </div>
                 </div>
@@ -860,6 +1029,21 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
         ) : (
           /* AUTHENTICATED AGENT DASHBOARD */
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Cash Deposit Lock Alert Banner */}
+            {agent.hasPendingCashDeposit && (
+              <div className="p-3 bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-between gap-2 shadow-inner">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-slate-950 shrink-0" />
+                  <span>
+                    🔒 <strong>ACCOUNT LOCKED:</strong> ₹{(agent.pendingCashAmount || 0).toFixed(2)} cash pending deposit at Hyderabad Store. New delivery assignments are paused until Store Admin confirms your cash deposit.
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-950 text-amber-300 font-extrabold uppercase">
+                  Deposit Required
+                </span>
+              </div>
+            )}
+
             {/* Agent Bar */}
             <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -875,7 +1059,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       {agent.agentCode}
                     </span>
                     <span className="px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      Active
+                      🟢 Online (FIFO Rank #{agent.fifoRank || 1})
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
@@ -891,7 +1075,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <div className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-right">
                   <div className="text-[10px] uppercase font-bold text-emerald-700">Wallet Earnings</div>
                   <div className="text-sm font-extrabold text-emerald-900 font-mono">
-                    ${agent.totalEarnings.toFixed(2)}
+                    ₹{agent.totalEarnings.toFixed(2)}
                   </div>
                 </div>
 
@@ -954,21 +1138,24 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     <div className="text-center py-12 text-slate-400">
                       <Truck className="w-12 h-12 mx-auto mb-2 opacity-50" />
                       <p className="font-bold text-slate-600 text-sm">No assigned orders currently</p>
-                      <p className="text-xs">New orders assigned to you by the auto-scheduler or admin will appear here.</p>
+                      <p className="text-xs">
+                        When orders transition to PROCESSED, the FIFO auto-dispatcher assigns them to you in turn.
+                      </p>
                       <button
                         type="button"
                         onClick={fetchAssignedOrders}
-                        className="mt-3 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold inline-flex items-center gap-1"
+                        className="mt-3 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5" /> Refresh
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {orders.map(order => {
+                        const isPendingAcceptance = order.assignmentStatus === 'PENDING_ACCEPTANCE';
                         const isOutForDelivery = order.orderStatus === 'out_for_delivery';
                         const isDelivered = order.orderStatus === 'delivered';
-                        const isCod = order.paymentMethod === 'cod';
+                        const isCod = order.paymentMode === 'COD' || order.paymentMethod === 'cod';
 
                         return (
                           <div
@@ -978,27 +1165,75 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             className={`p-4 rounded-2xl border transition-all ${
                               isDelivered
                                 ? 'bg-slate-50/70 border-slate-200 opacity-80'
+                                : isPendingAcceptance
+                                ? 'bg-amber-50/60 border-amber-300 shadow-md ring-2 ring-amber-200'
                                 : isOutForDelivery
                                 ? 'bg-white border-indigo-300 shadow-md ring-2 ring-indigo-50'
                                 : 'bg-white border-slate-200'
                             }`}
                           >
+                            {/* Card Header */}
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-mono font-bold text-indigo-700 text-xs">
                                 {order.orderNumber}
                               </span>
-                              <span
-                                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                                  isDelivered
-                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                    : isOutForDelivery
-                                    ? 'bg-blue-100 text-blue-800 border-blue-300'
-                                    : 'bg-amber-100 text-amber-800 border-amber-300'
-                                }`}
-                              >
-                                {order.orderStatus.replace(/_/g, ' ')}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {isPendingAcceptance && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 animate-pulse">
+                                    <Clock className="w-3 h-3" />
+                                    <span>PENDING ACCEPTANCE (3-Min Window)</span>
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                    isDelivered
+                                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                      : isOutForDelivery
+                                      ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                                  }`}
+                                >
+                                  {order.orderStatus.replace(/_/g, ' ')}
+                                </span>
+                              </div>
                             </div>
+
+                            {/* 3-Minute Acceptance Alert Bar */}
+                            {isPendingAcceptance && (
+                              <div className="p-3 bg-amber-100 border border-amber-300 rounded-xl mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4 text-amber-800" />
+                                    <span>New Delivery Assignment Offered</span>
+                                  </p>
+                                  <p className="text-[11px] text-amber-800 mt-0.5">
+                                    Please accept or reject within 3 minutes. Accepting will move order to OUT FOR DELIVERY and notify customer.
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={actionLoading[`accept-${order.orderNumber}`]}
+                                    onClick={() => handleAcceptAssignment(order.orderNumber)}
+                                    data-test={`btn-accept-${order.orderNumber}`}
+                                    data-testid={`btn-accept-${order.orderNumber}`}
+                                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                                  >
+                                    {actionLoading[`accept-${order.orderNumber}`] ? 'Accepting...' : '✓ Accept Order'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionLoading[`reject-${order.orderNumber}`]}
+                                    onClick={() => handleRejectAssignment(order.orderNumber)}
+                                    data-test={`btn-reject-${order.orderNumber}`}
+                                    data-testid={`btn-reject-${order.orderNumber}`}
+                                    className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer"
+                                  >
+                                    {actionLoading[`reject-${order.orderNumber}`] ? 'Rejecting...' : '✕ Reject'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Customer & Location */}
                             <div className="space-y-1 text-xs text-slate-600 mb-3">
@@ -1018,12 +1253,40 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               )}
                             </div>
 
-                            {/* Items & Payment Info */}
-                            <div className="p-2.5 bg-slate-50 rounded-xl text-xs flex items-center justify-between mb-3">
+                            {/* Privacy-Masked Package Details */}
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 mb-3">
+                              <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
+                                <span className="flex items-center gap-1.5">
+                                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                                  <span>Package Items (Privacy-Masked Logistics View)</span>
+                                </span>
+                                <span className="text-[10px] text-slate-500 uppercase font-mono">
+                                  {order.items.length} Product SKU(s)
+                                </span>
+                              </div>
+                              <div className="divide-y divide-slate-200/60 text-xs">
+                                {order.items.map((it, idx) => (
+                                  <div key={idx} className="py-1.5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                        📦 SKU #{it.productCode || it.productId || it.id}
+                                      </span>
+                                      <span className="text-slate-500">Qty: {it.quantity}</span>
+                                    </div>
+                                    <span className="font-mono font-bold text-slate-800">
+                                      ₹{it.totalPrice.toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Amount Due & Payment Mode */}
+                            <div className="p-2.5 bg-slate-100 rounded-xl text-xs flex items-center justify-between mb-3">
                               <div>
-                                <span className="font-bold text-slate-700">Amount Due:</span>
+                                <span className="font-bold text-slate-700">Total Amount:</span>
                                 <span className="font-mono font-extrabold text-slate-900 ml-1 text-sm">
-                                  ${order.grandTotal.toFixed(2)}
+                                  ₹{order.grandTotal.toFixed(2)}
                                 </span>
                               </div>
                               <div className="text-right">
@@ -1032,136 +1295,184 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                                     isCod ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
                                   }`}
                                 >
-                                  {isCod ? 'Cash on Delivery' : 'Prepaid (Card/UPI)'}
+                                  {isCod ? 'Cash on Delivery (COD)' : 'Prepaid (Card/Online)'}
                                 </span>
                               </div>
                             </div>
 
-                            {/* SETTLEMENT ACTIONS FOR OUT FOR DELIVERY */}
+                            {/* Live Map for In-Transit Orders */}
+                            {isOutForDelivery && (
+                              <div className="mb-3">
+                                <LiveRouteMap
+                                  destinationLat={order.deliveryLat || 17.4375}
+                                  destinationLng={order.deliveryLng || 78.4482}
+                                  customerAddress={`${order.shippingAddress.street}, ${order.shippingAddress.city}`}
+                                  orderStatus={order.orderStatus}
+                                  assignedAgentName={order.assignedAgentName || agent.name}
+                                  assignedAgentPhone={order.assignedAgentPhone || agent.phone}
+                                />
+                              </div>
+                            )}
+
+                            {/* UNIVERSAL OTP & SETTLEMENT GATE */}
                             {isOutForDelivery && (
                               <div className="pt-2 border-t border-slate-100 space-y-3">
-                                {/* STEP 1: OTP Verification Gate */}
+                                {/* STEP 1: Universal OTP Verification Gate */}
                                 {!order.otpVerified ? (
                                   <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
                                     <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
                                       <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                                      <span>Step 1: Enter Customer 6-Digit Delivery OTP</span>
+                                      <span>Universal Delivery Gate: Enter Customer 6-Digit Delivery OTP</span>
                                     </div>
                                     <p className="text-[11px] text-indigo-700">
-                                      Ask customer for the OTP sent to their email to unlock payment collection.
+                                      Customer was sent their 6-digit OTP via email and customer app when order moved to OUT FOR DELIVERY.
                                     </p>
                                     <div className="flex gap-2">
                                       <input
                                         type="text"
                                         maxLength={6}
                                         placeholder="123456"
-                                        value={inputOtp}
-                                        onChange={e => setInputOtp(e.target.value)}
+                                        value={inputOtp[order.orderNumber] || ''}
+                                        onChange={e =>
+                                          setInputOtp(prev => ({ ...prev, [order.orderNumber]: e.target.value }))
+                                        }
                                         data-test={`input-agent-otp-${order.orderNumber}`}
                                         data-testid={`input-agent-otp-${order.orderNumber}`}
                                         className="w-32 px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-sm font-mono font-bold text-center tracking-widest"
                                       />
                                       <button
                                         type="button"
-                                        disabled={verifyingOtp}
+                                        disabled={actionLoading[`otp-${order.orderNumber}`]}
                                         onClick={() => handleVerifyDeliveryOtp(order.orderNumber)}
                                         data-test={`btn-verify-otp-${order.orderNumber}`}
                                         data-testid={`btn-verify-otp-${order.orderNumber}`}
                                         className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold cursor-pointer"
                                       >
-                                        {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                                        {actionLoading[`otp-${order.orderNumber}`] ? 'Verifying...' : 'Verify OTP'}
                                       </button>
                                     </div>
                                   </div>
                                 ) : (
-                                  /* STEP 2: Payment Collection (Unlocked after OTP) */
+                                  /* STEP 2: Delivery Completion / Settlement (Unlocked after OTP) */
                                   <div className="p-3 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-3">
                                     <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
                                       <span className="flex items-center gap-1.5">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                        <span>Step 2: Collect Payment &amp; Settle</span>
-                                      </span>
-                                      <span className="px-2 py-0.2 rounded-full bg-emerald-200 text-emerald-800 text-[10px]">
-                                        OTP Verified ✓
+                                        <span>Delivery Verification Complete (OTP Verified ✓)</span>
                                       </span>
                                     </div>
 
-                                    {/* Mode Toggle: Cash vs UPI QR */}
-                                    <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                                    {/* PREPAID COMPLETION */}
+                                    {!isCod ? (
                                       <button
                                         type="button"
-                                        onClick={() => setPaymentMode('cash')}
-                                        data-test="btn-select-cash"
-                                        data-testid="btn-select-cash"
-                                        className={`py-1.5 rounded-lg border text-center transition-all cursor-pointer ${
-                                          paymentMode === 'cash'
-                                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                                            : 'bg-white text-slate-700 border-slate-200'
-                                        }`}
+                                        disabled={actionLoading[`prepaid-${order.orderNumber}`]}
+                                        onClick={() => handleCompletePrepaidDelivery(order.orderNumber)}
+                                        data-test={`btn-complete-prepaid-${order.orderNumber}`}
+                                        data-testid={`btn-complete-prepaid-${order.orderNumber}`}
+                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                                       >
-                                        💵 Cash Collected
+                                        {actionLoading[`prepaid-${order.orderNumber}`] ? (
+                                          'Completing Delivery...'
+                                        ) : (
+                                          <>
+                                            <Check className="w-4 h-4" />
+                                            <span>Complete Prepaid Delivery &amp; Credit ₹150 Commission</span>
+                                          </>
+                                        )}
                                       </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setPaymentMode('upi')}
-                                        data-test="btn-select-upi"
-                                        data-testid="btn-select-upi"
-                                        className={`py-1.5 rounded-lg border text-center transition-all cursor-pointer ${
-                                          paymentMode === 'upi'
-                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                                            : 'bg-white text-slate-700 border-slate-200'
-                                        }`}
-                                      >
-                                        📱 Scannable UPI QR
-                                      </button>
-                                    </div>
+                                    ) : (
+                                      /* COD PAYMENT OPTIONS */
+                                      <div className="space-y-3">
+                                        <p className="text-[11px] text-slate-600 font-semibold">
+                                          Select customer COD payment method:
+                                        </p>
 
-                                    {/* Dynamic UPI QR Code */}
-                                    {paymentMode === 'upi' && (
-                                      <div className="p-3 bg-white rounded-xl border border-indigo-200 text-center space-y-2">
-                                        <p className="text-[11px] font-bold text-indigo-900">
-                                          Customer Scans Dynamic QR to Pay ${order.grandTotal.toFixed(2)}
-                                        </p>
-                                        <img
-                                          src={generateUpiQrUrl(order)}
-                                          alt="UPI QR Code"
-                                          className="w-36 h-36 mx-auto border border-slate-200 rounded-lg p-1 bg-white"
-                                        />
-                                        <p className="font-mono text-[10px] text-slate-500">
-                                          UPI ID: shop.sphere@upi | Ref: {order.orderNumber}
-                                        </p>
+                                        {/* Option A: Scannable UPI QR */}
+                                        <div className="p-3 bg-white rounded-xl border border-indigo-200 text-center space-y-2">
+                                          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-indigo-900">
+                                            <QrCode className="w-4 h-4 text-indigo-600" />
+                                            <span>Dynamic UPI QR Code (₹{order.grandTotal.toFixed(2)})</span>
+                                          </div>
+                                          <img
+                                            src={generateUpiQrUrl(order)}
+                                            alt="UPI QR Code"
+                                            className="w-36 h-36 mx-auto border border-slate-200 rounded-lg p-1 bg-white"
+                                          />
+                                          <p className="font-mono text-[10px] text-slate-500">
+                                            UPI ID: shop.sphere@upi | Ref: {order.orderNumber}
+                                          </p>
+                                          <button
+                                            type="button"
+                                            disabled={actionLoading[`qr-${order.orderNumber}`]}
+                                            onClick={() => handleCodQrPaid(order.orderNumber)}
+                                            data-test={`btn-qr-paid-${order.orderNumber}`}
+                                            data-testid={`btn-qr-paid-${order.orderNumber}`}
+                                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                                          >
+                                            {actionLoading[`qr-${order.orderNumber}`]
+                                              ? 'Submitting...'
+                                              : '✓ Customer Paid via UPI QR (Awaiting Store Admin)'}
+                                          </button>
+                                        </div>
+
+                                        {/* Option B: Physical Cash (Locks Agent) */}
+                                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 space-y-2">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
+                                            <Banknote className="w-4 h-4 text-amber-700" />
+                                            <span>Collect Physical Cash (₹{order.grandTotal.toFixed(2)})</span>
+                                          </div>
+                                          <p className="text-[11px] text-amber-800">
+                                            ⚠️ <strong>Lockout Notice:</strong> Collecting physical cash will lock your account from new deliveries until the cash is physically deposited at the Hyderabad Flagship Store.
+                                          </p>
+                                          <button
+                                            type="button"
+                                            disabled={actionLoading[`cash-${order.orderNumber}`]}
+                                            onClick={() => handleCodCashCollected(order.orderNumber)}
+                                            data-test={`btn-cash-collected-${order.orderNumber}`}
+                                            data-testid={`btn-cash-collected-${order.orderNumber}`}
+                                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                                          >
+                                            {actionLoading[`cash-${order.orderNumber}`]
+                                              ? 'Recording Collection...'
+                                              : '💵 Collect Cash & Lock Account for Store Deposit'}
+                                          </button>
+                                        </div>
                                       </div>
                                     )}
-
-                                    {/* Final Settle Button */}
-                                    <button
-                                      type="button"
-                                      disabled={settling}
-                                      onClick={() => handleCollectPaymentAndDeliver(order.orderNumber)}
-                                      data-test={`btn-settle-delivery-${order.orderNumber}`}
-                                      data-testid={`btn-settle-delivery-${order.orderNumber}`}
-                                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                                    >
-                                      {settling ? (
-                                        'Settling...'
-                                      ) : (
-                                        <>
-                                          <Check className="w-4 h-4" />
-                                          <span>
-                                            Confirm {paymentMode.toUpperCase()} Payment &amp; Mark Delivered (+$15.00)
-                                          </span>
-                                        </>
-                                      )}
-                                    </button>
                                   </div>
                                 )}
                               </div>
                             )}
 
+                            {/* CASH DEPOSIT REQUESTED STEP FOR AGENT */}
+                            {order.paymentSettlementStatus === 'CASH_DEPOSIT_REQUESTED' && (
+                              <div className="mt-3 p-3 bg-blue-50 border border-blue-300 rounded-xl space-y-2">
+                                <p className="text-xs font-bold text-blue-950">
+                                  🏦 Store Cash Deposit Requested: ₹{order.grandTotal.toFixed(2)}
+                                </p>
+                                <p className="text-[11px] text-blue-800">
+                                  Deposit this physical cash at the Hyderabad Flagship Store counter (Hitech City / Madhapur). Click below once deposited.
+                                </p>
+                                <button
+                                  type="button"
+                                  disabled={actionLoading[`deposit-${order.orderNumber}`]}
+                                  onClick={() => handleMarkCashDeposited(order.orderNumber)}
+                                  data-test={`btn-mark-cash-deposited-${order.orderNumber}`}
+                                  data-testid={`btn-mark-cash-deposited-${order.orderNumber}`}
+                                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                                >
+                                  {actionLoading[`deposit-${order.orderNumber}`]
+                                    ? 'Updating...'
+                                    : '✓ Mark Cash Deposited at Store'}
+                                </button>
+                              </div>
+                            )}
+
                             {isDelivered && (
                               <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-emerald-700 font-bold">
-                                <span>✓ Delivered &amp; Commission Paid</span>
-                                <span className="font-mono">+${(order.deliveryFee || 15).toFixed(2)}</span>
+                                <span>✓ Delivered &amp; Commission Credited</span>
+                                <span className="font-mono">+₹{(order.deliveryFee || 150).toFixed(2)}</span>
                               </div>
                             )}
                           </div>
@@ -1179,9 +1490,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
                       <div className="text-xs font-bold text-emerald-700 uppercase">Total Wallet Balance</div>
                       <div className="text-2xl font-black text-emerald-900 font-mono mt-1">
-                        ${agent.totalEarnings.toFixed(2)}
+                        ₹{agent.totalEarnings.toFixed(2)}
                       </div>
-                      <p className="text-[11px] text-emerald-600 mt-1">Ready for weekly bank transfer</p>
+                      <p className="text-[11px] text-emerald-600 mt-1">Ready for weekly bank transfer (+91 UPI)</p>
                     </div>
 
                     <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-200">
@@ -1195,7 +1506,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200">
                       <div className="text-xs font-bold text-blue-700 uppercase">Per-Order Commission</div>
                       <div className="text-2xl font-black text-blue-900 font-mono mt-1">
-                        ${agent.commissionRate.toFixed(2)}
+                        ₹{(agent.commissionRate || 150).toFixed(2)}
                       </div>
                       <p className="text-[11px] text-blue-600 mt-1">Guaranteed payout per order</p>
                     </div>
@@ -1218,7 +1529,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             </div>
                             <div className="text-right">
                               <span className="font-mono font-extrabold text-emerald-700">
-                                +${(o.deliveryFee || 15).toFixed(2)}
+                                +₹{(o.deliveryFee || 150).toFixed(2)}
                               </span>
                               <p className="text-[10px] text-slate-400">Credited to Wallet</p>
                             </div>

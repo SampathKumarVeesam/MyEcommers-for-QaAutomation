@@ -8,12 +8,12 @@ import { userRepo } from './userRepo.js';
 export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: DeliveryAgent | null = null): Order {
   const address: Address = {
     fullName: row.user_name || 'Customer',
-    street: row.address_line_1 || '',
-    city: row.address_city || '',
-    state: row.address_state || '',
-    postalCode: row.address_postal_code || '',
-    country: row.address_country || 'United States',
-    phone: '',
+    street: row.address_line_1 || 'Road No. 36, Jubilee Hills',
+    city: row.address_city || 'Hyderabad',
+    state: row.address_state || 'Telangana',
+    postalCode: row.address_postal_code || '500033',
+    country: row.address_country || 'India',
+    phone: row.user_phone || '+91 98765 43210',
   };
 
   return {
@@ -37,6 +37,15 @@ export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: D
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     assignedAgentId: row.assigned_agent_id ? String(row.assigned_agent_id) : null,
     assignedAgent,
+    assignmentStatus: (row.assignment_status as any) || (row.assigned_agent_id ? 'ACCEPTED' : 'UNASSIGNED'),
+    assignedAt: row.assigned_at ? new Date(row.assigned_at).toISOString() : null,
+    acceptanceDeadline: row.acceptance_deadline ? new Date(row.acceptance_deadline).toISOString() : null,
+    rejectedOrExpiredAgentIds: Array.isArray(row.rejected_or_expired_agent_ids) ? row.rejected_or_expired_agent_ids : [],
+    paymentMode: (row.payment_mode as any) || (row.payment_method === 'cod' ? 'COD' : 'PREPAID'),
+    codCollectionMethod: row.cod_collection_method || null,
+    paymentSettlementStatus: row.payment_settlement_status || (row.payment_method === 'cod' ? 'PENDING' : 'PAID_ONLINE'),
+    deliveryLat: row.delivery_lat ? parseFloat(row.delivery_lat) : 17.4375,
+    deliveryLng: row.delivery_lng ? parseFloat(row.delivery_lng) : 78.4482,
     deliveryFee: row.delivery_fee ? parseFloat(row.delivery_fee) : 15.00,
     codPaymentMethod: row.cod_payment_method || null,
     codPaymentStatus: row.cod_payment_status || (row.payment_method === 'cod' ? (row.payment_status === 'paid' ? 'paid' : 'pending') : null),
@@ -79,15 +88,13 @@ export class OrderRepository {
       const rawUser = await userRepo.findRawById(data.userId);
       const internalUserId = rawUser ? rawUser.id : null;
 
-      // Auto-assign least loaded active delivery agent
-      let assignedAgentId: string | null = null;
-      try {
-        const leastLoaded = await agentRepo.findLeastLoadedActive();
-        if (leastLoaded) {
-          assignedAgentId = leastLoaded.id;
-        }
-      } catch {}
+      // Newly placed order starts in processing without an agent assigned yet
+      const assignedAgentId = null;
       const deliveryFee = 15.00;
+      const paymentMode = data.paymentMethod === 'cod' ? 'COD' : 'PREPAID';
+      const paymentSettlementStatus = data.paymentMethod === 'cod' ? 'PENDING' : 'PAID_ONLINE';
+      const deliveryLat = 17.4319; // Default Jubilee Hills / Hyderabad customer pin
+      const deliveryLng = 78.4073;
 
       // 1. Insert order header into public."order"
       const orderRes = await client.query(
@@ -96,8 +103,9 @@ export class OrderRepository {
            status, total_amount, subtotal, tax, shipping_fee, shipping_method,
            payment_method, payment_status, address_line_1, address_postal_code,
            address_city, address_state, address_country, assigned_agent_id,
-           delivery_fee, cod_payment_status, feedback_status
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+           delivery_fee, cod_payment_status, feedback_status, assignment_status,
+           payment_mode, payment_settlement_status, delivery_lat, delivery_lng
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
          RETURNING *`,
         [
           orderNumber,
@@ -114,15 +122,20 @@ export class OrderRepository {
           data.shippingMethod,
           data.paymentMethod,
           paymentStatus,
-          data.shippingAddress?.street || '742 Evergreen Terrace',
-          data.shippingAddress?.postalCode || '78701',
-          data.shippingAddress?.city || 'Austin',
-          data.shippingAddress?.state || 'TX',
-          data.shippingAddress?.country || 'United States',
+          data.shippingAddress?.street || 'Road No. 36, Jubilee Hills',
+          data.shippingAddress?.postalCode || '500033',
+          data.shippingAddress?.city || 'Hyderabad',
+          data.shippingAddress?.state || 'Telangana',
+          data.shippingAddress?.country || 'India',
           assignedAgentId,
           deliveryFee,
           data.paymentMethod === 'cod' ? 'pending' : 'paid',
           'pending',
+          'UNASSIGNED',
+          paymentMode,
+          paymentSettlementStatus,
+          deliveryLat,
+          deliveryLng,
         ]
       );
 
@@ -323,6 +336,13 @@ export class OrderRepository {
     if (res.rows.length === 0) return null;
     const row = res.rows[0];
 
+    // When status changes to processed, trigger FIFO auto-assignment to the #1 active agent
+    if (normStatus === 'processed') {
+      setTimeout(() => {
+        this.assignNextActiveAgentFIFO(row.id).catch(err => console.warn('[FIFO Trigger Error]:', err));
+      }, 0);
+    }
+
     // If delivered, credit the assigned agent automatically
     if (isDelivered && row.assigned_agent_id) {
       try {
@@ -371,20 +391,447 @@ export class OrderRepository {
     return orders;
   }
 
-  async assignAgent(orderId: string | number, agentId: string): Promise<Order | null> {
+  async assignAgent(orderId: string | number, agentId: string | null): Promise<Order | null> {
     const isNum = !isNaN(Number(orderId));
-    const res = await query(
-      `UPDATE "order"
-       SET assigned_agent_id = $1
-       WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
-       RETURNING *`,
-      isNum ? [agentId, String(orderId), Number(orderId)] : [agentId, String(orderId)]
-    );
+    let sql: string;
+    let params: any[];
+
+    if (agentId) {
+      sql = `UPDATE "order"
+             SET assigned_agent_id = $1,
+                 assignment_status = 'PENDING_ACCEPTANCE',
+                 assigned_at = NOW(),
+                 acceptance_deadline = NOW() + INTERVAL '3 minutes'
+             WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+             RETURNING *`;
+      params = isNum ? [agentId, String(orderId), Number(orderId)] : [agentId, String(orderId)];
+    } else {
+      sql = `UPDATE "order"
+             SET assigned_agent_id = NULL,
+                 assignment_status = 'UNASSIGNED',
+                 acceptance_deadline = NULL
+             WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+             RETURNING *`;
+      params = isNum ? [String(orderId), Number(orderId)] : [String(orderId)];
+    }
+
+    const res = await query(sql, params);
     if (res.rows.length === 0) return null;
     const row = res.rows[0];
     const items = await this.getOrderItems(row.id);
-    const agent = await agentRepo.findById(agentId);
+    const agent = agentId ? await agentRepo.findById(agentId) : null;
     return mapOrderRow(row, items, agent);
+  }
+
+  async assignNextActiveAgentFIFO(orderId: string | number): Promise<Order | null> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return null;
+
+    const normStatus = String(order.orderStatus).toLowerCase().replace(/[\s-]+/g, '_');
+    if (normStatus !== 'processed') {
+      return order;
+    }
+    if (order.assignmentStatus === 'ACCEPTED') {
+      return order;
+    }
+
+    const excludedIds = Array.isArray(order.rejectedOrExpiredAgentIds) ? order.rejectedOrExpiredAgentIds : [];
+    const nextAgent = await agentRepo.findEligibleFIFOAgent(excludedIds);
+
+    const isNum = !isNaN(Number(orderId));
+    if (nextAgent) {
+      const res = await query(
+        `UPDATE "order"
+         SET assigned_agent_id = $1,
+             assignment_status = 'PENDING_ACCEPTANCE',
+             assigned_at = NOW(),
+             acceptance_deadline = NOW() + INTERVAL '3 minutes'
+         WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+         RETURNING *`,
+        isNum ? [nextAgent.id, String(orderId), Number(orderId)] : [nextAgent.id, String(orderId)]
+      );
+      const row = res.rows[0];
+      const items = await this.getOrderItems(row.id);
+      return mapOrderRow(row, items, nextAgent);
+    } else {
+      const res = await query(
+        `UPDATE "order"
+         SET assigned_agent_id = NULL,
+             assignment_status = 'UNASSIGNED',
+             acceptance_deadline = NULL
+         WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+         RETURNING *`,
+        isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+      );
+      const row = res.rows[0];
+      const items = await this.getOrderItems(row.id);
+      return mapOrderRow(row, items, null);
+    }
+  }
+
+  async acceptAssignment(orderId: string | number, agentId: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    if (order.assignedAgentId && String(order.assignedAgentId) !== String(agentId)) {
+      return { success: false, message: 'This order is assigned to another delivery agent' };
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const isNum = !isNaN(Number(orderId));
+
+    const res = await query(
+      `UPDATE "order"
+       SET assignment_status = 'ACCEPTED',
+           status = 'out_for_delivery',
+           delivery_otp = $1,
+           otp_verified = FALSE,
+           assigned_agent_id = $2
+       WHERE (order_number = $3 ${isNum ? 'OR id = $4' : ''})
+       RETURNING *`,
+      isNum ? [otp, agentId, String(orderId), Number(orderId)] : [otp, agentId, String(orderId)]
+    );
+
+    if (res.rows.length === 0) return { success: false, message: 'Failed to accept order' };
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    const agent = await agentRepo.findById(agentId);
+    const updated = mapOrderRow(row, items, agent);
+
+    try {
+      const { sendOrderStatusUpdateEmail } = await import('../services/emailService.js');
+      await sendOrderStatusUpdateEmail(updated, 'out_for_delivery');
+    } catch (err) {
+      console.warn('[Dispatch Email Warning]:', err);
+    }
+
+    return {
+      success: true,
+      message: 'Order accepted! Status changed to OUT FOR DELIVERY and 6-digit OTP dispatched to customer.',
+      order: updated,
+    };
+  }
+
+  async rejectAssignment(orderId: string | number, agentId: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    const isNum = !isNaN(Number(orderId));
+    const currentList = Array.isArray(order.rejectedOrExpiredAgentIds) ? order.rejectedOrExpiredAgentIds : [];
+    if (!currentList.includes(agentId)) {
+      currentList.push(agentId);
+    }
+
+    await agentRepo.resetFifoQueue(agentId);
+
+    await query(
+      `UPDATE "order"
+       SET assigned_agent_id = NULL,
+           assignment_status = 'UNASSIGNED',
+           acceptance_deadline = NULL,
+           rejected_or_expired_agent_ids = $1
+       WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})`,
+      isNum ? [JSON.stringify(currentList), String(orderId), Number(orderId)] : [JSON.stringify(currentList), String(orderId)]
+    );
+
+    const reassigned = await this.assignNextActiveAgentFIFO(orderId);
+
+    return {
+      success: true,
+      message: 'Assignment rejected. Order rotated to next active FIFO agent.',
+      order: reassigned || undefined,
+    };
+  }
+
+  async checkAndRotateExpiredAssignments(): Promise<void> {
+    const res = await query(
+      `SELECT id, order_number, assigned_agent_id, rejected_or_expired_agent_ids
+       FROM "order"
+       WHERE LOWER(status) = 'processed'
+         AND assignment_status = 'PENDING_ACCEPTANCE'
+         AND acceptance_deadline IS NOT NULL
+         AND acceptance_deadline < NOW()`
+    );
+
+    for (const row of res.rows) {
+      const expiredAgentId = row.assigned_agent_id;
+      const currentList: string[] = Array.isArray(row.rejected_or_expired_agent_ids)
+        ? row.rejected_or_expired_agent_ids
+        : [];
+      if (expiredAgentId && !currentList.includes(expiredAgentId)) {
+        currentList.push(expiredAgentId);
+      }
+
+      if (expiredAgentId) {
+        await agentRepo.resetFifoQueue(expiredAgentId);
+      }
+
+      await query(
+        `UPDATE "order"
+         SET assigned_agent_id = NULL,
+             assignment_status = 'UNASSIGNED',
+             acceptance_deadline = NULL,
+             rejected_or_expired_agent_ids = $1
+         WHERE id = $2`,
+        [JSON.stringify(currentList), row.id]
+      );
+
+      await this.assignNextActiveAgentFIFO(row.id);
+    }
+  }
+
+  async completePrepaidDelivery(orderId: string | number, agentId: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    if (!order.otpVerified) {
+      return { success: false, message: 'Cannot complete delivery before 6-digit Delivery OTP is verified' };
+    }
+
+    if (order.paymentMode === 'COD') {
+      return { success: false, message: 'This is a COD order. Please collect payment via UPI QR or Cash.' };
+    }
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET status = 'delivered',
+           payment_status = 'paid',
+           payment_settlement_status = 'SETTLED',
+           delivered_at = NOW(),
+           next_feedback_reminder_at = NOW() + INTERVAL '15 minutes',
+           feedback_status = 'pending'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    const fee = parseFloat(row.delivery_fee || '15.00');
+    await agentRepo.creditEarnings(agentId, fee);
+
+    const items = await this.getOrderItems(row.id);
+    const agent = await agentRepo.findById(agentId);
+    const updated = mapOrderRow(row, items, agent);
+
+    try {
+      const { sendOrderStatusUpdateEmail } = await import('../services/emailService.js');
+      await sendOrderStatusUpdateEmail(updated, 'delivered');
+    } catch {}
+
+    return {
+      success: true,
+      message: 'Delivery completed successfully! Agent commission credited.',
+      order: updated,
+    };
+  }
+
+  async submitCodQrPayment(orderId: string | number, agentId: string, reference?: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    if (!order.otpVerified) {
+      return { success: false, message: 'Customer 6-digit Delivery OTP must be verified before payment submission' };
+    }
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET cod_collection_method = 'UPI_QR',
+           payment_settlement_status = 'QR_PAID_AWAITING_ADMIN',
+           cod_payment_method = 'upi'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    const agent = await agentRepo.findById(agentId);
+    const updated = mapOrderRow(row, items, agent);
+
+    return {
+      success: true,
+      message: 'UPI QR Payment submitted! Awaiting Admin verification in Admin Dashboard.',
+      order: updated,
+    };
+  }
+
+  async confirmAdminQrPayment(orderId: string | number): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET payment_settlement_status = 'QR_AMOUNT_RECEIVED',
+           status = 'delivered',
+           payment_status = 'paid',
+           cod_payment_status = 'paid',
+           delivered_at = NOW(),
+           next_feedback_reminder_at = NOW() + INTERVAL '15 minutes',
+           feedback_status = 'pending'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    if (row.assigned_agent_id) {
+      const fee = parseFloat(row.delivery_fee || '15.00');
+      await agentRepo.creditEarnings(row.assigned_agent_id, fee);
+    }
+
+    const items = await this.getOrderItems(row.id);
+    let agent: DeliveryAgent | null = null;
+    if (row.assigned_agent_id) {
+      agent = await agentRepo.findById(row.assigned_agent_id);
+    }
+    const updated = mapOrderRow(row, items, agent);
+
+    try {
+      const { sendOrderStatusUpdateEmail } = await import('../services/emailService.js');
+      await sendOrderStatusUpdateEmail(updated, 'delivered');
+    } catch {}
+
+    return {
+      success: true,
+      message: 'UPI QR Payment confirmed! Order marked DELIVERED and agent delivery fee credited.',
+      order: updated,
+    };
+  }
+
+  async collectCodCash(orderId: string | number, agentId: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    if (!order.otpVerified) {
+      return { success: false, message: 'Customer 6-digit Delivery OTP must be verified before collecting cash' };
+    }
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET status = 'delivered',
+           payment_status = 'paid',
+           cod_payment_method = 'cash',
+           cod_payment_status = 'paid',
+           cod_collection_method = 'CASH',
+           payment_settlement_status = 'CASH_COLLECTED_BY_AGENT',
+           delivered_at = NOW(),
+           next_feedback_reminder_at = NOW() + INTERVAL '15 minutes',
+           feedback_status = 'pending'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    const fee = parseFloat(row.delivery_fee || '15.00');
+    await agentRepo.creditEarnings(agentId, fee);
+
+    // LOCK agent: set has_pending_cash_deposit = true and add cash amount to pending_cash_amount
+    await agentRepo.recordCashCollection(agentId, parseFloat(row.total_amount));
+
+    const items = await this.getOrderItems(row.id);
+    const agent = await agentRepo.findById(agentId);
+    const updated = mapOrderRow(row, items, agent);
+
+    try {
+      const { sendOrderStatusUpdateEmail } = await import('../services/emailService.js');
+      await sendOrderStatusUpdateEmail(updated, 'delivered');
+    } catch {}
+
+    return {
+      success: true,
+      message: `Cash of ₹${updated.grandTotal.toFixed(2)} collected. Order delivered! Agent is now locked until cash is deposited at the store.`,
+      order: updated,
+    };
+  }
+
+  async requestCashDepositAtStore(orderId: string | number): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET payment_settlement_status = 'CASH_DEPOSIT_REQUESTED'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    let agent: DeliveryAgent | null = null;
+    if (row.assigned_agent_id) {
+      agent = await agentRepo.findById(row.assigned_agent_id);
+    }
+    const updated = mapOrderRow(row, items, agent);
+
+    return {
+      success: true,
+      message: 'Store cash deposit requested. Notification sent to Delivery Agent.',
+      order: updated,
+    };
+  }
+
+  async markCashDepositedAtStore(orderId: string | number, agentId: string): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET payment_settlement_status = 'CASH_DEPOSITED_AT_STORE'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    const items = await this.getOrderItems(row.id);
+    const agent = await agentRepo.findById(agentId);
+    const updated = mapOrderRow(row, items, agent);
+
+    return {
+      success: true,
+      message: 'Cash marked as deposited at Hyderabad store! Awaiting Admin confirmation to unlock future orders.',
+      order: updated,
+    };
+  }
+
+  async confirmAdminCashDeposited(orderId: string | number): Promise<{ success: boolean; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET payment_settlement_status = 'SETTLED'
+       WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
+       RETURNING *`,
+      isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
+    );
+
+    const row = res.rows[0];
+    if (row.assigned_agent_id) {
+      await agentRepo.confirmCashDeposit(row.assigned_agent_id);
+    }
+
+    const items = await this.getOrderItems(row.id);
+    let agent: DeliveryAgent | null = null;
+    if (row.assigned_agent_id) {
+      agent = await agentRepo.findById(row.assigned_agent_id);
+    }
+    const updated = mapOrderRow(row, items, agent);
+
+    return {
+      success: true,
+      message: 'Cash deposit confirmed by store administrator! Delivery Agent is now unlocked and returned to the active FIFO queue.',
+      order: updated,
+    };
   }
 
   async verifyDeliveryOtp(orderId: string | number, otp: string): Promise<{ success: boolean; message: string; order?: Order }> {

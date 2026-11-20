@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  MapPin,
   Package,
   Receipt,
   RotateCcw,
@@ -17,6 +18,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { Order } from '../types.js';
 import { apiUrl } from '../config/api.js';
+import { LiveRouteMap } from './LiveRouteMap.js';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -235,7 +237,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                     </p>
                     <div className="mt-2 flex items-center justify-between pt-2 border-t border-slate-200/60">
                       <span className="text-slate-600">{o.items.length} items</span>
-                      <span className="font-bold text-slate-900">${o.grandTotal.toFixed(2)}</span>
+                      <span className="font-bold text-slate-900">₹{o.grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -394,6 +396,38 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                     );
                   })()}
 
+                  {/* Live Interactive Route Map */}
+                  <div className="mt-3">
+                    <LiveRouteMap
+                      destinationLat={selectedOrder.deliveryLat || 17.4375}
+                      destinationLng={selectedOrder.deliveryLng || 78.4482}
+                      customerAddress={`${selectedOrder.shippingAddress.street}, ${selectedOrder.shippingAddress.city}`}
+                      orderStatus={selectedOrder.orderStatus}
+                      assignedAgentName={selectedOrder.assignedAgentName}
+                      assignedAgentPhone={selectedOrder.assignedAgentPhone}
+                    />
+                  </div>
+
+                  {/* Payment & Settlement Status */}
+                  {selectedOrder.paymentSettlementStatus && selectedOrder.paymentSettlementStatus !== 'PENDING_DELIVERY' && (
+                    <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">Settlement Status</span>
+                        <p className="font-bold text-indigo-900">
+                          {selectedOrder.paymentSettlementStatus === 'QR_PAID_AWAITING_ADMIN' && '⏳ UPI Paid — Awaiting Store Admin Verification'}
+                          {selectedOrder.paymentSettlementStatus === 'QR_AMOUNT_RECEIVED' && '✅ UPI Payment Verified by Admin'}
+                          {selectedOrder.paymentSettlementStatus === 'CASH_COLLECTED_BY_AGENT' && '💵 Cash Collected by Agent — Pending Deposit at Store'}
+                          {selectedOrder.paymentSettlementStatus === 'CASH_DEPOSIT_REQUESTED' && '🏦 Agent Requested Store Cash Deposit'}
+                          {selectedOrder.paymentSettlementStatus === 'CASH_DEPOSITED_AT_STORE' && '✅ Cash Deposited at Hyderabad Flagship Store'}
+                          {selectedOrder.paymentSettlementStatus === 'SETTLED' && '✅ Payment Settled & Cleared'}
+                        </p>
+                      </div>
+                      <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-white border border-indigo-200 font-bold text-indigo-700">
+                        {selectedOrder.paymentSettlementStatus}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Delivery OTP Card for Out for Delivery orders */}
                   {normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery' && selectedOrder.deliveryOtp && (
                     <div
@@ -486,7 +520,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                               </div>
                             </div>
                           </div>
-                          <span className="font-bold text-slate-900">${it.totalPrice.toFixed(2)}</span>
+                          <span className="font-bold text-slate-900">₹{it.totalPrice.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -507,19 +541,19 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                     <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
                       <div className="flex justify-between text-slate-600">
                         <span>Subtotal:</span>
-                        <span>${selectedOrder.subtotal.toFixed(2)}</span>
+                        <span>₹{selectedOrder.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>Tax:</span>
-                        <span>${selectedOrder.tax.toFixed(2)}</span>
+                        <span>₹{selectedOrder.tax.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>Shipping ({selectedOrder.shippingMethod}):</span>
-                        <span>{selectedOrder.shippingFee === 0 ? 'FREE' : `$${selectedOrder.shippingFee.toFixed(2)}`}</span>
+                        <span>{selectedOrder.shippingFee === 0 ? 'FREE' : `₹${selectedOrder.shippingFee.toFixed(2)}`}</span>
                       </div>
                       <div className="pt-2 border-t border-slate-100 flex justify-between font-bold text-slate-900 text-sm">
                         <span>Grand Total:</span>
-                        <span data-test="order-detail-grand-total" data-testid="order-detail-grand-total" className="text-indigo-700">${selectedOrder.grandTotal.toFixed(2)}</span>
+                        <span data-test="order-detail-grand-total" data-testid="order-detail-grand-total" className="text-indigo-700">₹{selectedOrder.grandTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

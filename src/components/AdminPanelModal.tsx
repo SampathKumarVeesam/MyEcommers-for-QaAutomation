@@ -28,6 +28,7 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../config/api.js';
 import { useAuth } from '../context/AuthContext.js';
+import { LiveRouteMap } from './LiveRouteMap.js';
 import {
   AnalyticsSummary,
   CustomerActivityDetail,
@@ -52,6 +53,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const { token, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product' | 'agents'>('analytics');
   const contentBodyRef = useRef<HTMLDivElement>(null);
+
+  const [viewMapOrderId, setViewMapOrderId] = useState<string | null>(null);
 
   // Delivery Agents State
   const [agents, setAgents] = useState<DeliveryAgent[]>([]);
@@ -400,7 +403,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   };
 
   const handleAssignOrderAgent = async (orderId: string, agentId: string) => {
-    if (!token || !agentId) return;
+    if (!token) return;
     try {
       const res = await fetch(apiUrl(`/api/admin/orders/${orderId}/assign-agent`), {
         method: 'POST',
@@ -411,12 +414,64 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         body: JSON.stringify({ agentId }),
       });
       if (res.ok) {
-        setSaveMessage('Order assigned to delivery agent successfully!');
+        setSaveMessage('Order agent assignment updated in PostgreSQL!');
         setTimeout(() => setSaveMessage(null), 2500);
         await fetchInventoryAndOrders();
       }
     } catch (err) {
       console.error('Failed to assign agent to order:', err);
+    }
+  };
+
+  const handleConfirmQrPayment = async (orderId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/orders/${orderId}/confirm-qr-payment`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setSaveMessage('QR payment confirmed by Store Admin! Order marked settled.');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchInventoryAndOrders();
+      }
+    } catch (err) {
+      console.error('Failed to confirm QR payment:', err);
+    }
+  };
+
+  const handleRequestCashDeposit = async (orderId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/orders/${orderId}/request-cash-deposit`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setSaveMessage('Cash deposit requested from agent at Hyderabad store!');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchInventoryAndOrders();
+      }
+    } catch (err) {
+      console.error('Failed to request cash deposit:', err);
+    }
+  };
+
+  const handleConfirmCashDeposited = async (orderId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/orders/${orderId}/confirm-cash-deposited`), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setSaveMessage('Cash deposit confirmed at Hyderabad store! Delivery partner UNLOCKED.');
+        setTimeout(() => setSaveMessage(null), 2500);
+        await fetchInventoryAndOrders();
+        await fetchAgents();
+      }
+    } catch (err) {
+      console.error('Failed to confirm cash deposit:', err);
     }
   };
 
@@ -1673,88 +1728,185 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           {activeTab === 'orders' && (
             <div className="space-y-4">
               <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
-                <table className="w-full text-left divide-y divide-slate-200 min-w-[650px]">
+                <table className="w-full text-left divide-y divide-slate-200 min-w-[750px]">
                   <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                     <tr>
                       <th className="p-3">Order Number</th>
                       <th className="p-3">Customer</th>
                       <th className="p-3">Destination</th>
-                      <th className="p-3">Payment</th>
+                      <th className="p-3">Payment &amp; Settlement</th>
                       <th className="p-3">Grand Total</th>
-                      <th className="p-3">Assigned Agent</th>
-                      <th className="p-3">Status</th>
+                      <th className="p-3">Assigned Agent (FIFO)</th>
+                      <th className="p-3">Live Tracking</th>
+                      <th className="p-3">Status &amp; Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {orders.map(o => (
-                      <tr
-                        key={o.id}
-                        data-test={`admin-order-row-${o.orderNumber}`}
-                        data-testid={`admin-order-row-${o.orderNumber}`}
-                        className="hover:bg-slate-50/50"
-                      >
-                        <td className="p-3 font-mono font-bold text-indigo-700">{o.orderNumber}</td>
-                        <td className="p-3">
-                          <p className="font-bold text-slate-900">{o.userName}</p>
-                          <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{o.userEmail}</p>
-                        </td>
-                        <td className="p-3 text-slate-600">
-                          {o.shippingAddress.city}, {o.shippingAddress.state}
-                        </td>
-                        <td className="p-3">
-                          <span className="uppercase font-semibold text-slate-700">{o.paymentMethod}</span>
-                        </td>
-                        <td className="p-3 font-bold text-slate-900">${o.grandTotal.toFixed(2)}</td>
-                        <td className="p-3">
-                          <select
-                            data-test={`admin-order-agent-select-${o.orderNumber}`}
-                            data-testid={`admin-order-agent-select-${o.orderNumber}`}
-                            value={o.assignedAgentId || ''}
-                            onChange={e => handleAssignOrderAgent(o.orderNumber || o.id, e.target.value)}
-                            className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 outline-none cursor-pointer max-w-[150px]"
-                            title="Reassign order to delivery agent"
-                          >
-                            <option value="">Unassigned</option>
-                            {agents.map(ag => (
-                              <option key={ag.id} value={ag.id}>
-                                {ag.name} ({ag.vehicleType})
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-3">
-                          <select
-                            data-test={`admin-order-status-select-${o.orderNumber}`}
-                            data-testid={`admin-order-status-select-${o.orderNumber}`}
-                            value={o.orderStatus?.toLowerCase() || 'processing'}
-                            disabled={updatingOrderId === o.id || updatingOrderId === o.orderNumber}
-                            onChange={e => handleUpdateOrderStatus(o.orderNumber || o.id, e.target.value)}
-                            className="text-[11px] font-bold uppercase px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
-                            title="Change status & send notification email"
-                          >
-                            <option value="processing">Processing</option>
-                            <option value="processed">Processed</option>
-                            <option value="out_for_delivery">Out for Delivery</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                          {o.paymentStatus === 'paid_to_delivery_agent' && (
-                            <div className="mt-1 flex flex-col gap-1">
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                                ⚠️ Paid to Delivery Boy
+                      <React.Fragment key={o.id}>
+                        <tr
+                          data-test={`admin-order-row-${o.orderNumber}`}
+                          data-testid={`admin-order-row-${o.orderNumber}`}
+                          className="hover:bg-slate-50/50"
+                        >
+                          <td className="p-3 font-mono font-bold text-indigo-700">{o.orderNumber}</td>
+                          <td className="p-3">
+                            <p className="font-bold text-slate-900">{o.userName}</p>
+                            <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{o.userEmail}</p>
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {o.shippingAddress.city}, {o.shippingAddress.state}
+                          </td>
+                          <td className="p-3">
+                            <div className="space-y-1">
+                              <span className="uppercase font-semibold text-slate-700">
+                                {o.paymentMode || o.paymentMethod}
                               </span>
-                              <button
-                                type="button"
-                                disabled={updatingOrderId === o.id || updatingOrderId === o.orderNumber}
-                                onClick={() => handleUpdateOrderStatus(o.orderNumber || o.id, 'delivered')}
-                                className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold cursor-pointer"
-                              >
-                                Approve &amp; Deliver
-                              </button>
+                              {o.paymentSettlementStatus && o.paymentSettlementStatus !== 'PENDING_DELIVERY' && (
+                                <div>
+                                  {o.paymentSettlementStatus === 'QR_PAID_AWAITING_ADMIN' && (
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                        ⏳ UPI Paid (Verify)
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleConfirmQrPayment(o.orderNumber || o.id)}
+                                        className="block px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                                      >
+                                        ✓ Mark QR Received
+                                      </button>
+                                    </div>
+                                  )}
+                                  {o.paymentSettlementStatus === 'CASH_COLLECTED_BY_AGENT' && (
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
+                                        💵 Cash with Agent (Locked)
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRequestCashDeposit(o.orderNumber || o.id)}
+                                        className="block px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                                      >
+                                        Deposit Cash at Store
+                                      </button>
+                                    </div>
+                                  )}
+                                  {o.paymentSettlementStatus === 'CASH_DEPOSIT_REQUESTED' && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">
+                                      🏦 Deposit Requested
+                                    </span>
+                                  )}
+                                  {o.paymentSettlementStatus === 'CASH_DEPOSITED_AT_STORE' && (
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-300">
+                                        🏦 Cash at Store
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleConfirmCashDeposited(o.orderNumber || o.id)}
+                                        className="block px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                                      >
+                                        ✓ Confirm Cash (Unlock Agent)
+                                      </button>
+                                    </div>
+                                  )}
+                                  {(o.paymentSettlementStatus === 'QR_AMOUNT_RECEIVED' ||
+                                    o.paymentSettlementStatus === 'SETTLED') && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      ✓ Settled &amp; Cleared
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="p-3 font-bold text-slate-900">₹{o.grandTotal.toFixed(2)}</td>
+                          <td className="p-3">
+                            <select
+                              data-test={`admin-order-agent-select-${o.orderNumber}`}
+                              data-testid={`admin-order-agent-select-${o.orderNumber}`}
+                              value={o.assignedAgentId || ''}
+                              onChange={e => handleAssignOrderAgent(o.orderNumber || o.id, e.target.value)}
+                              className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 outline-none cursor-pointer max-w-[150px]"
+                              title="Reassign order to delivery agent"
+                            >
+                              <option value="">Unassigned</option>
+                              {agents.map(ag => (
+                                <option key={ag.id} value={ag.id}>
+                                  {ag.isLoggedIn ? '🟢 ' : '⚪ '}
+                                  {ag.name} ({ag.vehicleType})
+                                </option>
+                              ))}
+                            </select>
+                            {o.assignmentStatus && (
+                              <p className="text-[9px] font-bold uppercase text-slate-400 mt-0.5">
+                                {o.assignmentStatus}
+                              </p>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewMapOrderId(viewMapOrderId === o.orderNumber ? null : o.orderNumber)
+                              }
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+                                viewMapOrderId === o.orderNumber
+                                  ? 'bg-indigo-600 text-white border-indigo-600'
+                                  : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                              }`}
+                            >
+                              <Truck className="w-3 h-3" />
+                              <span>{viewMapOrderId === o.orderNumber ? 'Hide Map' : 'View Route'}</span>
+                            </button>
+                          </td>
+                          <td className="p-3">
+                            <select
+                              data-test={`admin-order-status-select-${o.orderNumber}`}
+                              data-testid={`admin-order-status-select-${o.orderNumber}`}
+                              value={o.orderStatus?.toLowerCase() || 'processing'}
+                              disabled={updatingOrderId === o.id || updatingOrderId === o.orderNumber}
+                              onChange={e => handleUpdateOrderStatus(o.orderNumber || o.id, e.target.value)}
+                              className="text-[11px] font-bold uppercase px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300 focus:ring-1 focus:ring-indigo-500 outline-none cursor-pointer"
+                              title="Change status & send notification email"
+                            >
+                              <option value="processing">Processing</option>
+                              <option value="processed">Processed</option>
+                              <option value="out_for_delivery">Out for Delivery</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          </td>
+                        </tr>
+
+                        {/* Expandable Live Route Map Drawer */}
+                        {viewMapOrderId === o.orderNumber && (
+                          <tr>
+                            <td colSpan={8} className="p-4 bg-slate-50 border-b border-indigo-100">
+                              <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-bold text-slate-800">
+                                    🗺️ Real-Time Delivery Route for Order {o.orderNumber}
+                                  </span>
+                                  <span className="text-slate-500 text-[11px]">
+                                    Origin: Hyderabad Store (Hitech City) ➔ Destination: {o.shippingAddress.street},{' '}
+                                    {o.shippingAddress.city}
+                                  </span>
+                                </div>
+                                <LiveRouteMap
+                                  destinationLat={o.deliveryLat || 17.4375}
+                                  destinationLng={o.deliveryLng || 78.4482}
+                                  customerAddress={`${o.shippingAddress.street}, ${o.shippingAddress.city}`}
+                                  orderStatus={o.orderStatus}
+                                  assignedAgentName={o.assignedAgentName}
+                                  assignedAgentPhone={o.assignedAgentPhone}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -1769,9 +1921,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-sm">Delivery Agent Fleet &amp; Commission Rates</h4>
+                  <h4 className="font-extrabold text-slate-900 text-sm">
+                    Hyderabad Delivery Fleet &amp; FIFO Queue Monitor 🇮🇳
+                  </h4>
                   <p className="text-xs text-slate-500">
-                    Manage active delivery partners, toggle status, set custom payout rates, and add new agents
+                    Active online status, FIFO queue rank, cash store-deposit lockouts, and payout rates
                   </p>
                 </div>
                 <button
@@ -1788,8 +1942,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* Add Agent Form */}
               {showAddAgentForm && (
-                <form onSubmit={handleCreateAgent} className="p-4 bg-white border border-indigo-200 rounded-2xl shadow-sm space-y-3">
-                  <h5 className="text-xs font-bold text-indigo-900 uppercase">Provision New Delivery Agent</h5>
+                <form
+                  onSubmit={handleCreateAgent}
+                  className="p-4 bg-white border border-indigo-200 rounded-2xl shadow-sm space-y-3"
+                >
+                  <h5 className="text-xs font-bold text-indigo-900 uppercase">Provision New Hyderabad Delivery Partner</h5>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Full Name</label>
@@ -1798,7 +1955,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         required
                         value={newAgentName}
                         onChange={e => setNewAgentName(e.target.value)}
-                        placeholder="Alex Rivers"
+                        placeholder="Ramesh Reddy"
                         className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                       />
                     </div>
@@ -1809,17 +1966,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         required
                         value={newAgentEmail}
                         onChange={e => setNewAgentEmail(e.target.value)}
-                        placeholder="agent@shopsphere.test"
+                        placeholder="ramesh@shopsphere.test"
                         className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Phone</label>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Phone (+91 🇮🇳)</label>
                       <input
                         type="tel"
                         value={newAgentPhone}
                         onChange={e => setNewAgentPhone(e.target.value)}
-                        placeholder="+1 (555) 789-0123"
+                        placeholder="+91 98765 43210"
                         className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                       />
                     </div>
@@ -1852,23 +2009,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Zone</label>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Delivery Zone</label>
                       <select
                         value={newAgentZone}
                         onChange={e => setNewAgentZone(e.target.value)}
                         className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                       >
-                        <option value="Central Hub">Central Hub</option>
-                        <option value="North Zone">North Zone</option>
-                        <option value="South Zone">South Zone</option>
-                        <option value="Downtown">Downtown</option>
+                        <option value="Hitech City, Hyderabad">Hitech City, Hyderabad</option>
+                        <option value="Madhapur, Hyderabad">Madhapur, Hyderabad</option>
+                        <option value="Gachibowli, Hyderabad">Gachibowli, Hyderabad</option>
+                        <option value="Jubilee Hills, Hyderabad">Jubilee Hills, Hyderabad</option>
+                        <option value="Banjara Hills, Hyderabad">Banjara Hills, Hyderabad</option>
+                        <option value="Kukatpally, Hyderabad">Kukatpally, Hyderabad</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Payout ($/Order)</label>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Payout (₹/Order)</label>
                       <input
                         type="number"
-                        step="0.5"
+                        step="10"
                         value={newAgentRate}
                         onChange={e => setNewAgentRate(e.target.value)}
                         className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
@@ -1889,14 +2048,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* Agents Table */}
               <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
-                <table className="w-full text-left divide-y divide-slate-200 min-w-[700px]">
+                <table className="w-full text-left divide-y divide-slate-200 min-w-[750px]">
                   <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                     <tr>
                       <th className="p-3">Agent</th>
-                      <th className="p-3">Contact</th>
-                      <th className="p-3">Vehicle &amp; Zone</th>
-                      <th className="p-3">Verification</th>
-                      <th className="p-3">Commission Rate</th>
+                      <th className="p-3">Online &amp; FIFO Rank</th>
+                      <th className="p-3">Contact &amp; Zone</th>
+                      <th className="p-3">Cash Lock Status</th>
+                      <th className="p-3">Payout Rate</th>
                       <th className="p-3">Earnings</th>
                       <th className="p-3 text-right">Status</th>
                     </tr>
@@ -1920,38 +2079,46 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <span className="font-mono text-[10px] text-slate-400">{ag.agentCode}</span>
                           </div>
                         </td>
+                        <td className="p-3">
+                          {ag.isLoggedIn ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              🟢 Online (Rank #{ag.fifoRank || 1})
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                              ⚪ Offline
+                            </span>
+                          )}
+                        </td>
                         <td className="p-3 text-slate-600">
                           <p>{ag.email}</p>
-                          <p className="text-[10px] text-slate-400">{ag.phone || 'No phone'}</p>
-                        </td>
-                        <td className="p-3 text-slate-600">
-                          <p className="font-semibold">{ag.vehicleType}</p>
-                          <p className="text-[10px] text-slate-400">{ag.deliveryZone}</p>
+                          <p className="text-[10px] text-slate-400">{ag.phone || '+91 98765 43210'}</p>
+                          <p className="text-[10px] text-slate-500 font-medium">{ag.deliveryZone}</p>
                         </td>
                         <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              ag.isEmailVerified
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}
-                          >
-                            {ag.isEmailVerified ? 'Email Verified ✓' : 'Pending Verification'}
-                          </span>
+                          {ag.hasPendingCashDeposit ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                              🔒 LOCKED (₹{(ag.pendingCashAmount || 0).toFixed(2)} cash pending)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              ✅ Unlocked (Active Queue)
+                            </span>
+                          )}
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-1 font-mono font-bold text-slate-900">
-                            <span>$</span>
+                            <span>₹</span>
                             <input
                               type="number"
-                              defaultValue={ag.commissionRate}
+                              defaultValue={ag.commissionRate || 150}
                               onBlur={e => handleUpdateCommissionRate(ag.id, parseFloat(e.target.value))}
                               className="w-16 px-1.5 py-0.5 border border-slate-200 rounded text-xs bg-slate-50"
                             />
                           </div>
                         </td>
                         <td className="p-3">
-                          <p className="font-mono font-bold text-emerald-700">${ag.totalEarnings.toFixed(2)}</p>
+                          <p className="font-mono font-bold text-emerald-700">₹{ag.totalEarnings.toFixed(2)}</p>
                           <p className="text-[10px] text-slate-400">{ag.deliveredOrdersCount} delivered</p>
                         </td>
                         <td className="p-3 text-right">

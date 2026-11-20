@@ -32,12 +32,28 @@ export interface DeliveryAgent {
   isEmailVerified: boolean;
   mustChangePassword: boolean;
   isActive: boolean;
+  isLoggedIn?: boolean;
+  lastActiveAt?: string;
+  fifoQueueJoinedAt?: string;
+  hasPendingCashDeposit?: boolean;
+  pendingCashAmount?: number;
+  currentLat?: number;
+  currentLng?: number;
+  fifoRank?: number;
   commissionRate: number;
   totalEarnings: number;
   deliveredOrdersCount: number;
   createdAt: string;
   updatedAt: string;
 }
+
+export const STORE_ORIGIN = {
+  name: 'ShopSphere Hyderabad Flagship Store',
+  address: 'Plot 12, Mindspace Madhapur, Hitech City, Hyderabad, Telangana 500081',
+  phone: '+91 40 6789 0100',
+  lat: 17.4486,
+  lng: 78.3908,
+};
 
 export interface Address {
   fullName: string;
@@ -88,6 +104,7 @@ export interface Product {
 export interface BasketItem {
   id: string;
   productId: string;
+  productCode?: string;
   product: Product;
   quantity: number;
   unitPrice: number;
@@ -135,6 +152,17 @@ export interface Order {
   createdAt: string;
   assignedAgentId?: string | number | null;
   assignedAgent?: DeliveryAgent | null;
+  assignedAgentName?: string | null;
+  assignedAgentPhone?: string | null;
+  assignmentStatus?: 'UNASSIGNED' | 'PENDING_ACCEPTANCE' | 'ACCEPTED';
+  assignedAt?: string | null;
+  acceptanceDeadline?: string | null;
+  rejectedOrExpiredAgentIds?: string[];
+  paymentMode?: 'PREPAID' | 'COD';
+  codCollectionMethod?: 'CASH' | 'UPI_QR' | null;
+  paymentSettlementStatus?: 'PAID_ONLINE' | 'QR_PAID_AWAITING_ADMIN' | 'QR_AMOUNT_RECEIVED' | 'CASH_COLLECTED_BY_AGENT' | 'CASH_DEPOSIT_REQUESTED' | 'CASH_DEPOSITED_AT_STORE' | 'SETTLED' | string;
+  deliveryLat?: number;
+  deliveryLng?: number;
   deliveryFee?: number;
   codPaymentMethod?: 'cash' | 'upi' | null;
   codPaymentStatus?: 'pending' | 'paid' | null;

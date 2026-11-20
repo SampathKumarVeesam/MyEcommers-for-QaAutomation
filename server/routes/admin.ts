@@ -799,8 +799,17 @@ adminRouter.post('/orders/:id/assign-agent', async (req: AuthenticatedRequest, r
   try {
     const { id } = req.params;
     const { agentId } = req.body || {};
-    if (!agentId) {
-      res.status(400).json({ success: false, message: 'agentId is required' });
+    if (!agentId || agentId === 'unassigned') {
+      const unassignedOrder = await orderRepo.assignAgent(id, null);
+      if (!unassignedOrder) {
+        res.status(404).json({ success: false, message: `Order '${id}' not found` });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        message: `Order #${unassignedOrder.orderNumber} unassigned from delivery agent`,
+        data: unassignedOrder,
+      });
       return;
     }
 
@@ -818,12 +827,69 @@ adminRouter.post('/orders/:id/assign-agent', async (req: AuthenticatedRequest, r
 
     res.status(200).json({
       success: true,
-      message: `Order #${updatedOrder.orderNumber} successfully assigned to agent ${agent.name}`,
+      message: `Order #${updatedOrder.orderNumber} successfully assigned to agent ${agent.name} (3-minute acceptance window started)`,
       data: updatedOrder,
     });
   } catch (err: any) {
     console.error('[Admin Assign Agent Error]:', err);
     res.status(500).json({ success: false, message: `Failed to assign delivery agent: ${err.message}` });
+  }
+});
+
+/**
+ * PATCH /api/admin/orders/:id/confirm-qr-payment
+ * Admin confirms customer UPI QR payment received at store bank account
+ */
+adminRouter.patch('/orders/:id/confirm-qr-payment', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.confirmAdminQrPayment(id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Admin Confirm QR Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to confirm QR payment: ${err.message}` });
+  }
+});
+
+/**
+ * PATCH /api/admin/orders/:id/request-cash-deposit
+ * Admin triggers "Deposit Cash at Store" prompt to the delivery agent holding cash
+ */
+adminRouter.patch('/orders/:id/request-cash-deposit', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.requestCashDepositAtStore(id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Admin Request Cash Deposit Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to request store cash deposit: ${err.message}` });
+  }
+});
+
+/**
+ * PATCH /api/admin/orders/:id/confirm-cash-deposited
+ * Admin verifies physical cash at Hyderabad store, settles order, and UNLOCKS the delivery agent
+ */
+adminRouter.patch('/orders/:id/confirm-cash-deposited', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await orderRepo.confirmAdminCashDeposited(id);
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Admin Confirm Cash Deposited Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to confirm cash deposit: ${err.message}` });
   }
 });
 

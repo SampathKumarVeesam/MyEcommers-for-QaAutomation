@@ -14,10 +14,17 @@ export function mapAgentRow(row: any): DeliveryAgent {
     avatarUrl: row.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     role: 'delivery_agent',
     vehicleType: row.vehicle_type || 'Motorcycle',
-    deliveryZone: row.delivery_zone || 'Central Hub',
+    deliveryZone: row.delivery_zone || 'Hitech City / Madhapur, Hyderabad',
     isEmailVerified: Boolean(row.is_email_verified),
     mustChangePassword: Boolean(row.must_change_password),
     isActive: Boolean(row.is_active),
+    isLoggedIn: Boolean(row.is_logged_in),
+    lastActiveAt: row.last_active_at ? new Date(row.last_active_at).toISOString() : new Date().toISOString(),
+    fifoQueueJoinedAt: row.fifo_queue_joined_at ? new Date(row.fifo_queue_joined_at).toISOString() : new Date().toISOString(),
+    hasPendingCashDeposit: Boolean(row.has_pending_cash_deposit),
+    pendingCashAmount: parseFloat(row.pending_cash_amount || '0.00'),
+    currentLat: row.current_lat ? parseFloat(row.current_lat) : 17.4486,
+    currentLng: row.current_lng ? parseFloat(row.current_lng) : 78.3908,
     commissionRate: parseFloat(row.commission_rate || '15.00'),
     totalEarnings: parseFloat(row.total_earnings || '0.00'),
     deliveredOrdersCount: parseInt(row.delivered_orders_count || '0', 10),
@@ -229,19 +236,152 @@ export class AgentRepository {
   }
 
   async listAll(): Promise<DeliveryAgent[]> {
-    const res = await query(`SELECT * FROM delivery_agents ORDER BY created_at DESC`);
-    return res.rows.map(mapAgentRow);
+    return this.listAllWithRank();
   }
 
-  async findLeastLoadedActive(): Promise<DeliveryAgent | null> {
+  async setLoginStatus(agentId: string, isLoggedIn: boolean): Promise<DeliveryAgent | null> {
     const res = await query(
-      `SELECT * FROM delivery_agents
-       WHERE is_active = TRUE AND is_email_verified = TRUE
-       ORDER BY delivered_orders_count ASC, created_at ASC
-       LIMIT 1`
+      `UPDATE delivery_agents
+       SET is_logged_in = $1,
+           is_active = $1,
+           last_active_at = NOW(),
+           fifo_queue_joined_at = CASE WHEN $1 = TRUE THEN NOW() ELSE fifo_queue_joined_at END,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [isLoggedIn, agentId]
     );
     if (res.rows.length === 0) return null;
     return mapAgentRow(res.rows[0]);
+  }
+
+  async heartbeat(agentId: string, coords?: { lat: number; lng: number }): Promise<void> {
+    if (coords && coords.lat && coords.lng) {
+      await query(
+        `UPDATE delivery_agents
+         SET last_active_at = NOW(),
+             current_lat = $1,
+             current_lng = $2,
+             is_logged_in = TRUE,
+             is_active = TRUE,
+             updated_at = NOW()
+         WHERE id = $3`,
+        [coords.lat, coords.lng, agentId]
+      );
+    } else {
+      await query(
+        `UPDATE delivery_agents
+         SET last_active_at = NOW(),
+             is_logged_in = TRUE,
+             is_active = TRUE,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [agentId]
+      );
+    }
+  }
+
+  async recordCashCollection(agentId: string, amount: number): Promise<void> {
+    await query(
+      `UPDATE delivery_agents
+       SET has_pending_cash_deposit = TRUE,
+           pending_cash_amount = pending_cash_amount + $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [amount, agentId]
+    );
+  }
+
+  async confirmCashDeposit(agentId: string): Promise<void> {
+    await query(
+      `UPDATE delivery_agents
+       SET has_pending_cash_deposit = FALSE,
+           pending_cash_amount = 0.00,
+           fifo_queue_joined_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [agentId]
+    );
+  }
+
+  async resetFifoQueue(agentId: string): Promise<void> {
+    await query(
+      `UPDATE delivery_agents
+       SET fifo_queue_joined_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1`,
+      [agentId]
+    );
+  }
+
+  async findEligibleFIFOAgent(excludedAgentIds: string[] = []): Promise<DeliveryAgent | null> {
+    let queryStr = `
+      SELECT * FROM delivery_agents
+      WHERE is_email_verified = TRUE
+        AND is_logged_in = TRUE
+        AND last_active_at >= NOW() - INTERVAL '15 minutes'
+        AND has_pending_cash_deposit = FALSE
+    `;
+    const params: any[] = [];
+
+    if (excludedAgentIds.length > 0) {
+      queryStr += ` AND id NOT IN (${excludedAgentIds.map((_, i) => `$${i + 1}`).join(', ')})`;
+      params.push(...excludedAgentIds);
+    }
+
+    queryStr += ` ORDER BY fifo_queue_joined_at ASC, id ASC LIMIT 1`;
+
+    const res = await query(queryStr, params);
+    if (res.rows.length === 0) {
+      if (excludedAgentIds.length > 0) {
+        const fallbackRes = await query(
+          `SELECT * FROM delivery_agents
+           WHERE is_email_verified = TRUE
+             AND is_logged_in = TRUE
+             AND last_active_at >= NOW() - INTERVAL '15 minutes'
+             AND has_pending_cash_deposit = FALSE
+           ORDER BY fifo_queue_joined_at ASC, id ASC LIMIT 1`
+        );
+        if (fallbackRes.rows.length > 0) {
+          return mapAgentRow(fallbackRes.rows[0]);
+        }
+      }
+      return null;
+    }
+
+    return mapAgentRow(res.rows[0]);
+  }
+
+  async listAllWithRank(): Promise<DeliveryAgent[]> {
+    const res = await query(`
+      SELECT *,
+        CASE
+          WHEN is_email_verified = TRUE
+           AND is_logged_in = TRUE
+           AND last_active_at >= NOW() - INTERVAL '15 minutes'
+           AND has_pending_cash_deposit = FALSE
+          THEN ROW_NUMBER() OVER (
+            PARTITION BY (
+              is_email_verified = TRUE
+              AND is_logged_in = TRUE
+              AND last_active_at >= NOW() - INTERVAL '15 minutes'
+              AND has_pending_cash_deposit = FALSE
+            )
+            ORDER BY fifo_queue_joined_at ASC, id ASC
+          )
+          ELSE NULL
+        END as fifo_rank
+      FROM delivery_agents
+      ORDER BY created_at DESC
+    `);
+    return res.rows.map(r => ({
+      ...mapAgentRow(r),
+      fifoRank: r.fifo_rank ? parseInt(r.fifo_rank, 10) : undefined,
+    }));
+  }
+
+  async findLeastLoadedActive(): Promise<DeliveryAgent | null> {
+    return this.findEligibleFIFOAgent();
   }
 
   async updateStatusOrCommission(
@@ -276,22 +416,49 @@ export class AgentRepository {
 
   async ensureSeedAgent(): Promise<DeliveryAgent> {
     const existing = await this.findByEmail('agent.alex@shopsphere.test');
-    if (existing) return existing;
+    if (existing) {
+      // Ensure seed agent is active, logged in, and set to Hyderabad
+      await query(
+        `UPDATE delivery_agents
+         SET is_active = TRUE,
+             is_logged_in = TRUE,
+             last_active_at = NOW(),
+             phone = COALESCE(phone, '+91 98490 88776'),
+             delivery_zone = 'Hitech City / Madhapur, Hyderabad',
+             current_lat = 17.4486,
+             current_lng = 78.3908
+         WHERE id = $1`,
+        [existing.id]
+      );
+      return existing;
+    }
 
-    const hash = bcrypt.hashSync('Agent@123', 10);
-    return await this.createAgent({
+    const hash = bcrypt.hashSync('Agent#2026!', 10);
+    const agent = await this.createAgent({
       name: 'Alex Rivers',
       email: 'agent.alex@shopsphere.test',
-      phone: '+1 (555) 789-0123',
+      phone: '+91 98490 88776',
       gender: 'non_binary',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
       vehicleType: 'Electric Motorcycle',
-      deliveryZone: 'Central Hub',
+      deliveryZone: 'Hitech City / Madhapur, Hyderabad',
       passwordHash: hash,
       isEmailVerified: true,
       mustChangePassword: false,
       commissionRate: 15.00,
     });
+
+    await query(
+      `UPDATE delivery_agents
+       SET is_logged_in = TRUE,
+           last_active_at = NOW(),
+           current_lat = 17.4486,
+           current_lng = 78.3908
+       WHERE id = $1`,
+      [agent.id]
+    );
+
+    return agent;
   }
 }
 
