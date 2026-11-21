@@ -667,6 +667,111 @@ export async function sendAgentTemporaryPasswordEmail(
 }
 
 /**
+ * 7. Password Reset OTP & Reset Link Email (for Customers & Delivery Agents)
+ */
+export async function sendPasswordResetOtpEmail(params: {
+  name: string;
+  email: string;
+  otp: string;
+  resetLink: string;
+  userType: 'customer' | 'agent';
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const recipient = params.email?.trim();
+  if (!recipient) return { success: false, error: 'Recipient email is missing' };
+
+  const roleTitle = params.userType === 'agent' ? 'Delivery Partner' : 'Customer';
+  const subject = `Reset Your ShopSphere Password - Verification OTP [${params.otp}] 🔐`;
+
+  const html = wrapEmailHtml(
+    subject,
+    `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 40px;">🔐</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 12px 0 6px 0;">Password Reset Request</h2>
+        <p style="color: #64748b; font-size: 14px; margin: 0;">ShopSphere ${roleTitle} Account Security</p>
+      </div>
+
+      <p style="font-size: 14px; color: #334155;">
+        Hi <strong>${params.name || 'there'}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #334155;">
+        We received a request to reset the password for your ShopSphere account. Use the 6-digit verification OTP below or click the direct reset link to set your new password.
+      </p>
+
+      <div style="background: #f8fafc; border: 2px solid #4f46e5; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4f46e5; font-weight: 700;">6-Digit Password Reset OTP</div>
+        <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e1b4b; font-family: monospace; margin: 10px 0; background: #ffffff; padding: 12px 20px; border-radius: 8px; border: 1px solid #c7d2fe; display: inline-block;">
+          ${params.otp}
+        </div>
+        <p style="font-size: 12px; color: #64748b; margin: 8px 0 0 0;">⏱️ Valid for <strong>15 minutes</strong>.</p>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0 16px 0;">
+        <a href="${params.resetLink}" class="btn" style="background: #4f46e5; color: #ffffff !important; padding: 12px 28px; border-radius: 10px; font-weight: bold; text-decoration: none; display: inline-block;">
+          Reset Password Directly
+        </a>
+      </div>
+
+      <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; margin-top: 24px;">
+        <p style="font-size: 12px; color: #92400e; margin: 0;">
+          <strong>Security Note:</strong> If you did not initiate this request, you can safely ignore this email. Your current password remains unchanged.
+        </p>
+      </div>
+    `
+  );
+
+  return sendEmail(recipient, subject, html);
+}
+
+/**
+ * 8. Password Reset Confirmation Email
+ */
+export async function sendPasswordResetSuccessEmail(params: {
+  name: string;
+  email: string;
+  userType: 'customer' | 'agent';
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const recipient = params.email?.trim();
+  if (!recipient) return { success: false, error: 'Recipient email is missing' };
+
+  const roleTitle = params.userType === 'agent' ? 'Delivery Partner' : 'Customer';
+  const loginUrl = params.userType === 'agent' ? `${APP_URL}/#agent` : `${APP_URL}/`;
+  const subject = `Your ShopSphere Password Has Been Reset Successfully ✅`;
+
+  const html = wrapEmailHtml(
+    subject,
+    `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 40px;">✅</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 12px 0 6px 0;">Password Reset Successful</h2>
+        <p style="color: #64748b; font-size: 14px; margin: 0;">ShopSphere ${roleTitle} Account</p>
+      </div>
+
+      <p style="font-size: 14px; color: #334155;">
+        Hi <strong>${params.name || 'there'}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #334155;">
+        Your password has been successfully updated in our database. You can now use your new password to log in.
+      </p>
+
+      <div style="text-align: center; margin: 28px 0 16px 0;">
+        <a href="${loginUrl}" class="btn" style="background: #10b981; color: #ffffff !important; padding: 12px 28px; border-radius: 10px; font-weight: bold; text-decoration: none; display: inline-block;">
+          Sign In Now
+        </a>
+      </div>
+
+      <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px 16px; border-radius: 4px; margin-top: 24px;">
+        <p style="font-size: 12px; color: #991b1b; margin: 0;">
+          <strong>Didn't make this change?</strong> If you did not perform this password reset, please contact support immediately to secure your account.
+        </p>
+      </div>
+    `
+  );
+
+  return sendEmail(recipient, subject, html);
+}
+
+/**
  * Test Connection and send test verification email
  */
 export async function sendTestEmail(recipientEmail: string): Promise<{ success: boolean; messageId?: string; error?: string }> {

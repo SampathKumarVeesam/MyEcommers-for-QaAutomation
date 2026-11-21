@@ -3,7 +3,12 @@ import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
 import { AuthenticatedRequest, generateToken, requireAuth } from '../middleware/auth.js';
 import { userRepo } from '../repositories/userRepo.js';
-import { sendWelcomeEmail } from '../services/emailService.js';
+import { agentRepo } from '../repositories/agentRepo.js';
+import {
+  sendPasswordResetOtpEmail,
+  sendPasswordResetSuccessEmail,
+  sendWelcomeEmail,
+} from '../services/emailService.js';
 import {
   getConfiguredProviders,
   getStandardAuthUrl,
@@ -190,6 +195,221 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       success: false,
       message: `PostgreSQL login lookup failed: ${error.message || 'Database error'}`,
+    });
+  }
+});
+
+// POST /api/users/forgot-password (Dispatches 6-digit OTP & Reset Link to registered email, excludes Admin)
+authRouter.post('/forgot-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body || {};
+    if (!email || !email.trim()) {
+      res.status(400).json({
+        success: false,
+        message: 'Please enter your registered email address.',
+        errors: { email: 'Email address is required' },
+      });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid email address format.',
+        errors: { email: 'Invalid email address format' },
+      });
+      return;
+    }
+
+    // 1. Check in public.users (Customers)
+    const user = await userRepo.findByEmail(normalizedEmail);
+    if (user) {
+      if (user.role === 'admin') {
+        res.status(403).json({
+          success: false,
+          message: 'Password reset is restricted for administrator accounts. Please contact system administration.',
+        });
+        return;
+      }
+
+      // Generate 6-digit OTP and 32-byte secure token
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+      await userRepo.setPasswordResetOtp(user.email, otp, token, expiresAt);
+
+      const appUrl = (process.env.APP_URL || 'https://samecommers.netlify.app').replace(/\/$/, '');
+      const resetLink = `${appUrl}/#reset-password?email=${encodeURIComponent(user.email)}&token=${token}&type=customer`;
+
+      // Non-blocking email dispatch via Brevo/Zoho
+      setImmediate(async () => {
+        try {
+          await sendPasswordResetOtpEmail({
+            name: user.name,
+            email: user.email,
+            otp,
+            resetLink,
+            userType: 'customer',
+          });
+        } catch (mailErr) {
+          console.error('[Forgot Password Email Error]:', mailErr);
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'A 6-digit password reset OTP and reset link have been sent to your email address.',
+      });
+      return;
+    }
+
+    // 2. Check in delivery_agents
+    const agent = await agentRepo.findByEmail(normalizedEmail);
+    if (agent) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await agentRepo.setPasswordResetOtp(agent.email, otp, token, expiresAt);
+
+      const appUrl = (process.env.APP_URL || 'https://samecommers.netlify.app').replace(/\/$/, '');
+      const resetLink = `${appUrl}/#agent?action=reset-password&email=${encodeURIComponent(agent.email)}&token=${token}`;
+
+      setImmediate(async () => {
+        try {
+          await sendPasswordResetOtpEmail({
+            name: agent.name,
+            email: agent.email,
+            otp,
+            resetLink,
+            userType: 'agent',
+          });
+        } catch (mailErr) {
+          console.error('[Agent Forgot Password Email Error]:', mailErr);
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'A 6-digit password reset OTP and reset link have been sent to your delivery agent email address.',
+      });
+      return;
+    }
+
+    res.status(404).json({
+      success: false,
+      message: 'No registered account found with this email address.',
+    });
+  } catch (err: any) {
+    console.error('[Forgot Password Error]:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process password reset request. Please try again.',
+      error: err.message,
+    });
+  }
+});
+
+// POST /api/users/reset-password (Verifies OTP/Token and updates password in DB)
+authRouter.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp, token, newPassword } = req.body || {};
+    const otpOrToken = (otp || token || '').trim();
+
+    if (!email || !email.trim()) {
+      res.status(400).json({ success: false, message: 'Email address is required.' });
+      return;
+    }
+    if (!otpOrToken) {
+      res.status(400).json({ success: false, message: 'Please provide the 6-digit OTP code or reset token from your email.' });
+      return;
+    }
+    if (!newPassword || newPassword.trim().length < 6) {
+      res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if user is an admin - restrict reset
+    const userCheck = await userRepo.findByEmail(normalizedEmail);
+    if (userCheck && userCheck.role === 'admin') {
+      res.status(403).json({
+        success: false,
+        message: 'Password reset is restricted for administrator accounts. Please contact system administration.',
+      });
+      return;
+    }
+
+    const newPasswordHash = bcrypt.hashSync(newPassword.trim(), 10);
+
+    // Try resetting customer password
+    if (userCheck) {
+      const resetResult = await userRepo.verifyAndResetPassword(normalizedEmail, otpOrToken, newPasswordHash);
+      if (!resetResult.success) {
+        res.status(400).json({ success: false, message: resetResult.message });
+        return;
+      }
+
+      setImmediate(async () => {
+        try {
+          await sendPasswordResetSuccessEmail({
+            name: resetResult.user?.name || userCheck.name,
+            email: normalizedEmail,
+            userType: 'customer',
+          });
+        } catch (mailErr) {
+          console.error('[Reset Success Email Error]:', mailErr);
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Your password has been reset successfully! You can now log in with your new password.',
+      });
+      return;
+    }
+
+    // Try resetting delivery agent password
+    const agentCheck = await agentRepo.findByEmail(normalizedEmail);
+    if (agentCheck) {
+      const resetResult = await agentRepo.verifyAndResetPassword(normalizedEmail, otpOrToken, newPasswordHash);
+      if (!resetResult.success) {
+        res.status(400).json({ success: false, message: resetResult.message });
+        return;
+      }
+
+      setImmediate(async () => {
+        try {
+          await sendPasswordResetSuccessEmail({
+            name: resetResult.agent?.name || agentCheck.name,
+            email: normalizedEmail,
+            userType: 'agent',
+          });
+        } catch (mailErr) {
+          console.error('[Agent Reset Success Email Error]:', mailErr);
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Your Delivery Agent password has been reset successfully! You can now log in.',
+      });
+      return;
+    }
+
+    res.status(404).json({
+      success: false,
+      message: 'No registered account found with this email address.',
+    });
+  } catch (err: any) {
+    console.error('[Reset Password Error]:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password. Please try again.',
+      error: err.message,
     });
   }
 });

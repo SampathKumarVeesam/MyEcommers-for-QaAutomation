@@ -68,7 +68,7 @@ function ShopSphereMain() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [authModal, setAuthModal] = useState<{
     open: boolean;
-    tab: 'login' | 'register' | 'admin';
+    tab: 'login' | 'register' | 'admin' | 'forgot' | 'reset';
     notice?: string;
   }>({
     open: false,
@@ -103,6 +103,18 @@ function ShopSphereMain() {
       const search = window.location.search;
       if (search.includes('oauth_error')) {
         setAuthModal({ open: true, tab: 'login' });
+      } else if (hash.includes('reset-password') || search.includes('action=reset-password')) {
+        if (hash.includes('agent') || search.includes('type=agent')) {
+          setIsAgentPortalOpen(true);
+        } else {
+          setAuthModal({ open: true, tab: 'reset' });
+        }
+      } else if (hash.includes('forgot-password') || search.includes('action=forgot-password')) {
+        if (hash.includes('agent') || search.includes('type=agent')) {
+          setIsAgentPortalOpen(true);
+        } else {
+          setAuthModal({ open: true, tab: 'forgot' });
+        }
       } else if (hash === '#admin' || search.includes('admin')) {
         if (user?.role === 'admin') {
           setIsAdminOpen(true);

@@ -40,11 +40,21 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(AGENT_TOKEN_KEY) || null);
   const [agent, setAgent] = useState<DeliveryAgent | null>(null);
   const [loading, setLoading] = useState(false);
-  const [authTab, setAuthTab] = useState<'login' | 'register' | 'verify'>('login');
+  const [authTab, setAuthTab] = useState<'login' | 'register' | 'verify' | 'forgot' | 'reset'>('login');
 
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+
+  // Agent Forgot Password state
+  const [agentForgotEmail, setAgentForgotEmail] = useState('');
+
+  // Agent Reset Password state
+  const [agentResetEmail, setAgentResetEmail] = useState('');
+  const [agentResetOtp, setAgentResetOtp] = useState('');
+  const [agentResetToken, setAgentResetToken] = useState('');
+  const [agentResetPassword, setAgentResetPassword] = useState('');
+  const [agentResetConfirmPassword, setAgentResetConfirmPassword] = useState('');
 
   // Register form
   const [regName, setRegName] = useState('');
@@ -89,9 +99,22 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // Handle URL hash / search params on open
   useEffect(() => {
     if (isOpen) {
-      const searchParams = new URLSearchParams(window.location.search);
-      const urlEmail = searchParams.get('verifyEmail');
-      if (urlEmail) {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      const queryStr = search ? search.slice(1) : (hash.includes('?') ? hash.split('?')[1] : '');
+      const searchParams = new URLSearchParams(queryStr);
+      const urlEmail = searchParams.get('verifyEmail') || searchParams.get('email');
+      const action = searchParams.get('action');
+      const tokenParam = searchParams.get('token');
+
+      if (action === 'reset-password' || hash.includes('reset-password')) {
+        setAuthTab('reset');
+        if (urlEmail) setAgentResetEmail(decodeURIComponent(urlEmail));
+        if (tokenParam) setAgentResetToken(tokenParam);
+      } else if (action === 'forgot-password') {
+        setAuthTab('forgot');
+        if (urlEmail) setAgentForgotEmail(decodeURIComponent(urlEmail));
+      } else if (urlEmail && searchParams.get('verifyEmail')) {
         setAuthTab('verify');
         setVerifyEmail(decodeURIComponent(urlEmail));
         setVerifyToken(''); // Never auto-populate verification OTP from URL
@@ -328,6 +351,93 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAgentForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (!agentForgotEmail || !agentForgotEmail.trim()) {
+      setErrorMsg('Please enter your registered agent email address');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(apiUrl('/api/agent/forgot-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: agentForgotEmail.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg(data.message || 'OTP and password reset link sent to your registered agent email!');
+        setAgentResetEmail(agentForgotEmail.trim());
+      } else {
+        setErrorMsg(data.message || 'Failed to request agent password reset');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAgentResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (!agentResetEmail.trim()) {
+      setErrorMsg('Registered agent email address is required');
+      setLoading(false);
+      return;
+    }
+    if (!agentResetOtp.trim() && !agentResetToken.trim()) {
+      setErrorMsg('Please enter the 6-digit OTP code received in your email');
+      setLoading(false);
+      return;
+    }
+    if (!agentResetPassword || agentResetPassword.length < 6) {
+      setErrorMsg('New password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+    if (agentResetPassword !== agentResetConfirmPassword) {
+      setErrorMsg('Passwords do not match. Please re-enter.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(apiUrl('/api/agent/reset-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: agentResetEmail.trim(),
+          otp: agentResetOtp.trim(),
+          token: agentResetToken.trim() || undefined,
+          newPassword: agentResetPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg(data.message || 'Password reset successfully! You can now log in.');
+        setTimeout(() => {
+          setLoginEmail(agentResetEmail.trim());
+          setAuthTab('login');
+        }, 1500);
+      } else {
+        setErrorMsg(data.message || 'Password reset failed');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Network error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -751,6 +861,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <Mail className="w-4 h-4" />
                 <span>3. Verify Email &amp; Get Password</span>
               </button>
+              {(authTab === 'forgot' || authTab === 'reset') && (
+                <div className="pb-3 px-4 flex items-center gap-1.5 border-b-2 border-indigo-600 text-indigo-600 font-bold text-xs">
+                  <KeyRound className="w-4 h-4" />
+                  <span>{authTab === 'forgot' ? '4. Forgot Password' : '5. Reset Password'}</span>
+                </div>
+              )}
             </div>
 
             {/* TAB 1: LOGIN */}
@@ -796,6 +912,21 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     data-testid="input-agent-login-password"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
                   />
+                </div>
+
+                <div className="flex justify-end pt-0.5">
+                  <button
+                    type="button"
+                    data-test="link-agent-forgot-password"
+                    data-testid="link-agent-forgot-password"
+                    onClick={() => {
+                      setAgentForgotEmail(loginEmail);
+                      setAuthTab('forgot');
+                    }}
+                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold transition-colors cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
 
                 <button
@@ -1027,6 +1158,168 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 >
                   {loading ? 'Verifying...' : 'Verify Email & Send Temporary Password'}
                 </button>
+              </form>
+            )}
+
+            {/* TAB 4: AGENT FORGOT PASSWORD */}
+            {authTab === 'forgot' && (
+              <form onSubmit={handleAgentForgotPassword} className="max-w-md mx-auto space-y-4">
+                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4 text-indigo-600" />
+                    <span>Agent Password Recovery (Email OTP)</span>
+                  </p>
+                  <p className="text-[11px] text-indigo-700 mt-0.5">
+                    Enter your registered delivery agent email address. We will dispatch a 6-digit verification OTP and reset link directly to your inbox.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Registered Delivery Agent Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={agentForgotEmail}
+                    onChange={e => setAgentForgotEmail(e.target.value)}
+                    placeholder="agent.alex@shopsphere.test"
+                    data-test="input-agent-forgot-email"
+                    data-testid="input-agent-forgot-email"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  data-test="btn-agent-forgot-submit"
+                  data-testid="btn-agent-forgot-submit"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? 'Sending Recovery OTP...' : 'Send Verification OTP & Reset Link'}
+                </button>
+
+                <div className="pt-2 flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAuthTab('login')}
+                    className="text-slate-500 hover:text-indigo-600 font-bold transition-colors cursor-pointer"
+                  >
+                    &larr; Back to Agent Login
+                  </button>
+                  <button
+                    type="button"
+                    data-test="link-agent-have-otp"
+                    data-testid="link-agent-have-otp"
+                    onClick={() => setAuthTab('reset')}
+                    className="text-indigo-600 hover:text-indigo-800 font-bold transition-colors cursor-pointer"
+                  >
+                    Have OTP? Reset Password &rarr;
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* TAB 5: AGENT RESET PASSWORD */}
+            {authTab === 'reset' && (
+              <form onSubmit={handleAgentResetPassword} className="max-w-md mx-auto space-y-4">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <Lock className="w-4 h-4 text-amber-600" />
+                    <span>Set New Delivery Agent Password</span>
+                  </p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Enter the 6-digit OTP code sent to your email and choose your new password.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Registered Agent Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={agentResetEmail}
+                    onChange={e => setAgentResetEmail(e.target.value)}
+                    placeholder="agent.alex@shopsphere.test"
+                    data-test="input-agent-reset-email"
+                    data-testid="input-agent-reset-email"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    6-Digit Verification OTP
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={agentResetOtp}
+                    onChange={e => setAgentResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    data-test="input-agent-reset-otp"
+                    data-testid="input-agent-reset-otp"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold tracking-widest text-center focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    New Password (min. 6 characters)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={agentResetPassword}
+                    onChange={e => setAgentResetPassword(e.target.value)}
+                    placeholder="••••••••"
+                    data-test="input-agent-reset-password"
+                    data-testid="input-agent-reset-password"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={agentResetConfirmPassword}
+                    onChange={e => setAgentResetConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    data-test="input-agent-reset-confirm-password"
+                    data-testid="input-agent-reset-confirm-password"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  data-test="btn-agent-reset-submit"
+                  data-testid="btn-agent-reset-submit"
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? 'Updating Password...' : 'Verify OTP & Update Password'}
+                </button>
+
+                <div className="pt-2 text-center text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setAuthTab('login')}
+                    className="text-slate-500 hover:text-indigo-600 font-bold transition-colors cursor-pointer"
+                  >
+                    &larr; Return to Agent Login
+                  </button>
+                </div>
               </form>
             )}
           </div>

@@ -158,6 +158,61 @@ export class AgentRepository {
     return (res.rowCount || 0) > 0;
   }
 
+  async setPasswordResetOtp(email: string, otp: string, token: string, expiresAt: Date): Promise<boolean> {
+    const normalized = email.trim().toLowerCase();
+    const res = await query(
+      `UPDATE delivery_agents
+       SET reset_password_otp = $1, reset_password_token = $2, reset_password_expires_at = $3, updated_at = NOW()
+       WHERE LOWER(email) = LOWER($4)
+       RETURNING id`,
+      [otp, token, expiresAt, normalized]
+    );
+    return (res.rowCount || 0) > 0;
+  }
+
+  async verifyAndResetPassword(email: string, otpOrToken: string, newPasswordHash: string): Promise<{ success: boolean; message: string; agent?: DeliveryAgent }> {
+    const normalized = email.trim().toLowerCase();
+    const cleanCode = otpOrToken.trim();
+
+    const agentRes = await query(
+      `SELECT * FROM delivery_agents WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [normalized]
+    );
+    if (agentRes.rows.length === 0) {
+      return { success: false, message: 'Delivery agent account not found with this email address.' };
+    }
+
+    const row = agentRes.rows[0];
+    if (!row.reset_password_otp && !row.reset_password_token) {
+      return { success: false, message: 'No active password reset request found. Please request a new OTP.' };
+    }
+
+    if (row.reset_password_expires_at && new Date() > new Date(row.reset_password_expires_at)) {
+      return { success: false, message: 'Password reset OTP has expired. Please request a new code.' };
+    }
+
+    const matchesOtp = row.reset_password_otp && String(row.reset_password_otp).trim() === cleanCode;
+    const matchesToken = row.reset_password_token && String(row.reset_password_token).trim() === cleanCode;
+
+    if (!matchesOtp && !matchesToken) {
+      return { success: false, message: 'Invalid verification OTP or reset token. Please check and try again.' };
+    }
+
+    const updateRes = await query(
+      `UPDATE delivery_agents
+       SET password_hash = $1, must_change_password = FALSE, reset_password_otp = NULL, reset_password_token = NULL, reset_password_expires_at = NULL, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [newPasswordHash, row.id]
+    );
+
+    return {
+      success: true,
+      message: 'Agent password reset successfully.',
+      agent: mapAgentRow(updateRes.rows[0]),
+    };
+  }
+
   async updateProfile(
     agentId: string,
     data: {

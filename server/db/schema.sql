@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS users (
   address_state VARCHAR(100),
   address_postal_code VARCHAR(50),
   address_country VARCHAR(100),
+  reset_password_otp VARCHAR(10),
+  reset_password_token VARCHAR(255),
+  reset_password_expires_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -155,6 +158,9 @@ CREATE TABLE IF NOT EXISTS delivery_agents (
   commission_rate NUMERIC(10,2) DEFAULT 15.00,
   total_earnings NUMERIC(10,2) DEFAULT 0.00,
   delivered_orders_count INTEGER DEFAULT 0,
+  reset_password_otp VARCHAR(10),
+  reset_password_token VARCHAR(255),
+  reset_password_expires_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

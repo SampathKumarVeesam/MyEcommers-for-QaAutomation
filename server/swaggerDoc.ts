@@ -1355,6 +1355,105 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/users/forgot-password": {
+      "post": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Request customer password reset verification OTP",
+        "description": "Generates a 6-digit numeric OTP and 32-byte cryptographic token with a 15-minute expiry, dispatched to the user's registered email via Brevo / Zoho SMTP. Explicitly rejects administrator accounts.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@practicesoftwaretesting.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP and reset link dispatched to email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email format or missing parameter"
+          },
+          "403": {
+            "description": "Password reset restricted for administrator accounts"
+          },
+          "404": {
+            "description": "No registered account found with given email"
+          }
+        }
+      }
+    },
+    "/users/reset-password": {
+      "post": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Verify OTP and set new customer password",
+        "description": "Validates the 6-digit OTP code or reset token sent to the user's email, hashes the new password with bcrypt (10 rounds), updates PostgreSQL public.users, invalidates the OTP, and triggers a confirmation email.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "newPassword"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@practicesoftwaretesting.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "482910"
+                  },
+                  "token": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6..."
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "User01@NewPass"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully in PostgreSQL"
+          },
+          "400": {
+            "description": "Invalid OTP, expired code, or password too short"
+          },
+          "403": {
+            "description": "Reset restricted for administrator accounts"
+          }
+        }
+      }
+    },
     "/users/me": {
       "get": {
         "tags": [
@@ -3597,6 +3696,64 @@ export const SWAGGER_SPEC = {
         "responses": {
           "200": { "description": "Authentication successful; returns JWT token and agent profile" },
           "401": { "description": "Invalid credentials or email unverified" }
+        }
+      }
+    },
+    "/agent/forgot-password": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Request delivery agent password reset verification OTP",
+        "description": "Generates a 6-digit verification OTP and reset link, dispatched via email to the registered delivery agent.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "agent.alex@shopsphere.test"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password reset OTP dispatched to registered agent email" },
+          "400": { "description": "Missing or invalid email" },
+          "404": { "description": "Agent account not found" }
+        }
+      }
+    },
+    "/agent/reset-password": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Verify OTP and reset delivery agent password",
+        "description": "Validates the 6-digit OTP code or reset token sent to the delivery agent, hashes new password with bcrypt, updates PostgreSQL delivery_agents table, and clears mandatory password rotation flag.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "newPassword"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "agent.alex@shopsphere.test" },
+                  "otp": { "type": "string", "example": "123456" },
+                  "token": { "type": "string", "example": "abc123token" },
+                  "newPassword": { "type": "string", "minLength": 6, "example": "AlexRivers@2026" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Agent password reset successfully in PostgreSQL" },
+          "400": { "description": "Invalid OTP, expired code, or password too short" }
         }
       }
     },

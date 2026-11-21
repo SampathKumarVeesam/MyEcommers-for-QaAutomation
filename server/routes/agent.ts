@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import { AuthenticatedAgentRequest, generateAgentToken, requireAgentAuth } from '../middleware/auth.js';
 import { agentRepo } from '../repositories/agentRepo.js';
@@ -8,6 +9,8 @@ import {
   sendAgentTemporaryPasswordEmail,
   sendAgentVerificationEmail,
   sendOrderStatusUpdateEmail,
+  sendPasswordResetOtpEmail,
+  sendPasswordResetSuccessEmail,
 } from '../services/emailService.js';
 import { Gender } from '../../src/types.js';
 
@@ -193,6 +196,102 @@ agentRouter.post('/login', async (req: Request, res: Response): Promise<void> =>
   } catch (error: any) {
     console.error('[Agent Login Error]:', error);
     res.status(500).json({ success: false, message: `Login failed: ${error.message}` });
+  }
+});
+
+// POST /api/agent/forgot-password (Dispatches 6-digit OTP & Reset Link to registered agent email)
+agentRouter.post('/forgot-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body || {};
+    if (!email || !email.trim()) {
+      res.status(400).json({ success: false, message: 'Please enter your registered delivery agent email address.' });
+      return;
+    }
+    const normalized = email.trim().toLowerCase();
+    const agent = await agentRepo.findByEmail(normalized);
+    if (!agent) {
+      res.status(404).json({ success: false, message: 'No delivery agent account found with this email address.' });
+      return;
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await agentRepo.setPasswordResetOtp(agent.email, otp, token, expiresAt);
+
+    const appUrl = (process.env.APP_URL || 'https://samecommers.netlify.app').replace(/\/$/, '');
+    const resetLink = `${appUrl}/#agent?action=reset-password&email=${encodeURIComponent(agent.email)}&token=${token}`;
+
+    setImmediate(async () => {
+      try {
+        await sendPasswordResetOtpEmail({
+          name: agent.name,
+          email: agent.email,
+          otp,
+          resetLink,
+          userType: 'agent',
+        });
+      } catch (err) {
+        console.error('[Agent Forgot Password Email Error]:', err);
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'A 6-digit password reset OTP and reset link have been sent to your registered email address.',
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/agent/reset-password (Verifies OTP/Token and updates delivery agent password)
+agentRouter.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp, token, newPassword } = req.body || {};
+    const otpOrToken = (otp || token || '').trim();
+
+    if (!email || !email.trim()) {
+      res.status(400).json({ success: false, message: 'Email address is required.' });
+      return;
+    }
+    if (!otpOrToken) {
+      res.status(400).json({ success: false, message: 'Please enter the 6-digit OTP code or reset token from your email.' });
+      return;
+    }
+    if (!newPassword || newPassword.trim().length < 6) {
+      res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    const normalized = email.trim().toLowerCase();
+    const newPasswordHash = bcrypt.hashSync(newPassword.trim(), 10);
+
+    const result = await agentRepo.verifyAndResetPassword(normalized, otpOrToken, newPasswordHash);
+    if (!result.success) {
+      res.status(400).json({ success: false, message: result.message });
+      return;
+    }
+
+    setImmediate(async () => {
+      try {
+        await sendPasswordResetSuccessEmail({
+          name: result.agent?.name || 'Delivery Partner',
+          email: normalized,
+          userType: 'agent',
+        });
+      } catch (err) {
+        console.error('[Agent Reset Success Email Error]:', err);
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Your Delivery Agent password has been successfully reset! You can now log in.',
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

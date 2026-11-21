@@ -19,6 +19,9 @@ async function startServer() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(50) DEFAULT 'prefer_not_to_say';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
       `);
 
       // Ensure delivery_agents table exists
@@ -65,6 +68,9 @@ async function startServer() {
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS current_lng DOUBLE PRECISION DEFAULT 78.3908;
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS cash_deposit_status VARCHAR(50) DEFAULT 'NONE';
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS deposit_rejection_reason TEXT;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
       `);
 
       // Ensure persistent notifications table exists for Admin & Delivery Agents

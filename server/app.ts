@@ -3,6 +3,7 @@ import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { getDbDiagnostics, pool, verifyConnection } from './db/pool.js';
 import { runSeed } from './db/seed.js';
+import { ensureSchemaMigrations } from './db/migrations.js';
 import { inventoryRepo } from './repositories/inventoryRepo.js';
 import { storeRepo } from './repositories/storeRepo.js';
 import { authRouter } from './routes/auth.js';
@@ -34,6 +35,9 @@ export function createExpressApp() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
+  // Auto-run idempotent schema migrations on app initialization
+  ensureSchemaMigrations().catch(err => console.warn('[Migrations Init Warning]:', err.message));
+
   // Request logger for tracing
   app.use((req, res, next) => {
     const start = Date.now();
@@ -48,6 +52,7 @@ export function createExpressApp() {
 
   // REST API Routes
   app.use('/api/users', authRouter);
+  app.use('/api/auth', authRouter);
   app.use('/api/agent', agentRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/admin/analytics', adminAnalyticsRouter);
@@ -61,6 +66,8 @@ export function createExpressApp() {
   app.post('/api/logout', (req, res, next) => authRouter(req, res, next));
   app.post('/api/register', (req, res, next) => authRouter(req, res, next));
   app.post('/api/login', (req, res, next) => authRouter(req, res, next));
+  app.post('/api/forgot-password', (req, res, next) => authRouter(req, res, next));
+  app.post('/api/reset-password', (req, res, next) => authRouter(req, res, next));
 
   // Category Taxonomy Endpoint
   app.get('/api/categories', (_req, res) => {

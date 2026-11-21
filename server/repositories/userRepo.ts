@@ -87,6 +87,65 @@ export class UserRepository {
     );
   }
 
+  async setPasswordResetOtp(email: string, otp: string, token: string, expiresAt: Date): Promise<boolean> {
+    const normalized = email.trim().toLowerCase();
+    const res = await query(
+      `UPDATE users
+       SET reset_password_otp = $1, reset_password_token = $2, reset_password_expires_at = $3
+       WHERE LOWER(email) = LOWER($4) AND role != 'admin'
+       RETURNING id, role`,
+      [otp, token, expiresAt, normalized]
+    );
+    return (res.rowCount || 0) > 0;
+  }
+
+  async verifyAndResetPassword(email: string, otpOrToken: string, newPasswordHash: string): Promise<{ success: boolean; message: string; user?: User }> {
+    const normalized = email.trim().toLowerCase();
+    const cleanCode = otpOrToken.trim();
+
+    const userRes = await query(
+      `SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [normalized]
+    );
+    if (userRes.rows.length === 0) {
+      return { success: false, message: 'No customer account found with this email address.' };
+    }
+
+    const userRow = userRes.rows[0];
+    if (userRow.role === 'admin') {
+      return { success: false, message: 'Password reset is not permitted for administrator accounts.' };
+    }
+
+    if (!userRow.reset_password_otp && !userRow.reset_password_token) {
+      return { success: false, message: 'No active password reset request found. Please request a new OTP.' };
+    }
+
+    if (userRow.reset_password_expires_at && new Date() > new Date(userRow.reset_password_expires_at)) {
+      return { success: false, message: 'Password reset OTP has expired. Please request a new code.' };
+    }
+
+    const matchesOtp = userRow.reset_password_otp && String(userRow.reset_password_otp).trim() === cleanCode;
+    const matchesToken = userRow.reset_password_token && String(userRow.reset_password_token).trim() === cleanCode;
+
+    if (!matchesOtp && !matchesToken) {
+      return { success: false, message: 'Invalid verification OTP or reset token. Please check and try again.' };
+    }
+
+    const updateRes = await query(
+      `UPDATE users
+       SET password = $1, reset_password_otp = NULL, reset_password_token = NULL, reset_password_expires_at = NULL
+       WHERE id = $2
+       RETURNING *`,
+      [newPasswordHash, userRow.id]
+    );
+
+    return {
+      success: true,
+      message: 'Password reset successfully.',
+      user: mapUserRow(updateRes.rows[0]),
+    };
+  }
+
   async findById(id: string | number): Promise<User | null> {
     const isNum = !isNaN(Number(id));
     const res = await query(
