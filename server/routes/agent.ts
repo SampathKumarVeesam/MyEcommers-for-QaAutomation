@@ -145,14 +145,6 @@ agentRouter.post('/login', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    if (!agentWithCreds.isActive) {
-      res.status(403).json({
-        success: false,
-        message: 'Your delivery agent account is inactive. Please contact the administrator.',
-      });
-      return;
-    }
-
     const isMatch = bcrypt.compareSync(password, agentWithCreds.passwordHash);
     if (!isMatch) {
       res.status(401).json({ success: false, message: 'Invalid email or password' });
