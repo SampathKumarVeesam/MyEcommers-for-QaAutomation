@@ -130,6 +130,27 @@ ordersRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// GET /api/orders/pending-feedback (Retrieve orders pending post-delivery feedback for current customer)
+// IMPORTANT: Declared BEFORE /:id to prevent Express from treating 'pending-feedback' as an :id parameter
+ordersRouter.get('/pending-feedback', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id || (req.query.userId as string);
+    if (!userId) {
+      res.status(200).json({ success: true, data: [] });
+      return;
+    }
+
+    const pending = await orderRepo.getPendingFeedbackOrders(userId);
+    res.status(200).json({
+      success: true,
+      data: pending,
+    });
+  } catch (err: any) {
+    console.error('[Pending Feedback Error]:', err);
+    res.status(500).json({ success: false, message: 'Failed to retrieve pending feedback orders' });
+  }
+});
+
 // GET /api/orders/:id (Fetch single order from PostgreSQL)
 ordersRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -447,26 +468,6 @@ ordersRouter.patch('/:id/cancel', optionalAuth, async (req: AuthenticatedRequest
       success: false,
       message: `Failed to cancel order in PostgreSQL: ${error.message || 'Database error'}`,
     });
-  }
-});
-
-// GET /api/orders/pending-feedback (Retrieve orders pending post-delivery feedback for current customer)
-ordersRouter.get('/pending-feedback', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  try {
-    const userId = req.user?.id || (req.query.userId as string);
-    if (!userId) {
-      res.status(200).json({ success: true, data: [] });
-      return;
-    }
-
-    const pending = await orderRepo.getPendingFeedbackOrders(userId);
-    res.status(200).json({
-      success: true,
-      data: pending,
-    });
-  } catch (err: any) {
-    console.error('[Pending Feedback Error]:', err);
-    res.status(500).json({ success: false, message: 'Failed to retrieve pending feedback orders' });
   }
 });
 
