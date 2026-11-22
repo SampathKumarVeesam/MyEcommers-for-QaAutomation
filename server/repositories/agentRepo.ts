@@ -338,6 +338,18 @@ export class AgentRepository {
     }
   }
 
+  async updateCoordinates(agentId: string, lat: number, lng: number): Promise<void> {
+    await query(
+      `UPDATE delivery_agents
+       SET current_lat = $1,
+           current_lng = $2,
+           last_active_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $3`,
+      [lat, lng, agentId]
+    );
+  }
+
   async recordCashCollection(agentId: string, amount: number): Promise<void> {
     await query(
       `UPDATE delivery_agents

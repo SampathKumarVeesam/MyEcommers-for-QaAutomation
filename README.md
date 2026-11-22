@@ -197,6 +197,10 @@ To ensure testing isolation, the OpenAPI Swagger Explorer is served **completely
 - `GET /api/agent/me` — Retrieve authenticated agent profile and earnings balance.
 - `PUT /api/agent/profile` — Update agent personal and delivery vehicle settings.
 - `POST /api/agent/profile/avatar` — Upload custom agent avatar image (JPG/PNG, up to 5MB Base64).
+- `GET /api/orders/:id/tracking` — Single source of truth for dynamic map coordinates, moving rider GPS, and server-synchronized countdown ETA.
+- `PATCH /api/orders/:id/location` — Real-time update of delivery rider GPS coordinates during transit.
+- `GET /api/orders/:id/nearest-agent` — Radar discovery of closest active online delivery agent for handoff.
+- `POST /api/orders/:id/transfer` — Atomic emergency order handoff to nearest available agent with validation (>= 15 chars).
 - `GET /api/agent/orders` — List live delivery tasks assigned to the authenticated agent.
 - `POST /api/agent/orders/:id/verify-otp` — Validate customer 6-digit delivery OTP.
 - `POST /api/agent/orders/:id/collect-payment` — Settle Cash or UPI payment, mark order DELIVERED, and credit agent wallet ($15).

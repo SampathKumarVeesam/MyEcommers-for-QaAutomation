@@ -2650,6 +2650,201 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/orders/{id}/tracking": {
+      "get": {
+        "tags": [
+          "Customer - Orders",
+          "Delivery Partner Portal"
+        ],
+        "summary": "Single source of truth for dynamic live order map, moving agent GPS coordinates, and synchronized server ETA countdown",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live tracking and synchronized countdown details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order_id": { "type": "string", "example": "42" },
+                        "order_number": { "type": "string", "example": "ORD-2026-78491" },
+                        "status": { "type": "string", "example": "out_for_delivery" },
+                        "server_now": { "type": "string", "format": "date-time" },
+                        "order_proceeded_at": { "type": "string", "format": "date-time" },
+                        "estimated_duration_seconds": { "type": "integer", "example": 1200 },
+                        "estimated_delivery_at": { "type": "string", "format": "date-time" },
+                        "is_delayed": { "type": "boolean", "example": false },
+                        "delay_started_at": { "type": "string", "format": "date-time", "nullable": true },
+                        "extra_delay_seconds": { "type": "integer", "example": 0 },
+                        "store_coords": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } },
+                        "customer_coords": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } },
+                        "agent_coords": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        }
+      }
+    },
+    "/orders/{id}/location": {
+      "patch": {
+        "tags": [
+          "Delivery Partner Portal"
+        ],
+        "summary": "Update moving delivery rider GPS coordinates during active delivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["lat", "lng"],
+                "properties": {
+                  "lat": { "type": "number", "example": 17.4486 },
+                  "lng": { "type": "number", "example": 78.3908 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Location updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "Location updated successfully" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/nearest-agent": {
+      "get": {
+        "tags": [
+          "Delivery Partner Portal"
+        ],
+        "summary": "Preview the closest online active delivery agent for emergency handoff radar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Closest online agent details, distance, and estimated handoff ETA",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "example": "agent-102" },
+                        "name": { "type": "string", "example": "Vikram Rao" },
+                        "phone": { "type": "string", "example": "+91 98490 11223" },
+                        "distanceFormatted": { "type": "string", "example": "0.9 km away" },
+                        "handoffEtaMinutes": { "type": "integer", "example": 4 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No nearby online delivery agents available"
+          }
+        }
+      }
+    },
+    "/orders/{id}/transfer": {
+      "post": {
+        "tags": [
+          "Delivery Partner Portal"
+        ],
+        "summary": "Atomic emergency order handoff to the nearest available delivery executive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["transferReason"],
+                "properties": {
+                  "transferReason": {
+                    "type": "string",
+                    "minLength": 15,
+                    "example": "Vehicle breakdown / flat tire on delivery route at Madhapur junction"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order successfully reassigned to nearest agent with recalculated ETA"
+          },
+          "400": {
+            "description": "Invalid transfer reason (must be >= 15 characters)"
+          },
+          "409": {
+            "description": "Conflict - No nearby online delivery agents currently available"
+          }
+        }
+      }
+    },
     "/orders/{id}/cancel": {
       "patch": {
         "tags": [

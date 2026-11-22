@@ -570,6 +570,100 @@ agentRouter.post('/orders/:id/mark-cash-deposited', requireAgentAuth, async (req
   }
 });
 
+// GET /api/agent/orders/:id/tracking - Single source of truth for agent view
+agentRouter.get('/orders/:id/tracking', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const tracking = await orderRepo.getOrderTracking(id);
+    if (!tracking) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found.` });
+      return;
+    }
+    res.status(200).json({ success: true, data: tracking });
+  } catch (err: any) {
+    console.error('[Agent Order Tracking Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to fetch tracking: ${err.message}` });
+  }
+});
+
+// PATCH /api/agent/orders/:id/location & POST /api/agent/orders/:id/location - Update live moving rider coordinates
+const handleAgentOrderLocation = async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { lat, lng } = req.body || {};
+    if (lat === undefined || lng === undefined || isNaN(Number(lat)) || isNaN(Number(lng))) {
+      res.status(400).json({ success: false, message: 'Valid lat and lng coordinates are required.' });
+      return;
+    }
+    const result = await orderRepo.updateOrderLocation(id, Number(lat), Number(lng));
+    if (!result.success) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found.` });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Location updated successfully',
+      data: {
+        agent_lat: Number(lat),
+        agent_lng: Number(lng),
+        location_updated_at: new Date().toISOString(),
+      },
+    });
+  } catch (err: any) {
+    console.error('[Agent Update Location Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to update location: ${err.message}` });
+  }
+};
+agentRouter.patch('/orders/:id/location', requireAgentAuth, handleAgentOrderLocation);
+agentRouter.post('/orders/:id/location', requireAgentAuth, handleAgentOrderLocation);
+
+// GET /api/agent/orders/:id/nearest-agent - Nearest agent for handoff preview
+agentRouter.get('/orders/:id/nearest-agent', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const nearest = await orderRepo.findNearestActiveAgent(id, req.agent!.id);
+    if (!nearest) {
+      res.status(404).json({
+        success: false,
+        message: 'No nearby online delivery agents are currently available for transfer.',
+      });
+      return;
+    }
+    res.status(200).json({ success: true, data: nearest });
+  } catch (err: any) {
+    console.error('[Agent Nearest Agent Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to find nearest agent: ${err.message}` });
+  }
+});
+
+// POST /api/agent/orders/:id/transfer - Emergency order transfer to nearest active delivery agent
+agentRouter.post('/orders/:id/transfer', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { transferReason, handoffCoords } = req.body || {};
+
+    if (!transferReason || typeof transferReason !== 'string' || transferReason.trim().length < 15) {
+      res.status(400).json({
+        success: false,
+        message: 'A valid transfer reason of at least 15 characters is required.',
+      });
+      return;
+    }
+
+    const result = await orderRepo.transferOrder(id, req.agent!.id, transferReason.trim(), handoffCoords);
+    if (!result.success) {
+      const status = result.message.includes('No nearby online delivery agents') ? 409 : 400;
+      res.status(status).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Agent Transfer Order Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to transfer order: ${err.message}` });
+  }
+});
+
 // POST /api/agent/cash-deposit/submit (Agent submits entire pending cash balance deposited at Hyderabad store)
 agentRouter.post('/cash-deposit/submit', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
   try {

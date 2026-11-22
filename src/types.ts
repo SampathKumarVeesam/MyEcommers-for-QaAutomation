@@ -65,6 +65,8 @@ export interface Address {
   postalCode: string;
   country: string;
   phone: string;
+  lat?: number;
+  lng?: number;
 }
 
 export type ProductCategory = 'fashion' | 'electronics' | 'audio' | 'beauty';
@@ -165,6 +167,20 @@ export interface Order {
   paymentSettlementStatus?: 'PAID_ONLINE' | 'QR_PAID_AWAITING_ADMIN' | 'QR_AMOUNT_RECEIVED' | 'CASH_COLLECTED_BY_AGENT' | 'CASH_DEPOSIT_REQUESTED' | 'CASH_DEPOSITED_AT_STORE' | 'SETTLED' | string;
   deliveryLat?: number;
   deliveryLng?: number;
+  customerLat?: number;
+  customerLng?: number;
+  agentLat?: number;
+  agentLng?: number;
+  locationUpdatedAt?: string | null;
+  orderProceededAt?: string | null;
+  estimatedDurationSeconds?: number;
+  estimatedDeliveryAt?: string | null;
+  isDelayed?: boolean;
+  delayStartedAt?: string | null;
+  extraDelaySeconds?: number;
+  transferReason?: string | null;
+  transferredFromAgentName?: string | null;
+  transferredFromAgentId?: string | null;
   deliveryFee?: number;
   codPaymentMethod?: 'cash' | 'upi' | null;
   codPaymentStatus?: 'pending' | 'paid' | null;
@@ -176,6 +192,55 @@ export interface Order {
   depositRejectionNote?: string | null;
   feedbackStatus?: 'pending' | 'submitted' | 'dismissed_forever';
   nextFeedbackReminderAt?: string | null;
+}
+
+export interface OrderTransfer {
+  id: number;
+  orderId: number | string;
+  fromAgentId: string | null;
+  fromAgentName?: string | null;
+  toAgentId: string | null;
+  toAgentName?: string | null;
+  transferReason: string;
+  handoffLat?: number | null;
+  handoffLng?: number | null;
+  transferredAt: string;
+}
+
+export interface OrderTrackingInfo {
+  order_id: string | number;
+  order_number: string;
+  status: OrderStatus;
+  server_now: string;
+  order_proceeded_at: string | null;
+  estimated_duration_seconds: number;
+  estimated_delivery_at: string | null;
+  is_delayed: boolean;
+  delay_started_at: string | null;
+  extra_delay_seconds: number;
+  store_coords: { lat: number; lng: number };
+  customer_coords: { lat: number; lng: number };
+  agent_coords: { lat: number; lng: number };
+  location_updated_at: string | null;
+  assigned_agent: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    vehicleType?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+  transfers?: OrderTransfer[];
+}
+
+export interface NearestAgentInfo {
+  id: string;
+  name: string;
+  phone?: string | null;
+  vehicleType?: string | null;
+  avatarUrl?: string | null;
+  distanceKm: number;
+  distanceFormatted: string;
+  handoffEtaMinutes: number;
 }
 
 export interface AuthResponse {

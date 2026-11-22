@@ -1,10 +1,11 @@
-import { Address, AmountHandlingSummary, BasketItem, DeliveryAgent, Order, OrderStatus, PaymentMethod } from '../../src/types.js';
+import { Address, AmountHandlingSummary, BasketItem, DeliveryAgent, NearestAgentInfo, Order, OrderStatus, OrderTrackingInfo, OrderTransfer, PaymentMethod } from '../../src/types.js';
 import { getClient, query } from '../db/pool.js';
 import { agentRepo } from './agentRepo.js';
 import { inventoryRepo } from './inventoryRepo.js';
 import { notificationRepo } from './notificationRepo.js';
 import { mapProductRow, productRepo } from './productRepo.js';
 import { userRepo } from './userRepo.js';
+import { STORE_COORDS, calculateHaversineDistance, calculateRouteDuration, resolveCoordinatesForAddress } from '../services/routingService.js';
 
 export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: DeliveryAgent | null = null): Order {
   const address: Address = {
@@ -45,8 +46,22 @@ export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: D
     paymentMode: (row.payment_mode as any) || (row.payment_method === 'cod' ? 'COD' : 'PREPAID'),
     codCollectionMethod: row.cod_collection_method || null,
     paymentSettlementStatus: row.payment_settlement_status || (row.payment_method === 'cod' ? 'PENDING' : 'PAID_ONLINE'),
-    deliveryLat: row.delivery_lat ? parseFloat(row.delivery_lat) : 17.4375,
-    deliveryLng: row.delivery_lng ? parseFloat(row.delivery_lng) : 78.4482,
+    deliveryLat: row.delivery_lat ? parseFloat(row.delivery_lat) : (row.customer_lat ? parseFloat(row.customer_lat) : 17.4375),
+    deliveryLng: row.delivery_lng ? parseFloat(row.delivery_lng) : (row.customer_lng ? parseFloat(row.customer_lng) : 78.4482),
+    customerLat: row.customer_lat ? parseFloat(row.customer_lat) : (row.delivery_lat ? parseFloat(row.delivery_lat) : 17.4375),
+    customerLng: row.customer_lng ? parseFloat(row.customer_lng) : (row.delivery_lng ? parseFloat(row.delivery_lng) : 78.4482),
+    agentLat: row.agent_lat ? parseFloat(row.agent_lat) : 17.4486,
+    agentLng: row.agent_lng ? parseFloat(row.agent_lng) : 78.3908,
+    locationUpdatedAt: row.location_updated_at ? new Date(row.location_updated_at).toISOString() : null,
+    orderProceededAt: row.order_proceeded_at ? new Date(row.order_proceeded_at).toISOString() : null,
+    estimatedDurationSeconds: row.estimated_duration_seconds ? parseInt(row.estimated_duration_seconds, 10) : 1200,
+    estimatedDeliveryAt: row.estimated_delivery_at ? new Date(row.estimated_delivery_at).toISOString() : null,
+    isDelayed: Boolean(row.is_delayed),
+    delayStartedAt: row.delay_started_at ? new Date(row.delay_started_at).toISOString() : null,
+    extraDelaySeconds: row.extra_delay_seconds ? parseInt(row.extra_delay_seconds, 10) : 0,
+    transferReason: row.transfer_reason || null,
+    transferredFromAgentName: row.transferred_from_agent_name || null,
+    transferredFromAgentId: row.transferred_from_agent_id ? String(row.transferred_from_agent_id) : null,
     deliveryFee: row.delivery_fee ? parseFloat(row.delivery_fee) : 15.00,
     codPaymentMethod: row.cod_payment_method || null,
     codPaymentStatus: row.cod_payment_status || (row.payment_method === 'cod' ? (row.payment_status === 'paid' ? 'paid' : 'pending') : null),
@@ -97,8 +112,16 @@ export class OrderRepository {
       const deliveryFee = 15.00;
       const paymentMode = data.paymentMethod === 'cod' ? 'COD' : 'PREPAID';
       const paymentSettlementStatus = data.paymentMethod === 'cod' ? 'PENDING' : 'PAID_ONLINE';
-      const deliveryLat = 17.4319; // Default Jubilee Hills / Hyderabad customer pin
-      const deliveryLng = 78.4073;
+      
+      // Dynamic Customer Coordinates & Route ETA
+      const resolvedCoords = resolveCoordinatesForAddress(data.shippingAddress);
+      const customerLat = (data as any).customerLat || (data.shippingAddress as any)?.lat || resolvedCoords.lat;
+      const customerLng = (data as any).customerLng || (data.shippingAddress as any)?.lng || resolvedCoords.lng;
+      const agentLat = STORE_COORDS.lat;
+      const agentLng = STORE_COORDS.lng;
+
+      const { durationSeconds } = await calculateRouteDuration(STORE_COORDS, { lat: customerLat, lng: customerLng });
+      const estimatedDurationSeconds = durationSeconds;
 
       // 1. Insert order header into public."order"
       const orderRes = await client.query(
@@ -108,8 +131,10 @@ export class OrderRepository {
            payment_method, payment_status, address_line_1, address_postal_code,
            address_city, address_state, address_country, assigned_agent_id,
            delivery_fee, cod_payment_status, feedback_status, assignment_status,
-           payment_mode, payment_settlement_status, delivery_lat, delivery_lng
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+           payment_mode, payment_settlement_status, delivery_lat, delivery_lng,
+           customer_lat, customer_lng, agent_lat, agent_lng, location_updated_at,
+           estimated_duration_seconds
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, NOW(), $33)
          RETURNING *`,
         [
           orderNumber,
@@ -138,8 +163,13 @@ export class OrderRepository {
           'UNASSIGNED',
           paymentMode,
           paymentSettlementStatus,
-          deliveryLat,
-          deliveryLng,
+          customerLat,
+          customerLng,
+          customerLat,
+          customerLng,
+          agentLat,
+          agentLng,
+          estimatedDurationSeconds,
         ]
       );
 
@@ -490,7 +520,10 @@ export class OrderRepository {
            status = 'out_for_delivery',
            delivery_otp = $1,
            otp_verified = FALSE,
-           assigned_agent_id = $2
+           assigned_agent_id = $2,
+           order_proceeded_at = COALESCE(order_proceeded_at, NOW()),
+           estimated_delivery_at = COALESCE(estimated_delivery_at, NOW() + (COALESCE(estimated_duration_seconds, 1200) * INTERVAL '1 second')),
+           is_delayed = FALSE
        WHERE (order_number = $3 ${isNum ? 'OR id = $4' : ''})
        RETURNING *`,
       isNum ? [otp, agentId, String(orderId), Number(orderId)] : [otp, agentId, String(orderId)]
@@ -1297,6 +1330,290 @@ export class OrderRepository {
       orders.push(mapOrderRow(row, items));
     }
     return orders;
+  }
+
+  async updateOrderLocation(
+    orderId: string | number,
+    lat: number,
+    lng: number
+  ): Promise<{ success: boolean; order?: Order }> {
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET agent_lat = $1,
+           agent_lng = $2,
+           location_updated_at = NOW()
+       WHERE (order_number = $3 ${isNum ? 'OR id = $4' : ''})
+       RETURNING *`,
+      isNum ? [lat, lng, String(orderId), Number(orderId)] : [lat, lng, String(orderId)]
+    );
+    if (res.rows.length === 0) return { success: false };
+    const row = res.rows[0];
+    if (row.assigned_agent_id) {
+      await agentRepo.updateCoordinates(row.assigned_agent_id, lat, lng);
+    }
+    const items = await this.getOrderItems(row.id);
+    const agent = row.assigned_agent_id ? await agentRepo.findById(row.assigned_agent_id) : null;
+    return { success: true, order: mapOrderRow(row, items, agent) };
+  }
+
+  async getOrderTracking(orderId: string | number): Promise<OrderTrackingInfo | null> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return null;
+
+    const serverNow = new Date();
+    let isDelayed = order.isDelayed || false;
+    let delayStartedAt = order.delayStartedAt || null;
+    let extraDelaySeconds = order.extraDelaySeconds || 0;
+
+    // Check automatic delay escalation if order is active and out for delivery
+    if (
+      order.orderProceededAt &&
+      order.estimatedDeliveryAt &&
+      order.orderStatus !== 'delivered' &&
+      order.orderStatus !== 'cancelled'
+    ) {
+      const estimatedTime = new Date(order.estimatedDeliveryAt).getTime();
+      if (serverNow.getTime() > estimatedTime) {
+        isDelayed = true;
+        if (!delayStartedAt) {
+          delayStartedAt = order.estimatedDeliveryAt;
+        }
+        extraDelaySeconds = Math.max(0, Math.round((serverNow.getTime() - estimatedTime) / 1000));
+
+        // Update database with delayed state
+        const isNum = !isNaN(Number(orderId));
+        await query(
+          `UPDATE "order"
+           SET is_delayed = TRUE,
+               delay_started_at = COALESCE(delay_started_at, estimated_delivery_at),
+               extra_delay_seconds = $1
+           WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})`,
+          isNum ? [extraDelaySeconds, String(orderId), Number(orderId)] : [extraDelaySeconds, String(orderId)]
+        );
+      }
+    }
+
+    // Retrieve order transfers audit trail
+    const transferRes = await query(
+      `SELECT ot.*, 
+              fa.name as from_agent_name, 
+              ta.name as to_agent_name
+       FROM order_transfers ot
+       LEFT JOIN delivery_agents fa ON ot.from_agent_id = fa.id
+       LEFT JOIN delivery_agents ta ON ot.to_agent_id = ta.id
+       WHERE ot.order_id = $1
+       ORDER BY ot.transferred_at ASC`,
+      [Number(order.id)]
+    );
+
+    const transfers: OrderTransfer[] = transferRes.rows.map(r => ({
+      id: r.id,
+      orderId: r.order_id,
+      fromAgentId: r.from_agent_id,
+      fromAgentName: r.from_agent_name,
+      toAgentId: r.to_agent_id,
+      toAgentName: r.to_agent_name,
+      transferReason: r.transfer_reason,
+      handoffLat: r.handoff_lat ? parseFloat(r.handoff_lat) : null,
+      handoffLng: r.handoff_lng ? parseFloat(r.handoff_lng) : null,
+      transferredAt: new Date(r.transferred_at).toISOString(),
+    }));
+
+    return {
+      order_id: order.id,
+      order_number: order.orderNumber,
+      status: order.orderStatus,
+      server_now: serverNow.toISOString(),
+      order_proceeded_at: order.orderProceededAt || null,
+      estimated_duration_seconds: order.estimatedDurationSeconds || 1200,
+      estimated_delivery_at: order.estimatedDeliveryAt || null,
+      is_delayed: isDelayed,
+      delay_started_at: delayStartedAt,
+      extra_delay_seconds: extraDelaySeconds,
+      store_coords: STORE_COORDS,
+      customer_coords: {
+        lat: order.customerLat || order.deliveryLat || 17.4375,
+        lng: order.customerLng || order.deliveryLng || 78.4482,
+      },
+      agent_coords: {
+        lat: order.agentLat || STORE_COORDS.lat,
+        lng: order.agentLng || STORE_COORDS.lng,
+      },
+      location_updated_at: order.locationUpdatedAt || null,
+      assigned_agent: order.assignedAgent
+        ? {
+            id: String(order.assignedAgent.id),
+            name: order.assignedAgent.name,
+            phone: order.assignedAgent.phone,
+            vehicleType: order.assignedAgent.vehicleType,
+            avatarUrl: order.assignedAgent.avatarUrl,
+          }
+        : null,
+      transfers,
+    };
+  }
+
+  async findNearestActiveAgent(
+    orderId: string | number,
+    currentAgentId: string
+  ): Promise<NearestAgentInfo | null> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return null;
+
+    const refLat = order.agentLat || STORE_COORDS.lat;
+    const refLng = order.agentLng || STORE_COORDS.lng;
+
+    const res = await query(
+      `SELECT * FROM delivery_agents
+       WHERE is_active = TRUE
+         AND is_logged_in = TRUE
+         AND is_email_verified = TRUE
+         AND id != $1
+       ORDER BY last_active_at DESC`,
+      [currentAgentId]
+    );
+
+    if (res.rows.length === 0) return null;
+
+    const agentsWithDistances = res.rows.map(r => {
+      const aLat = r.current_lat ? parseFloat(r.current_lat) : STORE_COORDS.lat;
+      const aLng = r.current_lng ? parseFloat(r.current_lng) : STORE_COORDS.lng;
+      const dist = calculateHaversineDistance(refLat, refLng, aLat, aLng);
+      return {
+        row: r,
+        dist,
+      };
+    });
+
+    agentsWithDistances.sort((a, b) => a.dist - b.dist);
+    const nearest = agentsWithDistances[0];
+    const handoffMinutes = Math.max(3, Math.round((nearest.dist / 25) * 60) + 2);
+
+    return {
+      id: String(nearest.row.id),
+      name: nearest.row.name,
+      phone: nearest.row.phone,
+      vehicleType: nearest.row.vehicle_type,
+      avatarUrl: nearest.row.avatar_url,
+      distanceKm: nearest.dist,
+      distanceFormatted: `${nearest.dist.toFixed(1)} km away`,
+      handoffEtaMinutes: handoffMinutes,
+    };
+  }
+
+  async transferOrder(
+    orderId: string | number,
+    fromAgentId: string,
+    transferReason: string,
+    handoffCoords?: { lat: number; lng: number }
+  ): Promise<{ success: boolean; message: string; newAgent?: DeliveryAgent; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) {
+      return { success: false, message: 'Order not found' };
+    }
+
+    if (String(order.assignedAgentId) !== String(fromAgentId)) {
+      return { success: false, message: 'You are not the assigned agent for this order.' };
+    }
+
+    const trimmedReason = (transferReason || '').trim();
+    if (trimmedReason.length < 15) {
+      return { success: false, message: 'Transfer reason must be at least 15 characters describing the route obstruction or emergency.' };
+    }
+
+    const fromAgent = await agentRepo.findById(fromAgentId);
+    const nearestAgentInfo = await this.findNearestActiveAgent(orderId, fromAgentId);
+    if (!nearestAgentInfo) {
+      return {
+        success: false,
+        message: 'No nearby online delivery agents are currently available for transfer.',
+      };
+    }
+
+    const toAgent = await agentRepo.findById(nearestAgentInfo.id);
+    if (!toAgent) {
+      return { success: false, message: 'Failed to resolve destination delivery agent.' };
+    }
+
+    const handoffLat = handoffCoords?.lat || order.agentLat || STORE_COORDS.lat;
+    const handoffLng = handoffCoords?.lng || order.agentLng || STORE_COORDS.lng;
+    const extraHandoffSeconds = nearestAgentInfo.handoffEtaMinutes * 60;
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+
+      const isNum = !isNaN(Number(orderId));
+      const updateRes = await client.query(
+        `UPDATE "order"
+         SET assigned_agent_id = $1,
+             transfer_reason = $2,
+             transferred_from_agent_name = $3,
+             transferred_from_agent_id = $4,
+             agent_lat = $5,
+             agent_lng = $6,
+             location_updated_at = NOW(),
+             estimated_delivery_at = COALESCE(estimated_delivery_at, NOW()) + ($7 * INTERVAL '1 second')
+         WHERE (order_number = $8 ${isNum ? 'OR id = $9' : ''})
+         RETURNING *`,
+        isNum
+          ? [toAgent.id, trimmedReason, fromAgent?.name || 'Previous Agent', fromAgentId, toAgent.currentLat || handoffLat, toAgent.currentLng || handoffLng, extraHandoffSeconds, String(orderId), Number(orderId)]
+          : [toAgent.id, trimmedReason, fromAgent?.name || 'Previous Agent', fromAgentId, toAgent.currentLat || handoffLat, toAgent.currentLng || handoffLng, extraHandoffSeconds, String(orderId)]
+      );
+
+      const updatedRow = updateRes.rows[0];
+
+      await client.query(
+        `INSERT INTO order_transfers (order_id, from_agent_id, to_agent_id, transfer_reason, handoff_lat, handoff_lng)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [updatedRow.id, fromAgentId, toAgent.id, trimmedReason, handoffLat, handoffLng]
+      );
+
+      // Insert persistent notifications
+      // 1. Admin Alert
+      await client.query(
+        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, title, message, amount)
+         VALUES ('ADMIN', NULL, $1, $2, 'ORDER_TRANSFERRED', $3, $4, $5)`,
+        [
+          updatedRow.id,
+          toAgent.id,
+          `Emergency Order Transfer: Order #${order.orderNumber}`,
+          `Order #${order.orderNumber} transferred from ${fromAgent?.name || 'Agent'} to ${toAgent.name} due to: ${trimmedReason}`,
+          order.grandTotal,
+        ]
+      );
+
+      // 2. Transferred-To Agent Alert
+      await client.query(
+        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, title, message, amount)
+         VALUES ('DELIVERY_AGENT', $1, $2, $1, 'ORDER_TRANSFERRED_TO_YOU', $3, $4, $5)`,
+        [
+          toAgent.id,
+          updatedRow.id,
+          `Handoff Order Assigned: #${order.orderNumber}`,
+          `Order #${order.orderNumber} transferred to you from ${fromAgent?.name || 'Agent'}. Reason: ${trimmedReason}. Please proceed to the handoff point.`,
+          order.grandTotal,
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      const items = await this.getOrderItems(updatedRow.id);
+      const mapped = mapOrderRow(updatedRow, items, toAgent);
+
+      return {
+        success: true,
+        message: `Order successfully transferred to nearest agent ${toAgent.name}.`,
+        newAgent: toAgent,
+        order: mapped,
+      };
+    } catch (err: any) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async cancelOrder(id: string | number): Promise<Order | null> {

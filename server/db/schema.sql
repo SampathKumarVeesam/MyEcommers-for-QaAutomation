@@ -123,6 +123,19 @@ CREATE TABLE IF NOT EXISTS "order" (
   payment_settlement_status VARCHAR(50) DEFAULT 'PENDING',
   delivery_lat DOUBLE PRECISION DEFAULT 17.4375,
   delivery_lng DOUBLE PRECISION DEFAULT 78.4482,
+  customer_lat DOUBLE PRECISION DEFAULT 17.4375,
+  customer_lng DOUBLE PRECISION DEFAULT 78.4482,
+  agent_lat DOUBLE PRECISION DEFAULT 17.4486,
+  agent_lng DOUBLE PRECISION DEFAULT 78.3908,
+  location_updated_at TIMESTAMP WITH TIME ZONE,
+  order_proceeded_at TIMESTAMP WITH TIME ZONE,
+  estimated_duration_seconds INTEGER DEFAULT 1200,
+  estimated_delivery_at TIMESTAMP WITH TIME ZONE,
+  is_delayed BOOLEAN DEFAULT FALSE,
+  delay_started_at TIMESTAMP WITH TIME ZONE,
+  extra_delay_seconds INTEGER DEFAULT 0,
+  transfer_reason TEXT,
+  transferred_from_agent_name VARCHAR(255),
   deposit_submitted_at TIMESTAMP WITH TIME ZONE,
   deposit_verified_at TIMESTAMP WITH TIME ZONE,
   deposit_rejection_note TEXT,
@@ -178,6 +191,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   amount NUMERIC(10,2) DEFAULT 0.00,
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6d. ORDER_TRANSFERS TABLE (Emergency Agent Handoff Audit)
+CREATE TABLE IF NOT EXISTS order_transfers (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
+  from_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+  to_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+  transfer_reason TEXT NOT NULL,
+  handoff_lat DOUBLE PRECISION,
+  handoff_lng DOUBLE PRECISION,
+  transferred_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. ORDER_ITEM TABLE

@@ -2,6 +2,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowRight,
+  ArrowRightLeft,
   Banknote,
   Bell,
   Check,
@@ -26,7 +27,9 @@ import {
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../config/api.js';
 import { AppNotification, DeliveryAgent, Gender, Order } from '../types.js';
-import { LiveRouteMap } from './LiveRouteMap.js';
+import { LiveOrderMap } from './LiveOrderMap.js';
+import { DeliveryEtaCountdown } from './DeliveryEtaCountdown.js';
+import { EmergencyTransferModal } from './EmergencyTransferModal.js';
 import { GENDER_PRESET_AVATARS, ProfileModal } from './ProfileModal.js';
 
 interface DeliveryAgentPortalProps {
@@ -78,6 +81,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [activeTab, setActiveTab] = useState<'deliveries' | 'earnings' | 'store-deposit'>('deliveries');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [transferringOrder, setTransferringOrder] = useState<Order | null>(null);
 
   // In-App Notifications
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -1653,6 +1657,20 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               </div>
                             </div>
 
+                            {/* Transferred Order Badge */}
+                            {order.transferReason && (
+                              <div
+                                data-test={`agent-transferred-order-badge-${order.orderNumber}`}
+                                data-testid={`agent-transferred-order-badge-${order.orderNumber}`}
+                                className="p-2.5 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-950 text-xs font-bold flex items-center gap-2 mb-3"
+                              >
+                                <ArrowRightLeft className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>
+                                  Transferred from {order.transferredFromAgentName || 'Previous Agent'} &bull; Reason: {order.transferReason}
+                                </span>
+                              </div>
+                            )}
+
                             {/* 3-Minute Acceptance Alert Bar */}
                             {isPendingAcceptance && (
                               <div className="p-3 bg-amber-100 border border-amber-300 rounded-xl mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1755,17 +1773,54 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               </div>
                             </div>
 
+                            {/* Synchronized Server Countdown & Delay Alert */}
+                            <DeliveryEtaCountdown
+                              orderId={order.orderNumber}
+                              orderStatus={order.orderStatus}
+                              initialProceededAt={order.orderProceededAt}
+                              initialEstimatedDeliveryAt={order.estimatedDeliveryAt}
+                              initialIsDelayed={order.isDelayed}
+                              initialExtraDelaySeconds={order.extraDelaySeconds}
+                              className="mb-3"
+                            />
+
                             {/* Live Map for In-Transit Orders */}
                             {isOutForDelivery && (
                               <div className="mb-3">
-                                <LiveRouteMap
-                                  destinationLat={order.deliveryLat || 17.4375}
-                                  destinationLng={order.deliveryLng || 78.4482}
+                                <LiveOrderMap
+                                  orderId={order.orderNumber}
+                                  destinationLat={order.customerLat || order.deliveryLat || 17.4375}
+                                  destinationLng={order.customerLng || order.deliveryLng || 78.4482}
                                   customerAddress={`${order.shippingAddress.street}, ${order.shippingAddress.city}`}
                                   orderStatus={order.orderStatus}
                                   assignedAgentName={order.assignedAgentName || agent.name}
                                   assignedAgentPhone={order.assignedAgentPhone || agent.phone}
+                                  agentCoords={
+                                    order.agentLat && order.agentLng
+                                      ? { lat: order.agentLat, lng: order.agentLng }
+                                      : { lat: agent.currentLat || 17.4486, lng: agent.currentLng || 78.3908 }
+                                  }
+                                  isAgentView={true}
+                                  onLocationUpdate={(coords) => {
+                                    setAgent(prev => prev ? { ...prev, currentLat: coords.lat, currentLng: coords.lng } : null);
+                                  }}
                                 />
+                              </div>
+                            )}
+
+                            {/* Emergency Order Transfer Action */}
+                            {(isOutForDelivery || isPendingAcceptance) && (
+                              <div className="flex justify-end mb-3">
+                                <button
+                                  type="button"
+                                  data-test={`btn-transfer-order-${order.orderNumber}`}
+                                  data-testid={`btn-transfer-order-${order.orderNumber}`}
+                                  onClick={() => setTransferringOrder(order)}
+                                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                                >
+                                  <ArrowRightLeft className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Transfer Order to Nearest Agent</span>
+                                </button>
                               </div>
                             )}
 
@@ -2157,6 +2212,19 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
         onClose={() => setIsProfileOpen(false)}
         agent={agent}
         onAgentUpdated={updated => setAgent(updated)}
+      />
+
+      {/* Emergency Order Transfer Modal */}
+      <EmergencyTransferModal
+        isOpen={Boolean(transferringOrder)}
+        order={transferringOrder}
+        token={token}
+        onClose={() => setTransferringOrder(null)}
+        onTransferSuccess={newOrder => {
+          setSuccessMsg(`Order #${newOrder.orderNumber} successfully transferred to nearest agent.`);
+          fetchAssignedOrders();
+          fetchAgentProfile();
+        }}
       />
     </div>
   );

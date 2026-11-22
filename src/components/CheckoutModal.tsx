@@ -246,6 +246,46 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 <span className="text-xs text-indigo-600 font-medium">Auto-prefilled for test user</span>
               </div>
 
+              {/* Hyderabad Locality Quick-Select Presets for QA Dynamic Map Testing */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">
+                  Select Delivery Locality (Hyderabad / Telangana Hub)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {[
+                    { name: 'Jubilee Hills', street: 'Road No. 36, Jubilee Hills', city: 'Hyderabad', state: 'Telangana', postalCode: '500033', lat: 17.4319, lng: 78.4073 },
+                    { name: 'Banjara Hills', street: 'Road No. 12, Banjara Hills', city: 'Hyderabad', state: 'Telangana', postalCode: '500034', lat: 17.4156, lng: 78.4350 },
+                    { name: 'Gachibowli', street: 'ISB Road, Financial District', city: 'Hyderabad', state: 'Telangana', postalCode: '500032', lat: 17.4401, lng: 78.3489 },
+                    { name: 'Madhapur', street: 'Plot 45, Ayyappa Society', city: 'Hyderabad', state: 'Telangana', postalCode: '500081', lat: 17.4486, lng: 78.3908 },
+                    { name: 'Secunderabad', street: 'MG Road, Clock Tower', city: 'Secunderabad', state: 'Telangana', postalCode: '500003', lat: 17.4399, lng: 78.4983 },
+                    { name: 'Charminar', street: 'Pathergatti, Old City', city: 'Hyderabad', state: 'Telangana', postalCode: '500002', lat: 17.3616, lng: 78.4747 },
+                  ].map((loc, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      data-test={`checkout-preset-${loc.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      data-testid={`checkout-preset-${loc.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      onClick={() => setAddress({
+                        ...address,
+                        street: loc.street,
+                        city: loc.city,
+                        state: loc.state,
+                        postalCode: loc.postalCode,
+                        lat: loc.lat,
+                        lng: loc.lng,
+                      })}
+                      className={`p-2 rounded-xl text-[11px] font-bold text-left border transition-colors cursor-pointer ${
+                        address.street === loc.street
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      📍 {loc.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="sm:col-span-2">
                   <label className="block font-bold text-slate-700 mb-1">Full Name</label>

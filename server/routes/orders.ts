@@ -157,6 +157,115 @@ ordersRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// GET /api/orders/:id/tracking - Single source of truth for dynamic map & synchronized countdown
+ordersRouter.get('/:id/tracking', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const tracking = await orderRepo.getOrderTracking(id);
+    if (!tracking) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found.` });
+      return;
+    }
+    res.status(200).json({ success: true, data: tracking });
+  } catch (err: any) {
+    console.error('[Order Tracking Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to fetch tracking: ${err.message}` });
+  }
+});
+
+// PATCH /api/orders/:id/location & POST /api/orders/:id/location - Update live moving rider coordinates
+const handleLocationUpdate = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { lat, lng } = req.body || {};
+    if (lat === undefined || lng === undefined || isNaN(Number(lat)) || isNaN(Number(lng))) {
+      res.status(400).json({ success: false, message: 'Valid lat and lng coordinates are required.' });
+      return;
+    }
+    const result = await orderRepo.updateOrderLocation(id, Number(lat), Number(lng));
+    if (!result.success) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found.` });
+      return;
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Location updated successfully',
+      data: {
+        agent_lat: Number(lat),
+        agent_lng: Number(lng),
+        location_updated_at: new Date().toISOString(),
+      },
+    });
+  } catch (err: any) {
+    console.error('[Update Location Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to update location: ${err.message}` });
+  }
+};
+ordersRouter.patch('/:id/location', handleLocationUpdate);
+ordersRouter.post('/:id/location', handleLocationUpdate);
+
+// GET /api/orders/:id/nearest-agent - Nearest available online delivery agent preview
+ordersRouter.get('/:id/nearest-agent', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const order = await orderRepo.getOrderById(id);
+    if (!order) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found.` });
+      return;
+    }
+    const currentAgentId = (req as any).agent?.id || (req as any).user?.id || order.assignedAgentId || '';
+    const nearest = await orderRepo.findNearestActiveAgent(id, String(currentAgentId));
+    if (!nearest) {
+      res.status(404).json({ success: false, message: 'No nearby online delivery agents are currently available for transfer.' });
+      return;
+    }
+    res.status(200).json({ success: true, data: nearest });
+  } catch (err: any) {
+    console.error('[Nearest Agent Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to find nearest agent: ${err.message}` });
+  }
+});
+
+// POST /api/orders/:id/transfer - Emergency order transfer to nearest active delivery agent
+ordersRouter.post('/:id/transfer', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { transferReason, handoffCoords } = req.body || {};
+    
+    if (!transferReason || typeof transferReason !== 'string' || transferReason.trim().length < 15) {
+      res.status(400).json({
+        success: false,
+        message: 'A valid transfer reason of at least 15 characters is required.',
+      });
+      return;
+    }
+
+    const order = await orderRepo.getOrderById(id);
+    if (!order) {
+      res.status(404).json({ success: false, message: `Order '${id}' not found.` });
+      return;
+    }
+
+    const currentAgentId = (req as any).agent?.id || order.assignedAgentId;
+    if (!currentAgentId) {
+      res.status(400).json({ success: false, message: 'Cannot transfer an unassigned order.' });
+      return;
+    }
+
+    const result = await orderRepo.transferOrder(id, String(currentAgentId), transferReason.trim(), handoffCoords);
+    if (!result.success) {
+      const status = result.message.includes('No nearby online delivery agents') ? 409 : 400;
+      res.status(status).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Transfer Order Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to transfer order: ${err.message}` });
+  }
+});
+
 // PATCH /api/orders/:id/status (Updates order status in PostgreSQL & sends automated notification email)
 const handleStatusUpdate = async (req: Request, res: Response): Promise<void> => {
   try {

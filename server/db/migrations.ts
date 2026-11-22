@@ -30,6 +30,31 @@ export async function ensureSchemaMigrations(): Promise<void> {
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
+
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lat DOUBLE PRECISION DEFAULT 17.4375;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lng DOUBLE PRECISION DEFAULT 78.4482;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lat DOUBLE PRECISION DEFAULT 17.4486;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lng DOUBLE PRECISION DEFAULT 78.3908;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS order_proceeded_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER DEFAULT 1200;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_delivery_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_delayed BOOLEAN DEFAULT FALSE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delay_started_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS extra_delay_seconds INTEGER DEFAULT 0;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transfer_reason TEXT;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_name VARCHAR(255);
+
+        CREATE TABLE IF NOT EXISTS order_transfers (
+          id SERIAL PRIMARY KEY,
+          order_id INTEGER NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
+          from_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+          to_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+          transfer_reason TEXT NOT NULL,
+          handoff_lat DOUBLE PRECISION,
+          handoff_lng DOUBLE PRECISION,
+          transferred_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
       `);
       migrationsDone = true;
     } catch (err: any) {

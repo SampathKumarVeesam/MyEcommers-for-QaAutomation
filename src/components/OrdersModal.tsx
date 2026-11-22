@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  ArrowRightLeft,
   Banknote,
   Calendar,
   CheckCircle2,
@@ -12,13 +13,15 @@ import {
   ShieldCheck,
   ShoppingBag,
   Truck,
+  UserCheck,
   X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { Order } from '../types.js';
 import { apiUrl } from '../config/api.js';
-import { LiveRouteMap } from './LiveRouteMap.js';
+import { LiveOrderMap } from './LiveOrderMap.js';
+import { DeliveryEtaCountdown } from './DeliveryEtaCountdown.js';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -396,15 +399,47 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                     );
                   })()}
 
+                  {/* Reassigned Delivery Notice (if transferred) */}
+                  {selectedOrder.transferReason && (
+                    <div
+                      data-test="order-reassigned-notice"
+                      data-testid="order-reassigned-notice"
+                      className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center gap-2"
+                    >
+                      <ArrowRightLeft className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div>
+                        <span className="font-bold">Order Reassigned:</span> Delivery partner updated to{' '}
+                        <strong>{selectedOrder.assignedAgentName || selectedOrder.assignedAgent?.name || 'New Delivery Executive'}</strong>{' '}
+                        due to delivery route obstruction (Reason: {selectedOrder.transferReason}).
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Synchronized Server Countdown & Delay Alert */}
+                  <DeliveryEtaCountdown
+                    orderId={selectedOrder.orderNumber}
+                    orderStatus={selectedOrder.orderStatus}
+                    initialProceededAt={selectedOrder.orderProceededAt}
+                    initialEstimatedDeliveryAt={selectedOrder.estimatedDeliveryAt}
+                    initialIsDelayed={selectedOrder.isDelayed}
+                    initialExtraDelaySeconds={selectedOrder.extraDelaySeconds}
+                  />
+
                   {/* Live Interactive Route Map */}
                   <div className="mt-3">
-                    <LiveRouteMap
-                      destinationLat={selectedOrder.deliveryLat || 17.4375}
-                      destinationLng={selectedOrder.deliveryLng || 78.4482}
+                    <LiveOrderMap
+                      orderId={selectedOrder.orderNumber}
+                      destinationLat={selectedOrder.customerLat || selectedOrder.deliveryLat || 17.4375}
+                      destinationLng={selectedOrder.customerLng || selectedOrder.deliveryLng || 78.4482}
                       customerAddress={`${selectedOrder.shippingAddress.street}, ${selectedOrder.shippingAddress.city}`}
                       orderStatus={selectedOrder.orderStatus}
-                      assignedAgentName={selectedOrder.assignedAgentName}
-                      assignedAgentPhone={selectedOrder.assignedAgentPhone}
+                      agentCoords={
+                        selectedOrder.agentLat && selectedOrder.agentLng
+                          ? { lat: selectedOrder.agentLat, lng: selectedOrder.agentLng }
+                          : undefined
+                      }
+                      assignedAgentName={selectedOrder.assignedAgentName || selectedOrder.assignedAgent?.name}
+                      assignedAgentPhone={selectedOrder.assignedAgentPhone || selectedOrder.assignedAgent?.phone}
                     />
                   </div>
 
