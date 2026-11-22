@@ -55,6 +55,17 @@ export async function ensureSchemaMigrations(): Promise<void> {
           handoff_lng DOUBLE PRECISION,
           transferred_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- Fix any legacy or default coordinates for orders with specific Hyderabad localities (e.g. Tellapur/Osman Nagar/BHEL)
+        UPDATE "order"
+        SET customer_lat = 17.4816, customer_lng = 78.2917, delivery_lat = 17.4816, delivery_lng = 78.2917
+        WHERE (LOWER(COALESCE(address_line_1, '')) LIKE '%tellapur%' 
+            OR LOWER(COALESCE(address_line_1, '')) LIKE '%osman%' 
+            OR LOWER(COALESCE(address_line_1, '')) LIKE '%bhel%'
+            OR LOWER(COALESCE(address_city, '')) LIKE '%tellapur%' 
+            OR LOWER(COALESCE(address_city, '')) LIKE '%osman%' 
+            OR LOWER(COALESCE(address_city, '')) LIKE '%bhel%')
+          AND (customer_lat IS NULL OR ABS(customer_lat - 17.4375) < 0.01 OR ABS(customer_lat - 17.4156) < 0.01);
       `);
       migrationsDone = true;
     } catch (err: any) {

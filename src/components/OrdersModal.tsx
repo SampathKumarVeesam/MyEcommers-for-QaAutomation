@@ -22,6 +22,7 @@ import { Order } from '../types.js';
 import { apiUrl } from '../config/api.js';
 import { LiveOrderMap } from './LiveOrderMap.js';
 import { DeliveryEtaCountdown } from './DeliveryEtaCountdown.js';
+import { resolveAddressCoordinates } from '../config/hyderabadCoordinates.js';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -427,20 +428,29 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
 
                   {/* Live Interactive Route Map */}
                   <div className="mt-3">
-                    <LiveOrderMap
-                      orderId={selectedOrder.orderNumber}
-                      destinationLat={selectedOrder.customerLat || selectedOrder.deliveryLat || 17.4375}
-                      destinationLng={selectedOrder.customerLng || selectedOrder.deliveryLng || 78.4482}
-                      customerAddress={`${selectedOrder.shippingAddress.street}, ${selectedOrder.shippingAddress.city}`}
-                      orderStatus={selectedOrder.orderStatus}
-                      agentCoords={
-                        selectedOrder.agentLat && selectedOrder.agentLng
-                          ? { lat: selectedOrder.agentLat, lng: selectedOrder.agentLng }
-                          : undefined
-                      }
-                      assignedAgentName={selectedOrder.assignedAgentName || selectedOrder.assignedAgent?.name}
-                      assignedAgentPhone={selectedOrder.assignedAgentPhone || selectedOrder.assignedAgent?.phone}
-                    />
+                    {(() => {
+                      const destCoords = resolveAddressCoordinates(
+                        selectedOrder.shippingAddress,
+                        selectedOrder.customerLat || selectedOrder.deliveryLat,
+                        selectedOrder.customerLng || selectedOrder.deliveryLng
+                      );
+                      return (
+                        <LiveOrderMap
+                          orderId={selectedOrder.orderNumber}
+                          destinationLat={destCoords.lat}
+                          destinationLng={destCoords.lng}
+                          customerAddress={`${selectedOrder.shippingAddress.street}, ${selectedOrder.shippingAddress.city}`}
+                          orderStatus={selectedOrder.orderStatus}
+                          agentCoords={
+                            selectedOrder.agentLat && selectedOrder.agentLng
+                              ? { lat: selectedOrder.agentLat, lng: selectedOrder.agentLng }
+                              : undefined
+                          }
+                          assignedAgentName={selectedOrder.assignedAgentName || selectedOrder.assignedAgent?.name}
+                          assignedAgentPhone={selectedOrder.assignedAgentPhone || selectedOrder.assignedAgent?.phone}
+                        />
+                      );
+                    })()}
                   </div>
 
                   {/* Payment & Settlement Status */}

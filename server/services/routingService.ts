@@ -62,21 +62,110 @@ export function resolveCoordinatesForAddress(address: any): { lat: number; lng: 
   if (address?.lat && address?.lng && !isNaN(Number(address.lat)) && !isNaN(Number(address.lng))) {
     return { lat: Number(address.lat), lng: Number(address.lng) };
   }
-  const combined = `${address?.street || ''} ${address?.city || ''} ${address?.postalCode || ''}`.toLowerCase();
+  const combined = `${address?.street || ''} ${address?.city || ''} ${address?.state || ''} ${address?.postalCode || ''}`.toLowerCase();
 
-  if (combined.includes('jubilee')) return { lat: 17.4319, lng: 78.4073 };
-  if (combined.includes('banjara')) return { lat: 17.4156, lng: 78.4350 };
-  if (combined.includes('gachibowli')) return { lat: 17.4401, lng: 78.3489 };
-  if (combined.includes('kondapur')) return { lat: 17.4699, lng: 78.3578 };
-  if (combined.includes('madhapur') || combined.includes('500081')) return { lat: 17.4486, lng: 78.3908 };
-  if (combined.includes('hitech')) return { lat: 17.4504, lng: 78.3808 };
-  if (combined.includes('begumpet')) return { lat: 17.4447, lng: 78.4664 };
-  if (combined.includes('secunderabad')) return { lat: 17.4399, lng: 78.4983 };
-  if (combined.includes('charminar')) return { lat: 17.3616, lng: 78.4747 };
-  if (combined.includes('kukatpally')) return { lat: 17.4938, lng: 78.3995 };
-  if (combined.includes('ameerpet')) return { lat: 17.4375, lng: 78.4482 };
-  if (combined.includes('manikonda')) return { lat: 17.4042, lng: 78.3888 };
-  if (combined.includes('miyapur')) return { lat: 17.4968, lng: 78.3614 };
+  // 1. Tellapur / Osman Nagar / BHEL / Lingampally / Nallagandla / Kollur / Chandanagar
+  if (
+    combined.includes('tellapur') ||
+    combined.includes('osman') ||
+    combined.includes('bhel') ||
+    combined.includes('lingampally') ||
+    combined.includes('nallagandla') ||
+    combined.includes('kollur') ||
+    combined.includes('502032') ||
+    combined.includes('500019')
+  ) {
+    return { lat: 17.4816, lng: 78.2917 };
+  }
+
+  // 2. Gachibowli / Financial District / Nanakramguda
+  if (
+    combined.includes('gachibowli') ||
+    combined.includes('financial district') ||
+    combined.includes('nanakramguda') ||
+    combined.includes('500032')
+  ) {
+    return { lat: 17.4401, lng: 78.3489 };
+  }
+
+  // 3. Madhapur / Hitech City / Durgam Cheruvu
+  if (combined.includes('madhapur') || combined.includes('500081')) {
+    return { lat: 17.4486, lng: 78.3908 };
+  }
+  if (combined.includes('hitech') || combined.includes('hitec')) {
+    return { lat: 17.4504, lng: 78.3808 };
+  }
+
+  // 4. Kondapur / Kothaguda / Hafeezpet
+  if (combined.includes('kondapur') || combined.includes('hafeezpet') || combined.includes('500084')) {
+    return { lat: 17.4699, lng: 78.3578 };
+  }
+
+  // 5. Jubilee Hills / Film Nagar
+  if (combined.includes('jubilee') || combined.includes('film nagar') || combined.includes('500033')) {
+    return { lat: 17.4319, lng: 78.4073 };
+  }
+
+  // 6. Banjara Hills / Panjagutta
+  if (combined.includes('banjara') || combined.includes('500034')) {
+    return { lat: 17.4156, lng: 78.4350 };
+  }
+
+  // 7. Manikonda / Puppalguda / Shaikpet / Tolichowki
+  if (
+    combined.includes('manikonda') ||
+    combined.includes('puppalguda') ||
+    combined.includes('shaikpet') ||
+    combined.includes('tolichowki') ||
+    combined.includes('500089') ||
+    combined.includes('500008')
+  ) {
+    return { lat: 17.4042, lng: 78.3888 };
+  }
+
+  // 8. Miyapur / Chandanagar / Kukatpally
+  if (combined.includes('miyapur') || combined.includes('500049') || combined.includes('chandanagar')) {
+    return { lat: 17.4968, lng: 78.3614 };
+  }
+  if (combined.includes('kukatpally') || combined.includes('kphb') || combined.includes('500072')) {
+    return { lat: 17.4938, lng: 78.3995 };
+  }
+
+  // 9. Narsingi / Kokapet / Gandipet
+  if (combined.includes('narsingi') || combined.includes('kokapet') || combined.includes('gandipet') || combined.includes('500075')) {
+    return { lat: 17.3880, lng: 78.3580 };
+  }
+
+  // 10. Begumpet / Secunderabad / Ameerpet
+  if (combined.includes('begumpet') || combined.includes('500016')) {
+    return { lat: 17.4447, lng: 78.4664 };
+  }
+  if (combined.includes('secunderabad') || combined.includes('500003')) {
+    return { lat: 17.4399, lng: 78.4983 };
+  }
+  if (combined.includes('ameerpet') || combined.includes('sr nagar') || combined.includes('500038')) {
+    return { lat: 17.4375, lng: 78.4482 };
+  }
+
+  // 11. Charminar / Old City / Falaknuma
+  if (combined.includes('charminar') || combined.includes('falaknuma') || combined.includes('500002')) {
+    return { lat: 17.3616, lng: 78.4747 };
+  }
+
+  // 12. Dilsukhnagar / Malakpet / LB Nagar
+  if (combined.includes('dilsukhnagar') || combined.includes('malakpet') || combined.includes('lb nagar') || combined.includes('500036')) {
+    return { lat: 17.3688, lng: 78.5247 };
+  }
+
+  // 13. Uppal / Tarnaka / ECIL / Malkajgiri
+  if (combined.includes('uppal') || combined.includes('tarnaka') || combined.includes('ecil') || combined.includes('malkajgiri')) {
+    return { lat: 17.4040, lng: 78.5580 };
+  }
+
+  // 14. Kompally / Bowenpally / Medchal
+  if (combined.includes('kompally') || combined.includes('bowenpally') || combined.includes('medchal') || combined.includes('500014')) {
+    return { lat: 17.5340, lng: 78.4850 };
+  }
 
   // Deterministic offset based on address string hash so different addresses always get distinct pins
   let hash = 0;

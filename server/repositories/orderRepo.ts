@@ -46,10 +46,26 @@ export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: D
     paymentMode: (row.payment_mode as any) || (row.payment_method === 'cod' ? 'COD' : 'PREPAID'),
     codCollectionMethod: row.cod_collection_method || null,
     paymentSettlementStatus: row.payment_settlement_status || (row.payment_method === 'cod' ? 'PENDING' : 'PAID_ONLINE'),
-    deliveryLat: row.delivery_lat ? parseFloat(row.delivery_lat) : (row.customer_lat ? parseFloat(row.customer_lat) : 17.4375),
-    deliveryLng: row.delivery_lng ? parseFloat(row.delivery_lng) : (row.customer_lng ? parseFloat(row.customer_lng) : 78.4482),
-    customerLat: row.customer_lat ? parseFloat(row.customer_lat) : (row.delivery_lat ? parseFloat(row.delivery_lat) : 17.4375),
-    customerLng: row.customer_lng ? parseFloat(row.customer_lng) : (row.delivery_lng ? parseFloat(row.delivery_lng) : 78.4482),
+    deliveryLat: (() => {
+      const resolved = resolveCoordinatesForAddress(address);
+      const isDefault = !row.delivery_lat || (Math.abs(parseFloat(row.delivery_lat) - 17.4375) < 0.001 && Math.abs(parseFloat(row.delivery_lng || '78.4482') - 78.4482) < 0.001);
+      return isDefault && resolved.lat ? resolved.lat : (row.delivery_lat ? parseFloat(row.delivery_lat) : (row.customer_lat ? parseFloat(row.customer_lat) : resolved.lat));
+    })(),
+    deliveryLng: (() => {
+      const resolved = resolveCoordinatesForAddress(address);
+      const isDefault = !row.delivery_lng || (Math.abs(parseFloat(row.delivery_lng) - 78.4482) < 0.001 && Math.abs(parseFloat(row.delivery_lat || '17.4375') - 17.4375) < 0.001);
+      return isDefault && resolved.lng ? resolved.lng : (row.delivery_lng ? parseFloat(row.delivery_lng) : (row.customer_lng ? parseFloat(row.customer_lng) : resolved.lng));
+    })(),
+    customerLat: (() => {
+      const resolved = resolveCoordinatesForAddress(address);
+      const isDefault = !row.customer_lat || (Math.abs(parseFloat(row.customer_lat) - 17.4375) < 0.001 && Math.abs(parseFloat(row.customer_lng || '78.4482') - 78.4482) < 0.001);
+      return isDefault && resolved.lat ? resolved.lat : (row.customer_lat ? parseFloat(row.customer_lat) : (row.delivery_lat ? parseFloat(row.delivery_lat) : resolved.lat));
+    })(),
+    customerLng: (() => {
+      const resolved = resolveCoordinatesForAddress(address);
+      const isDefault = !row.customer_lng || (Math.abs(parseFloat(row.customer_lng) - 78.4482) < 0.001 && Math.abs(parseFloat(row.customer_lat || '17.4375') - 17.4375) < 0.001);
+      return isDefault && resolved.lng ? resolved.lng : (row.customer_lng ? parseFloat(row.customer_lng) : (row.delivery_lng ? parseFloat(row.delivery_lng) : resolved.lng));
+    })(),
     agentLat: row.agent_lat ? parseFloat(row.agent_lat) : 17.4486,
     agentLng: row.agent_lng ? parseFloat(row.agent_lng) : 78.3908,
     locationUpdatedAt: row.location_updated_at ? new Date(row.location_updated_at).toISOString() : null,

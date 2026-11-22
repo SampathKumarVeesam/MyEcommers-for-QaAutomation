@@ -31,6 +31,7 @@ import { LiveOrderMap } from './LiveOrderMap.js';
 import { DeliveryEtaCountdown } from './DeliveryEtaCountdown.js';
 import { EmergencyTransferModal } from './EmergencyTransferModal.js';
 import { GENDER_PRESET_AVATARS, ProfileModal } from './ProfileModal.js';
+import { resolveAddressCoordinates } from '../config/hyderabadCoordinates.js';
 
 interface DeliveryAgentPortalProps {
   isOpen: boolean;
@@ -1787,24 +1788,33 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             {/* Live Map for In-Transit Orders */}
                             {isOutForDelivery && (
                               <div className="mb-3">
-                                <LiveOrderMap
-                                  orderId={order.orderNumber}
-                                  destinationLat={order.customerLat || order.deliveryLat || 17.4375}
-                                  destinationLng={order.customerLng || order.deliveryLng || 78.4482}
-                                  customerAddress={`${order.shippingAddress.street}, ${order.shippingAddress.city}`}
-                                  orderStatus={order.orderStatus}
-                                  assignedAgentName={order.assignedAgentName || agent.name}
-                                  assignedAgentPhone={order.assignedAgentPhone || agent.phone}
-                                  agentCoords={
-                                    order.agentLat && order.agentLng
-                                      ? { lat: order.agentLat, lng: order.agentLng }
-                                      : { lat: agent.currentLat || 17.4486, lng: agent.currentLng || 78.3908 }
-                                  }
-                                  isAgentView={true}
-                                  onLocationUpdate={(coords) => {
-                                    setAgent(prev => prev ? { ...prev, currentLat: coords.lat, currentLng: coords.lng } : null);
-                                  }}
-                                />
+                                {(() => {
+                                  const destCoords = resolveAddressCoordinates(
+                                    order.shippingAddress,
+                                    order.customerLat || order.deliveryLat,
+                                    order.customerLng || order.deliveryLng
+                                  );
+                                  return (
+                                    <LiveOrderMap
+                                      orderId={order.orderNumber}
+                                      destinationLat={destCoords.lat}
+                                      destinationLng={destCoords.lng}
+                                      customerAddress={`${order.shippingAddress.street}, ${order.shippingAddress.city}`}
+                                      orderStatus={order.orderStatus}
+                                      assignedAgentName={order.assignedAgentName || agent.name}
+                                      assignedAgentPhone={order.assignedAgentPhone || agent.phone}
+                                      agentCoords={
+                                        order.agentLat && order.agentLng
+                                          ? { lat: order.agentLat, lng: order.agentLng }
+                                          : { lat: agent.currentLat || 17.4486, lng: agent.currentLng || 78.3908 }
+                                      }
+                                      isAgentView={true}
+                                      onLocationUpdate={(coords) => {
+                                        setAgent(prev => prev ? { ...prev, currentLat: coords.lat, currentLng: coords.lng } : null);
+                                      }}
+                                    />
+                                  );
+                                })()}
                               </div>
                             )}
 

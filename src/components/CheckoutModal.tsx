@@ -253,6 +253,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {[
+                    { name: 'Tellapur / BHEL', street: 'BHEL CyberCity, Osman Nagar', city: 'Tellapur, Hyderabad', state: 'Telangana', postalCode: '502032', lat: 17.4816, lng: 78.2917 },
                     { name: 'Jubilee Hills', street: 'Road No. 36, Jubilee Hills', city: 'Hyderabad', state: 'Telangana', postalCode: '500033', lat: 17.4319, lng: 78.4073 },
                     { name: 'Banjara Hills', street: 'Road No. 12, Banjara Hills', city: 'Hyderabad', state: 'Telangana', postalCode: '500034', lat: 17.4156, lng: 78.4350 },
                     { name: 'Gachibowli', street: 'ISB Road, Financial District', city: 'Hyderabad', state: 'Telangana', postalCode: '500032', lat: 17.4401, lng: 78.3489 },
@@ -309,7 +310,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-test="checkout-street"
                     data-testid="checkout-street"
                     value={address.street}
-                    onChange={e => setAddress({ ...address, street: e.target.value })}
+                    onChange={e => {
+                      const next = { ...address, street: e.target.value };
+                      delete (next as any).lat;
+                      delete (next as any).lng;
+                      setAddress(next);
+                    }}
                     className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
                       addressErrors.street ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
                     }`}
@@ -324,7 +330,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-test="checkout-city"
                     data-testid="checkout-city"
                     value={address.city}
-                    onChange={e => setAddress({ ...address, city: e.target.value })}
+                    onChange={e => {
+                      const next = { ...address, city: e.target.value };
+                      delete (next as any).lat;
+                      delete (next as any).lng;
+                      setAddress(next);
+                    }}
                     className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
                       addressErrors.city ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
                     }`}
@@ -340,7 +351,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-testid="checkout-state"
                     value={address.state}
                     onChange={e => setAddress({ ...address, state: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:border-indigo-500"
                   />
                 </div>
 
@@ -351,7 +362,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-test="checkout-postalcode"
                     data-testid="checkout-postalcode"
                     value={address.postalCode}
-                    onChange={e => setAddress({ ...address, postalCode: e.target.value })}
+                    onChange={e => {
+                      const next = { ...address, postalCode: e.target.value };
+                      delete (next as any).lat;
+                      delete (next as any).lng;
+                      setAddress(next);
+                    }}
                     className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
                       addressErrors.postalCode ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
                     }`}
