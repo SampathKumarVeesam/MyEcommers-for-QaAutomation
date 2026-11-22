@@ -181,6 +181,7 @@ export interface Order {
   transferReason?: string | null;
   transferredFromAgentName?: string | null;
   transferredFromAgentId?: string | null;
+  assignmentTier?: 'IDLE_NEAREST' | 'BUSY_NEAREST' | null;
   deliveryFee?: number;
   codPaymentMethod?: 'cash' | 'upi' | null;
   codPaymentStatus?: 'pending' | 'paid' | null;
@@ -201,10 +202,22 @@ export interface OrderTransfer {
   fromAgentName?: string | null;
   toAgentId: string | null;
   toAgentName?: string | null;
+  assignmentTier?: 'IDLE_NEAREST' | 'BUSY_NEAREST';
   transferReason: string;
   handoffLat?: number | null;
   handoffLng?: number | null;
   transferredAt: string;
+}
+
+export interface AgentContactLog {
+  id: number;
+  orderId: number | string;
+  customerId?: string | null;
+  customerName?: string | null;
+  agentId: string;
+  agentName?: string | null;
+  contactChannel: 'CALL' | 'WHATSAPP' | 'IN_APP_CHAT';
+  contactedAt: string;
 }
 
 export interface OrderTrackingInfo {
@@ -241,6 +254,9 @@ export interface NearestAgentInfo {
   distanceKm: number;
   distanceFormatted: string;
   handoffEtaMinutes: number;
+  assignmentTier?: 'IDLE_NEAREST' | 'BUSY_NEAREST';
+  activeOrderCount?: number;
+  statusText?: string;
 }
 
 export interface AuthResponse {

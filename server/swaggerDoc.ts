@@ -2845,6 +2845,65 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/orders/{id}/contact-agent": {
+      "post": {
+        "tags": [
+          "Customer - Orders",
+          "Delivery Partner Portal"
+        ],
+        "summary": "Log customer contact action with delivery executive and notify Admin audit log",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["contactChannel"],
+                "properties": {
+                  "contactChannel": {
+                    "type": "string",
+                    "enum": ["CALL", "WHATSAPP", "IN_APP_CHAT"],
+                    "example": "CALL"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact log recorded and admin alert queued successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "Contact logged and admin alerted." },
+                    "logId": { "type": "number", "example": 10 }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid channel or order has no assigned agent"
+          },
+          "500": {
+            "description": "Failed to log contact"
+          }
+        }
+      }
+    },
     "/orders/{id}/cancel": {
       "patch": {
         "tags": [

@@ -78,6 +78,7 @@ export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: D
     transferReason: row.transfer_reason || null,
     transferredFromAgentName: row.transferred_from_agent_name || null,
     transferredFromAgentId: row.transferred_from_agent_id ? String(row.transferred_from_agent_id) : null,
+    assignmentTier: (row.assignment_tier as any) || null,
     deliveryFee: row.delivery_fee ? parseFloat(row.delivery_fee) : 15.00,
     codPaymentMethod: row.cod_payment_method || null,
     codPaymentStatus: row.cod_payment_status || (row.payment_method === 'cod' ? (row.payment_status === 'paid' ? 'paid' : 'pending') : null),
@@ -1480,13 +1481,20 @@ export class OrderRepository {
     const refLat = order.agentLat || STORE_COORDS.lat;
     const refLng = order.agentLng || STORE_COORDS.lng;
 
+    // 2-Tier Assignment Query: get all active, online, verified delivery agents (excluding current agent and lockout)
+    // with their current count of active assigned orders.
     const res = await query(
-      `SELECT * FROM delivery_agents
-       WHERE is_active = TRUE
-         AND is_logged_in = TRUE
-         AND is_email_verified = TRUE
-         AND id != $1
-       ORDER BY last_active_at DESC`,
+      `SELECT da.*,
+              COUNT(o.id) FILTER (WHERE o.status IN ('processing', 'processed', 'out_for_delivery')) AS active_order_count
+       FROM delivery_agents da
+       LEFT JOIN "order" o ON o.assigned_agent_id = da.id
+       WHERE da.is_active = TRUE
+         AND da.is_logged_in = TRUE
+         AND da.is_email_verified = TRUE
+         AND da.has_pending_cash_deposit = FALSE
+         AND da.id != $1
+       GROUP BY da.id
+       ORDER BY da.last_active_at DESC`,
       [currentAgentId]
     );
 
@@ -1496,25 +1504,46 @@ export class OrderRepository {
       const aLat = r.current_lat ? parseFloat(r.current_lat) : STORE_COORDS.lat;
       const aLng = r.current_lng ? parseFloat(r.current_lng) : STORE_COORDS.lng;
       const dist = calculateHaversineDistance(refLat, refLng, aLat, aLng);
+      const activeCount = parseInt(r.active_order_count || '0', 10);
       return {
         row: r,
         dist,
+        activeCount,
       };
     });
 
-    agentsWithDistances.sort((a, b) => a.dist - b.dist);
-    const nearest = agentsWithDistances[0];
-    const handoffMinutes = Math.max(3, Math.round((nearest.dist / 25) * 60) + 2);
+    // Tier 1: Idle agents (0 active orders)
+    const idleAgents = agentsWithDistances.filter(a => a.activeCount === 0);
+    // Tier 2: Busy agents (>= 1 active orders)
+    const busyAgents = agentsWithDistances.filter(a => a.activeCount > 0);
+
+    let chosen: (typeof agentsWithDistances)[0];
+    let assignmentTier: 'IDLE_NEAREST' | 'BUSY_NEAREST';
+
+    if (idleAgents.length > 0) {
+      idleAgents.sort((a, b) => a.dist - b.dist);
+      chosen = idleAgents[0];
+      assignmentTier = 'IDLE_NEAREST';
+    } else {
+      busyAgents.sort((a, b) => a.dist - b.dist);
+      chosen = busyAgents[0];
+      assignmentTier = 'BUSY_NEAREST';
+    }
+
+    const handoffMinutes = Math.max(3, Math.round((chosen.dist / 25) * 60) + 2);
 
     return {
-      id: String(nearest.row.id),
-      name: nearest.row.name,
-      phone: nearest.row.phone,
-      vehicleType: nearest.row.vehicle_type,
-      avatarUrl: nearest.row.avatar_url,
-      distanceKm: nearest.dist,
-      distanceFormatted: `${nearest.dist.toFixed(1)} km away`,
+      id: String(chosen.row.id),
+      name: chosen.row.name,
+      phone: chosen.row.phone,
+      vehicleType: chosen.row.vehicle_type,
+      avatarUrl: chosen.row.avatar_url,
+      distanceKm: chosen.dist,
+      distanceFormatted: `${chosen.dist.toFixed(1)} km away`,
       handoffEtaMinutes: handoffMinutes,
+      assignmentTier,
+      activeOrderCount: chosen.activeCount,
+      statusText: assignmentTier === 'IDLE_NEAREST' ? 'Idle & Ready' : `Completing ${chosen.activeCount} nearby drop(s)`,
     };
   }
 
@@ -1555,6 +1584,7 @@ export class OrderRepository {
     const handoffLat = handoffCoords?.lat || order.agentLat || STORE_COORDS.lat;
     const handoffLng = handoffCoords?.lng || order.agentLng || STORE_COORDS.lng;
     const extraHandoffSeconds = nearestAgentInfo.handoffEtaMinutes * 60;
+    const assignmentTier = nearestAgentInfo.assignmentTier || 'IDLE_NEAREST';
 
     const client = await getClient();
     try {
@@ -1567,49 +1597,75 @@ export class OrderRepository {
              transfer_reason = $2,
              transferred_from_agent_name = $3,
              transferred_from_agent_id = $4,
-             agent_lat = $5,
-             agent_lng = $6,
+             assignment_tier = $5,
+             agent_lat = $6,
+             agent_lng = $7,
              location_updated_at = NOW(),
-             estimated_delivery_at = COALESCE(estimated_delivery_at, NOW()) + ($7 * INTERVAL '1 second')
-         WHERE (order_number = $8 ${isNum ? 'OR id = $9' : ''})
+             estimated_delivery_at = COALESCE(estimated_delivery_at, NOW()) + ($8 * INTERVAL '1 second')
+         WHERE (order_number = $9 ${isNum ? 'OR id = $10' : ''})
          RETURNING *`,
         isNum
-          ? [toAgent.id, trimmedReason, fromAgent?.name || 'Previous Agent', fromAgentId, toAgent.currentLat || handoffLat, toAgent.currentLng || handoffLng, extraHandoffSeconds, String(orderId), Number(orderId)]
-          : [toAgent.id, trimmedReason, fromAgent?.name || 'Previous Agent', fromAgentId, toAgent.currentLat || handoffLat, toAgent.currentLng || handoffLng, extraHandoffSeconds, String(orderId)]
+          ? [toAgent.id, trimmedReason, fromAgent?.name || 'Previous Agent', fromAgentId, assignmentTier, toAgent.currentLat || handoffLat, toAgent.currentLng || handoffLng, extraHandoffSeconds, String(orderId), Number(orderId)]
+          : [toAgent.id, trimmedReason, fromAgent?.name || 'Previous Agent', fromAgentId, assignmentTier, toAgent.currentLat || handoffLat, toAgent.currentLng || handoffLng, extraHandoffSeconds, String(orderId)]
       );
 
       const updatedRow = updateRes.rows[0];
 
       await client.query(
-        `INSERT INTO order_transfers (order_id, from_agent_id, to_agent_id, transfer_reason, handoff_lat, handoff_lng)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [updatedRow.id, fromAgentId, toAgent.id, trimmedReason, handoffLat, handoffLng]
+        `INSERT INTO order_transfers (order_id, from_agent_id, to_agent_id, assignment_tier, transfer_reason, handoff_lat, handoff_lng)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [updatedRow.id, fromAgentId, toAgent.id, assignmentTier, trimmedReason, handoffLat, handoffLng]
       );
 
       // Insert persistent notifications
       // 1. Admin Alert
       await client.query(
-        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, title, message, amount)
-         VALUES ('ADMIN', NULL, $1, $2, 'ORDER_TRANSFERRED', $3, $4, $5)`,
+        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, event_type, title, message, amount, metadata)
+         VALUES ('ADMIN', NULL, $1, $2, 'ORDER_TRANSFERRED', 'ORDER_TRANSFERRED', $3, $4, $5, $6)`,
         [
           updatedRow.id,
           toAgent.id,
           `Emergency Order Transfer: Order #${order.orderNumber}`,
-          `Order #${order.orderNumber} transferred from ${fromAgent?.name || 'Agent'} to ${toAgent.name} due to: ${trimmedReason}`,
+          `Order #${order.orderNumber} transferred from ${fromAgent?.name || 'Agent'} to ${toAgent.name} (${assignmentTier === 'IDLE_NEAREST' ? 'Tier 1: Idle Nearest' : 'Tier 2: Busy Nearest'}, ${nearestAgentInfo.distanceFormatted}). Reason: ${trimmedReason}`,
           order.grandTotal,
+          JSON.stringify({
+            previousAgentId: fromAgentId,
+            previousAgentName: fromAgent?.name,
+            newAgentId: toAgent.id,
+            newAgentName: toAgent.name,
+            assignmentTier,
+            distanceKm: nearestAgentInfo.distanceKm,
+            reason: trimmedReason,
+          }),
         ]
       );
 
-      // 2. Transferred-To Agent Alert
+      // 2. Customer Alert
       await client.query(
-        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, title, message, amount)
-         VALUES ('DELIVERY_AGENT', $1, $2, $1, 'ORDER_TRANSFERRED_TO_YOU', $3, $4, $5)`,
+        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, event_type, title, message, amount, metadata)
+         VALUES ('CUSTOMER', $1, $2, $3, 'AGENT_REASSIGNED', 'AGENT_REASSIGNED', $4, $5, $6, $7)`,
+        [
+          order.userId || null,
+          updatedRow.id,
+          toAgent.id,
+          `Delivery Executive Updated for Order #${order.orderNumber}`,
+          `Your delivery partner has been updated to ${toAgent.name} (${toAgent.phone || '+91 98490 88776'}) to keep your order on track.`,
+          order.grandTotal,
+          JSON.stringify({ newAgentName: toAgent.name, newAgentPhone: toAgent.phone }),
+        ]
+      );
+
+      // 3. Transferred-To Agent Alert
+      await client.query(
+        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, event_type, title, message, amount, metadata)
+         VALUES ('DELIVERY_AGENT', $1, $2, $1, 'ORDER_TRANSFERRED_TO_YOU', 'ORDER_TRANSFERRED_TO_YOU', $3, $4, $5, $6)`,
         [
           toAgent.id,
           updatedRow.id,
           `Handoff Order Assigned: #${order.orderNumber}`,
           `Order #${order.orderNumber} transferred to you from ${fromAgent?.name || 'Agent'}. Reason: ${trimmedReason}. Please proceed to the handoff point.`,
           order.grandTotal,
+          JSON.stringify({ fromAgentName: fromAgent?.name, reason: trimmedReason }),
         ]
       );
 
@@ -1620,13 +1676,62 @@ export class OrderRepository {
 
       return {
         success: true,
-        message: `Order successfully transferred to nearest agent ${toAgent.name}.`,
+        message: `Order successfully transferred to nearest agent ${toAgent.name} (${assignmentTier === 'IDLE_NEAREST' ? 'Tier 1: Idle Nearest' : 'Tier 2: Busy Nearest'}).`,
         newAgent: toAgent,
         order: mapped,
       };
     } catch (err: any) {
       await client.query('ROLLBACK');
+      console.error('[Transfer Order Transaction Error]:', err);
       throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async logCustomerAgentContact(
+    orderId: string | number,
+    contactChannel: 'CALL' | 'WHATSAPP' | 'IN_APP_CHAT',
+    customerId?: string | null
+  ): Promise<{ success: boolean; message: string }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) return { success: false, message: 'Order not found' };
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+
+      const agentId = order.assignedAgentId || null;
+      const agentName = order.assignedAgentName || order.assignedAgent?.name || 'Delivery Partner';
+      const custName = order.userName || 'Customer';
+
+      // 1. Insert into agent_contact_logs
+      await client.query(
+        `INSERT INTO agent_contact_logs (order_id, customer_id, agent_id, contact_channel, contacted_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        [order.id, customerId || order.userId || null, agentId, contactChannel]
+      );
+
+      // 2. Insert persistent Admin Alert Notification
+      await client.query(
+        `INSERT INTO notifications (recipient_role, recipient_id, order_id, agent_id, type, event_type, title, message, amount, metadata)
+         VALUES ('ADMIN', NULL, $1, $2, 'CUSTOMER_CONTACTED_AGENT', 'CUSTOMER_CONTACTED_AGENT', $3, $4, $5, $6)`,
+        [
+          order.id,
+          agentId,
+          `Customer Contact Initiated: Order #${order.orderNumber}`,
+          `Customer ${custName} contacted Delivery Agent ${agentName} via ${contactChannel} regarding Order #${order.orderNumber}.`,
+          order.grandTotal,
+          JSON.stringify({ orderNumber: order.orderNumber, contactChannel, customerName: custName, agentName }),
+        ]
+      );
+
+      await client.query('COMMIT');
+      return { success: true, message: 'Contact logged and admin alerted successfully.' };
+    } catch (err: any) {
+      await client.query('ROLLBACK');
+      console.error('[Customer Agent Contact Error]:', err);
+      return { success: false, message: `Failed to log contact: ${err.message}` };
     } finally {
       client.release();
     }

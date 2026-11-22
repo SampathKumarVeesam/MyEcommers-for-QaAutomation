@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS "order" (
   extra_delay_seconds INTEGER DEFAULT 0,
   transfer_reason TEXT,
   transferred_from_agent_name VARCHAR(255),
+  transferred_from_agent_id VARCHAR(100),
+  assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST',
   deposit_submitted_at TIMESTAMP WITH TIME ZONE,
   deposit_verified_at TIMESTAMP WITH TIME ZONE,
   deposit_rejection_note TEXT,
@@ -199,10 +201,21 @@ CREATE TABLE IF NOT EXISTS order_transfers (
   order_id INTEGER NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
   from_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
   to_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+  assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST',
   transfer_reason TEXT NOT NULL,
   handoff_lat DOUBLE PRECISION,
   handoff_lng DOUBLE PRECISION,
   transferred_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 6e. AGENT_CONTACT_LOGS TABLE (Customer-to-Agent Contact Audit)
+CREATE TABLE IF NOT EXISTS agent_contact_logs (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES "order"(id) ON DELETE CASCADE,
+  customer_id VARCHAR(100),
+  agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+  contact_channel VARCHAR(20) NOT NULL,
+  contacted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. ORDER_ITEM TABLE

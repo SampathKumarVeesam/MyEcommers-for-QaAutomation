@@ -287,6 +287,41 @@ ordersRouter.post('/:id/transfer', optionalAuth, async (req: AuthenticatedReques
   }
 });
 
+// POST /api/orders/:id/contact-agent (Customer initiates contact with delivery partner; audit logs and alerts admin)
+ordersRouter.post('/:id/contact-agent', optionalAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { contactChannel } = req.body || {};
+
+    const validChannels = ['CALL', 'WHATSAPP', 'IN_APP_CHAT'];
+    const normChannel = String(contactChannel || '').toUpperCase().trim();
+    if (!validChannels.includes(normChannel)) {
+      res.status(400).json({
+        success: false,
+        message: 'Valid contactChannel is required: CALL, WHATSAPP, or IN_APP_CHAT.',
+      });
+      return;
+    }
+
+    const customerId = req.user?.id ? String(req.user.id) : null;
+    const result = await orderRepo.logCustomerAgentContact(
+      id,
+      normChannel as 'CALL' | 'WHATSAPP' | 'IN_APP_CHAT',
+      customerId
+    );
+
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Contact Agent Route Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to log agent contact: ${err.message}` });
+  }
+});
+
 // PATCH /api/orders/:id/status (Updates order status in PostgreSQL & sends automated notification email)
 const handleStatusUpdate = async (req: Request, res: Response): Promise<void> => {
   try {

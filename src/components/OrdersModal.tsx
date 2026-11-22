@@ -7,9 +7,12 @@ import {
   Clock,
   Download,
   MapPin,
+  MessageSquare,
   Package,
+  PhoneCall,
   Receipt,
   RotateCcw,
+  Send,
   ShieldCheck,
   ShoppingBag,
   Truck,
@@ -92,6 +95,37 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [paidSuccessMsg, setPaidSuccessMsg] = useState<string | null>(null);
+  const [contactToast, setContactToast] = useState<string | null>(null);
+
+  const handleContactAgent = async (channel: 'CALL' | 'WHATSAPP' | 'IN_APP_CHAT') => {
+    if (!selectedOrder) return;
+    const phone = (selectedOrder.assignedAgentPhone || selectedOrder.assignedAgent?.phone || '+919849088776').replace(/[^\d+]/g, '');
+
+    try {
+      await fetch(apiUrl(`/api/orders/${selectedOrder.orderNumber}/contact-agent`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ contactChannel: channel }),
+      });
+    } catch (e) {
+      console.warn('Failed to log contact:', e);
+    }
+
+    if (channel === 'CALL') {
+      window.location.href = `tel:${phone}`;
+      setContactToast(`Connecting phone call to delivery partner (${phone})...`);
+    } else if (channel === 'WHATSAPP') {
+      window.open(`https://wa.me/${phone.replace('+', '')}?text=Hi%20regarding%20my%20Order%20${selectedOrder.orderNumber}`, '_blank');
+      setContactToast(`Opening WhatsApp chat with delivery partner...`);
+    } else {
+      setContactToast(`In-app message sent to delivery partner. Admin audit log updated.`);
+    }
+
+    setTimeout(() => setContactToast(null), 4000);
+  };
 
   const handleMarkPaidToDeliveryBoy = async (orderId: string) => {
     if (!token) return;
@@ -452,6 +486,98 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                       );
                     })()}
                   </div>
+
+                  {/* Delivery Partner Contact Card & Audit Actions */}
+                  {(selectedOrder.assignedAgent || selectedOrder.assignedAgentName || selectedOrder.assignedAgentId) && (
+                    <div
+                      data-test="delivery-partner-contact-card"
+                      data-testid="delivery-partner-contact-card"
+                      className="p-3.5 bg-gradient-to-r from-slate-50 to-indigo-50/50 border border-indigo-200/80 rounded-2xl space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs overflow-hidden">
+                            {selectedOrder.assignedAgent?.avatarUrl ? (
+                              <img
+                                src={selectedOrder.assignedAgent.avatarUrl}
+                                alt={selectedOrder.assignedAgent.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              (selectedOrder.assignedAgentName || selectedOrder.assignedAgent?.name || 'A')[0]
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-slate-900">
+                                {selectedOrder.assignedAgentName || selectedOrder.assignedAgent?.name || 'Assigned Delivery Partner'}
+                              </h4>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Active Partner
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-600">
+                              Vehicle: {selectedOrder.assignedAgent?.vehicleType || 'Motorcycle'} &bull; Phone:{' '}
+                              {selectedOrder.assignedAgentPhone || selectedOrder.assignedAgent?.phone || '+91 98490 88776'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedOrder.assignmentTier && (
+                          <span className={`text-[10px] px-2 py-1 rounded-lg font-bold ${
+                            selectedOrder.assignmentTier === 'IDLE_NEAREST'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {selectedOrder.assignmentTier === 'IDLE_NEAREST' ? 'Tier 1 Assigned' : 'Tier 2 Reassigned'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Contact Channels */}
+                      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-indigo-100">
+                        <button
+                          type="button"
+                          data-test="btn-call-agent"
+                          data-testid="btn-call-agent"
+                          onClick={() => handleContactAgent('CALL')}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-xs font-bold text-slate-700 hover:text-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Call Agent</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          data-test="btn-whatsapp-agent"
+                          data-testid="btn-whatsapp-agent"
+                          onClick={() => handleContactAgent('WHATSAPP')}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-xs font-bold text-slate-700 hover:text-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          data-test="btn-chat-agent"
+                          data-testid="btn-chat-agent"
+                          onClick={() => handleContactAgent('IN_APP_CHAT')}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-700 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Message</span>
+                        </button>
+                      </div>
+
+                      {contactToast && (
+                        <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 p-1.5 rounded-lg text-center animate-in fade-in font-medium">
+                          {contactToast}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Payment & Settlement Status */}
                   {selectedOrder.paymentSettlementStatus && selectedOrder.paymentSettlementStatus !== 'PENDING_DELIVERY' && (

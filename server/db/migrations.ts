@@ -44,17 +44,34 @@ export async function ensureSchemaMigrations(): Promise<void> {
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS extra_delay_seconds INTEGER DEFAULT 0;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transfer_reason TEXT;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_name VARCHAR(255);
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_id VARCHAR(100);
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST';
 
         CREATE TABLE IF NOT EXISTS order_transfers (
           id SERIAL PRIMARY KEY,
           order_id INTEGER NOT NULL REFERENCES "order"(id) ON DELETE CASCADE,
           from_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
           to_agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+          assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST',
           transfer_reason TEXT NOT NULL,
           handoff_lat DOUBLE PRECISION,
           handoff_lng DOUBLE PRECISION,
           transferred_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+
+        ALTER TABLE order_transfers ADD COLUMN IF NOT EXISTS assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST';
+
+        CREATE TABLE IF NOT EXISTS agent_contact_logs (
+          id SERIAL PRIMARY KEY,
+          order_id INTEGER REFERENCES "order"(id) ON DELETE CASCADE,
+          customer_id VARCHAR(100),
+          agent_id VARCHAR(100) REFERENCES delivery_agents(id) ON DELETE SET NULL,
+          contact_channel VARCHAR(20) NOT NULL,
+          contacted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS event_type VARCHAR(100);
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
 
         -- Fix any legacy or default coordinates for orders with specific Hyderabad localities (e.g. Tellapur/Osman Nagar/BHEL)
         UPDATE "order"

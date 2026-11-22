@@ -170,10 +170,22 @@ export const EmergencyTransferModal: React.FC<EmergencyTransferModalProps> = ({
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
                         Online
                       </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                        nearestAgent.assignmentTier === 'IDLE_NEAREST'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {nearestAgent.assignmentTier === 'IDLE_NEAREST' ? 'Tier 1: Idle Nearest' : `Tier 2: Busy (${nearestAgent.activeOrderCount || 1} Active)`}
+                      </span>
                     </h4>
                     <p className="text-[11px] text-slate-600">
                       Vehicle: {nearestAgent.vehicleType || 'Motorcycle'} &bull; {nearestAgent.phone || '+91 98490 88776'}
                     </p>
+                    {nearestAgent.statusText && (
+                      <p className="text-[10px] text-indigo-700 font-medium">
+                        Status: {nearestAgent.statusText}
+                      </p>
+                    )}
                   </div>
                 </div>
 
