@@ -40,11 +40,12 @@ import { AuthGlassLayout } from './auth/AuthGlassLayout.js';
 interface DeliveryAgentPortalProps {
   isOpen: boolean;
   onClose: () => void;
+  isModal?: boolean;
 }
 
 const AGENT_TOKEN_KEY = 'shopsphere_agent_token';
 
-export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen, onClose }) => {
+export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen, onClose, isModal = true }) => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(AGENT_TOKEN_KEY) || null);
   const [agent, setAgent] = useState<DeliveryAgent | null>(null);
   const [loading, setLoading] = useState(false);
@@ -765,14 +766,13 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
   // 1. Unauthenticated Delivery Agent Sign In / Register Pod (Matching Reference Image 5)
   if (!agent) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#030611] backdrop-blur-md animate-in fade-in duration-200">
-        <AuthGlassLayout
-          role="agent"
-          title={authTab === 'login' ? 'LOGIN' : authTab === 'register' ? 'REGISTER' : 'VERIFY'}
-          isModal={true}
-          onClose={onClose}
-          onNavigateHome={onClose}
+    const authPod = (
+      <AuthGlassLayout
+        role="agent"
+        title={authTab === 'login' ? 'LOGIN' : authTab === 'register' ? 'REGISTER' : 'VERIFY'}
+        isModal={isModal}
+        onClose={onClose}
+        onNavigateHome={onClose}
           rememberMeSlot={
             authTab === 'login' ? (
               <label className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -1071,17 +1071,28 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             </form>
           )}
         </AuthGlassLayout>
-      </div>
     );
+
+    if (isModal) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#030611] backdrop-blur-md animate-in fade-in duration-200">
+          {authPod}
+        </div>
+      );
+    }
+    return authPod;
   }
 
   // 2. Authenticated Delivery Agent Executive Dashboard (Matching Reference Image 4)
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className={isModal ? "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200" : "min-h-screen bg-[#030611] text-white flex flex-col p-3 sm:p-6"}>
       <div
         data-test="delivery-agent-portal-modal"
         data-testid="delivery-agent-portal-modal"
-        className="bg-[#070C1B]/95 rounded-[32px] shadow-[0_0_80px_rgba(20,40,110,0.6)] max-w-7xl w-full overflow-hidden border border-blue-500/30 flex flex-col max-h-[94vh] text-white backdrop-blur-2xl"
+        className={isModal
+          ? "bg-[#070C1B]/95 rounded-[32px] shadow-[0_0_80px_rgba(20,40,110,0.6)] max-w-7xl w-full overflow-hidden border border-blue-500/30 flex flex-col max-h-[94vh] text-white backdrop-blur-2xl"
+          : "bg-[#070C1B]/95 rounded-[32px] shadow-[0_0_80px_rgba(20,40,110,0.6)] max-w-7xl w-full mx-auto overflow-hidden border border-blue-500/30 flex flex-col min-h-[92vh] text-white backdrop-blur-2xl"
+        }
       >
         {/* Header Bar */}
         <div className="p-4 sm:p-5 border-b border-blue-500/20 bg-[#0B1536]/80 text-white flex items-center justify-between">
@@ -1263,7 +1274,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   <div className="flex items-center gap-3 text-xs text-slate-300 mt-1">
                     <span>🏍️ {agent.vehicleType}</span>
                     <span>📍 {agent.deliveryZone}</span>
-                    <span>💼 {agent.gender.replace(/_/g, ' ')}</span>
+                    <span>💼 {agent.gender ? agent.gender.replace(/_/g, ' ') : 'agent'}</span>
                   </div>
                 </div>
               </div>
@@ -1273,7 +1284,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <div className="bg-emerald-950/40 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right shadow-inner">
                   <div className="text-[10px] uppercase font-bold text-emerald-400">Wallet Earnings</div>
                   <div className="text-sm font-extrabold text-emerald-200 font-mono">
-                    ₹{agent.totalEarnings.toFixed(2)}
+                    ₹{Number(agent.totalEarnings || 0).toFixed(2)}
                   </div>
                 </div>
 

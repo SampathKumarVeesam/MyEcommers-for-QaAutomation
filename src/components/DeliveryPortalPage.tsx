@@ -8,10 +8,11 @@ interface DeliveryPortalPageProps {
 
 export const DeliveryPortalPage: React.FC<DeliveryPortalPageProps> = ({ onNavigateHome }) => {
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-[#030611] flex flex-col">
       <DeliveryAgentPortal
         isOpen={true}
         onClose={onNavigateHome}
+        isModal={false}
       />
     </div>
   );

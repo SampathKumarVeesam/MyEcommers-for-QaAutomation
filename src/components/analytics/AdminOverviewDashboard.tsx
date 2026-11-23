@@ -5,7 +5,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -14,24 +13,16 @@ import {
 } from 'recharts';
 import {
   AlertCircle,
-  ArrowDownRight,
   ArrowUpRight,
-  CheckCircle2,
   Clock,
   DollarSign,
-  Filter,
-  Layers,
   RefreshCw,
   ShieldCheck,
   ShoppingBag,
-  Store,
-  TrendingUp,
-  Truck,
-  Users,
-  Wallet,
 } from 'lucide-react';
 import { apiUrl } from '../../config/api.js';
 import { ExecutiveTooltip } from './ExecutiveTooltip.js';
+import { ChartErrorBoundary } from './ChartErrorBoundary.js';
 
 interface AdminOverviewDashboardProps {
   token: string;
@@ -57,7 +48,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
       if (!res.ok || !json.success) {
         throw new Error(json.message || 'Failed to fetch overview analytics');
       }
-      setData(json.data);
+      setData(json.data || {});
     } catch (err: any) {
       console.error('[Admin Overview Error]:', err);
       setError(err.message || 'Error fetching analytics overview');
@@ -88,6 +79,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
         <h4 className="text-base font-bold text-white">Analytics Overview Unavailable</h4>
         <p className="text-xs text-rose-300">{error || 'No analytics data received'}</p>
         <button
+          type="button"
           onClick={fetchOverview}
           className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white transition-colors cursor-pointer"
         >
@@ -97,7 +89,49 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
     );
   }
 
-  const { kpis, monthlyRevenue, conversionFunnel, storeFulfillment, codFlow } = data;
+  const kpis = data?.kpis || {};
+  const monthlyRevenue = Array.isArray(data?.monthlyRevenue)
+    ? data.monthlyRevenue
+    : (Array.isArray(data?.monthlyTrends) ? data.monthlyTrends : []);
+  const conversionFunnel = Array.isArray(data?.conversionFunnel) ? data.conversionFunnel : [];
+  const storeFulfillment = Array.isArray(data?.storeFulfillment) ? data.storeFulfillment : [];
+  const codFlow = data?.codFlow || data?.codSettlementFlow || {};
+
+  // Safe KPI string extraction (guarantees primitives, never objects in JSX children)
+  const totalRevenueFormatted =
+    typeof kpis.totalRevenue === 'object' && kpis.totalRevenue !== null
+      ? (kpis.totalRevenue.formatted || `₹${Number(kpis.totalRevenue.value || 0).toLocaleString('en-IN')}`)
+      : `₹${Number(kpis.totalRevenue || 0).toLocaleString('en-IN')}`;
+
+  const revenueDelta =
+    typeof kpis.totalRevenue === 'object' && kpis.totalRevenue !== null
+      ? (kpis.totalRevenue.delta || '+14.2%')
+      : (kpis.revenueDelta30d || '+14.2%');
+
+  const activeOrdersFormatted =
+    typeof kpis.activeOrders === 'object' && kpis.activeOrders !== null
+      ? String(kpis.activeOrders.value ?? kpis.activeOrders.formatted ?? 0)
+      : String(kpis.activeOrders || 0);
+
+  const activeOrders7dFormatted =
+    typeof kpis.activeOrders === 'object' && kpis.activeOrders !== null
+      ? String(kpis.activeOrders.value ?? 0)
+      : String(kpis.activeOrders7d || kpis.activeOrders || 0);
+
+  const codSettlementRateFormatted =
+    typeof kpis.codSettlementRate === 'object' && kpis.codSettlementRate !== null
+      ? (kpis.codSettlementRate.formatted || `${kpis.codSettlementRate.value || 96.8}%`)
+      : `${kpis.codSettlementRate || 96.8}%`;
+
+  const settledCodAmountFormatted =
+    typeof codFlow?.storeDeposited === 'number'
+      ? `₹${codFlow.storeDeposited.toLocaleString('en-IN')}`
+      : `₹${Number(kpis.settledCodAmount || 0).toLocaleString('en-IN')}`;
+
+  const avgDispatchTimeFormatted =
+    typeof kpis.avgDispatchTime === 'object' && kpis.avgDispatchTime !== null
+      ? (kpis.avgDispatchTime.formatted || `${kpis.avgDispatchTime.value || 12.4} min`)
+      : `${kpis.avgDispatchMinutes || 12.4} min`;
 
   return (
     <div className="space-y-6">
@@ -116,11 +150,11 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
           </div>
           <div>
             <div className="text-2xl font-black text-white font-mono tabular-nums">
-              &#8377;{kpis.totalRevenue?.toLocaleString('en-IN') || '0'}
+              {totalRevenueFormatted}
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-emerald-400">
               <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>{kpis.revenueDelta30d || '+14.2%'}</span>
+              <span>{revenueDelta}</span>
               <span className="text-slate-400 font-normal">vs last month</span>
             </div>
           </div>
@@ -139,11 +173,11 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
           </div>
           <div>
             <div className="text-2xl font-black text-white font-mono tabular-nums">
-              {kpis.activeOrders || 0}
+              {activeOrdersFormatted}
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-blue-400">
               <span className="text-slate-400 font-normal">In transit:</span>
-              <span>{kpis.activeOrders7d || kpis.activeOrders || 0} orders</span>
+              <span>{activeOrders7dFormatted} orders</span>
             </div>
           </div>
         </div>
@@ -161,11 +195,11 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
           </div>
           <div>
             <div className="text-2xl font-black text-white font-mono tabular-nums">
-              {kpis.codSettlementRate || 96.8}%
+              {codSettlementRateFormatted}
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-emerald-400">
               <span>Deposited at Store:</span>
-              <span className="text-slate-300 font-mono">&#8377;{kpis.settledCodAmount?.toLocaleString('en-IN') || 0}</span>
+              <span className="text-slate-300 font-mono">{settledCodAmountFormatted}</span>
             </div>
           </div>
         </div>
@@ -183,7 +217,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
           </div>
           <div>
             <div className="text-2xl font-black text-white font-mono tabular-nums">
-              {kpis.avgDispatchMinutes || 12.4} min
+              {avgDispatchTimeFormatted}
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-amber-400">
               <span>3-Min FIFO Target:</span>
@@ -194,80 +228,82 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
       </div>
 
       {/* 2. STACKED GRADIENT AREA CHART (PREPAID VS COD) */}
-      <div className="p-6 rounded-3xl bg-slate-900/60 dark:bg-[#0A1024]/80 backdrop-blur-xl border border-white/10 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-base font-extrabold text-white tracking-tight">
-              Prepaid vs. Cash on Delivery (COD) Revenue Stream
-            </h3>
-            <p className="text-xs text-slate-400">
-              12-Month revenue breakdown comparing instant prepaid transactions and COD collections
-            </p>
+      <ChartErrorBoundary fallbackTitle="Revenue Stream Chart Unavailable">
+        <div className="p-6 rounded-3xl bg-slate-900/60 dark:bg-[#0A1024]/80 backdrop-blur-xl border border-white/10 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-extrabold text-white tracking-tight">
+                Prepaid vs. Cash on Delivery (COD) Revenue Stream
+              </h3>
+              <p className="text-xs text-slate-400">
+                12-Month revenue breakdown comparing instant prepaid transactions and COD collections
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10 text-xs">
+              {(['7D', '30D', '12M'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setTimeRange(r)}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    timeRange === r
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10 text-xs">
-            {(['7D', '30D', '12M'] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setTimeRange(r)}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  timeRange === r
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+          <div className="h-72 w-full min-h-[280px]">
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={monthlyRevenue}>
+                <defs>
+                  <linearGradient id="prepaidGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="codGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.15} vertical={false} />
+                <XAxis dataKey="month" stroke="#64748B" fontSize={11} axisLine={false} tickLine={false} />
+                <YAxis
+                  stroke="#64748B"
+                  fontSize={11}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                />
+                <Tooltip content={<ExecutiveTooltip currency={true} titlePrefix="Period:" />} />
+                <Area
+                  type="monotone"
+                  dataKey="prepaidRevenue"
+                  name="Prepaid (Cards/UPI)"
+                  stroke="#06B6D4"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#prepaidGrad)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="codRevenue"
+                  name="COD (Cash & QR)"
+                  stroke="#6366F1"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#codGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
-
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={monthlyRevenue || []}>
-              <defs>
-                <linearGradient id="prepaidGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                </linearGradient>
-                <linearGradient id="codGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.15} vertical={false} />
-              <XAxis dataKey="month" stroke="#64748B" fontSize={11} axisLine={false} tickLine={false} />
-              <YAxis
-                stroke="#64748B"
-                fontSize={11}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
-              />
-              <Tooltip content={<ExecutiveTooltip currency={true} titlePrefix="Period:" />} />
-              <Area
-                type="monotone"
-                dataKey="prepaidRevenue"
-                name="Prepaid (Cards/UPI)"
-                stroke="#06B6D4"
-                strokeWidth={2.5}
-                fillOpacity={1}
-                fill="url(#prepaidGrad)"
-              />
-              <Area
-                type="monotone"
-                dataKey="codRevenue"
-                name="COD (Cash & QR)"
-                stroke="#6366F1"
-                strokeWidth={2.5}
-                fillOpacity={1}
-                fill="url(#codGrad)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      </ChartErrorBoundary>
 
       {/* 3. ORDER LIFECYCLE FUNNEL + COD CASH SETTLEMENT FLOW */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -283,7 +319,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
           </div>
 
           <div className="space-y-3 pt-2">
-            {(conversionFunnel || []).map((stage: any, idx: number) => {
+            {conversionFunnel.map((stage: any, idx: number) => {
               const colors = [
                 'bg-blue-500 text-blue-400',
                 'bg-indigo-500 text-indigo-400',
@@ -292,24 +328,28 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
                 'bg-cyan-500 text-cyan-400',
               ];
               const color = colors[idx % colors.length];
+              const count = stage?.count ?? 0;
+              const pct = typeof stage?.conversionRate === 'number'
+                ? stage.conversionRate
+                : (typeof stage?.conversionPct === 'number' ? stage.conversionPct : 100);
 
               return (
-                <div key={stage.stage} className="space-y-1">
+                <div key={stage?.stage || `stage-${idx}`} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-300">{stage.stage}</span>
+                    <span className="font-semibold text-slate-300">{stage?.stage || 'Stage'}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-white tabular-nums">
-                        {stage.count}
+                        {count}
                       </span>
                       <span className="text-[10px] text-slate-400 font-mono">
-                        ({stage.conversionPct}%)
+                        ({pct}%)
                       </span>
                     </div>
                   </div>
                   <div className="h-2 rounded-full bg-white/5 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${color.split(' ')[0]}`}
-                      style={{ width: `${Math.max(5, stage.conversionPct)}%` }}
+                      style={{ width: `${Math.max(5, Math.min(100, pct))}%` }}
                     />
                   </div>
                 </div>
@@ -335,7 +375,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
                 Total COD Cash
               </span>
               <div className="text-lg font-black text-white font-mono tabular-nums">
-                &#8377;{codFlow?.cashCollected?.toLocaleString('en-IN') || 0}
+                &#8377;{Number(codFlow?.cashCollected || 0).toLocaleString('en-IN')}
               </div>
               <span className="text-[10px] text-slate-400">Physical paper currency</span>
             </div>
@@ -345,7 +385,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
                 Instant UPI QR
               </span>
               <div className="text-lg font-black text-cyan-400 font-mono tabular-nums">
-                &#8377;{codFlow?.upiQrCollected?.toLocaleString('en-IN') || 0}
+                &#8377;{Number(codFlow?.upiQrCollected || 0).toLocaleString('en-IN')}
               </div>
               <span className="text-[10px] text-slate-400">Direct digital settlement</span>
             </div>
@@ -355,7 +395,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
                 Store Deposited
               </span>
               <div className="text-lg font-black text-white font-mono tabular-nums">
-                &#8377;{codFlow?.storeDeposited?.toLocaleString('en-IN') || 0}
+                &#8377;{Number(codFlow?.storeDeposited || 0).toLocaleString('en-IN')}
               </div>
               <span className="text-[10px] text-emerald-400">Audited &amp; verified</span>
             </div>
@@ -365,7 +405,7 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
                 Pending Liability
               </span>
               <div className="text-lg font-black text-amber-400 font-mono tabular-nums">
-                &#8377;{codFlow?.unsettledLiability?.toLocaleString('en-IN') || 0}
+                &#8377;{Number(codFlow?.unsettledLiability || 0).toLocaleString('en-IN')}
               </div>
               <span className="text-[10px] text-amber-300/80">In agent possession</span>
             </div>
@@ -374,42 +414,44 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
       </div>
 
       {/* 4. CLUSTERED BAR CHART: STORE FULFILLMENT VS PENDING COD */}
-      <div className="p-6 rounded-3xl bg-slate-900/60 dark:bg-[#0A1024]/80 backdrop-blur-xl border border-white/10 shadow-xl space-y-4">
-        <div>
-          <h3 className="text-base font-extrabold text-white tracking-tight">
-            Store Fulfillment Hub Performance vs. Pending COD Cash
-          </h3>
-          <p className="text-xs text-slate-400">
-            Order processing throughput compared with outstanding cash deposit liabilities across Hyderabad stores
-          </p>
-        </div>
+      <ChartErrorBoundary fallbackTitle="Store Fulfillment Chart Unavailable">
+        <div className="p-6 rounded-3xl bg-slate-900/60 dark:bg-[#0A1024]/80 backdrop-blur-xl border border-white/10 shadow-xl space-y-4">
+          <div>
+            <h3 className="text-base font-extrabold text-white tracking-tight">
+              Store Fulfillment Hub Performance vs. Pending COD Cash
+            </h3>
+            <p className="text-xs text-slate-400">
+              Order processing throughput compared with outstanding cash deposit liabilities across Hyderabad stores
+            </p>
+          </div>
 
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={storeFulfillment || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.15} vertical={false} />
-              <XAxis dataKey="storeName" stroke="#64748B" fontSize={11} axisLine={false} tickLine={false} />
-              <YAxis stroke="#64748B" fontSize={11} axisLine={false} tickLine={false} />
-              <Tooltip content={<ExecutiveTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: '11px', color: '#94A3B8', paddingTop: '10px' }}
-              />
-              <Bar
-                dataKey="ordersFulfilled"
-                name="Orders Fulfilled"
-                fill="#3B82F6"
-                radius={[6, 6, 0, 0]}
-              />
-              <Bar
-                dataKey="activeOrders"
-                name="In Dispatch"
-                fill="#06B6D4"
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-64 w-full min-h-[260px]">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={storeFulfillment}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.15} vertical={false} />
+                <XAxis dataKey="storeName" stroke="#64748B" fontSize={11} axisLine={false} tickLine={false} />
+                <YAxis stroke="#64748B" fontSize={11} axisLine={false} tickLine={false} />
+                <Tooltip content={<ExecutiveTooltip />} />
+                <Legend
+                  wrapperStyle={{ fontSize: '11px', color: '#94A3B8', paddingTop: '10px' }}
+                />
+                <Bar
+                  dataKey="fulfilledOrders"
+                  name="Orders Fulfilled"
+                  fill="#3B82F6"
+                  radius={[6, 6, 0, 0]}
+                />
+                <Bar
+                  dataKey="totalAgents"
+                  name="Active Agents"
+                  fill="#06B6D4"
+                  radius={[6, 6, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      </ChartErrorBoundary>
     </div>
   );
 };

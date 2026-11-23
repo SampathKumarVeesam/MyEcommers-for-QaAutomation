@@ -338,11 +338,11 @@ export const Header: React.FC<HeaderProps> = ({
                       {user?.avatarUrl || user?.avatar ? (
                         <img src={user.avatarUrl || user.avatar} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        user?.name.charAt(0) || 'U'
+                        (user?.name || 'U').charAt(0)
                       )}
                     </div>
                     <span className="text-xs font-semibold hidden md:inline truncate max-w-28">
-                      {user?.name.split(' ')[0]}
+                      {user?.name ? user.name.split(' ')[0] : 'Account'}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </button>
@@ -418,6 +418,21 @@ export const Header: React.FC<HeaderProps> = ({
                             <span>Admin Catalog Dashboard</span>
                           </button>
                         )}
+
+                        <button
+                          type="button"
+                          data-test="user-delivery-portal-link"
+                          data-testid="user-delivery-portal-link"
+                          onClick={() => {
+                            setIsAccountMenuOpen(false);
+                            window.history.pushState({}, '', '/delivery');
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-amber-50 text-amber-700 font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <Truck className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Delivery Partner Portal</span>
+                        </button>
 
                         <div className="my-1 border-t border-slate-100" />
 

@@ -7,7 +7,7 @@ export interface HeatmapDay {
 }
 
 interface ActivityHeatmapProps {
-  days: HeatmapDay[];
+  days?: HeatmapDay[];
   colorScheme?: 'emerald' | 'sapphire';
   title?: string;
   totalActiveDays?: number;
@@ -15,7 +15,7 @@ interface ActivityHeatmapProps {
 }
 
 export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
-  days,
+  days = [],
   colorScheme = 'emerald',
   title = '365-Day Activity Ledger',
   totalActiveDays = 0,
@@ -23,13 +23,14 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
 }) => {
   const [hoveredDay, setHoveredDay] = useState<HeatmapDay | null>(null);
 
+  const safeDays = Array.isArray(days) ? days : [];
   // Split the ~365 days into 52 or 53 weeks of 7 days each
   const weeks: HeatmapDay[][] = [];
   let currentWeek: HeatmapDay[] = [];
 
-  days.forEach((day, index) => {
+  safeDays.forEach((day, index) => {
     currentWeek.push(day);
-    if (currentWeek.length === 7 || index === days.length - 1) {
+    if (currentWeek.length === 7 || index === safeDays.length - 1) {
       weeks.push(currentWeek);
       currentWeek = [];
     }
@@ -98,11 +99,10 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                 <div
                   key={`day-${wIdx}-${dIdx}`}
                   onMouseEnter={() => setHoveredDay(day)}
-                  onMouseLeave={() => setHoveredDay(null)}
-                  className={`w-3 h-3 rounded-[3px] border border-white/5 transition-all duration-150 cursor-pointer hover:scale-125 hover:z-20 ${getCellColor(
-                    day.intensity
+                  className={`w-3 h-3 rounded-[3px] border border-white/5 transition-transform hover:scale-125 cursor-pointer ${getCellColor(
+                    day?.intensity ?? 0
                   )}`}
-                  title={`${day.date}: ${day.count} activity`}
+                  title={`${day?.date || 'Day'}: ${day?.count || 0} events`}
                 />
               ))}
             </div>
@@ -110,27 +110,26 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         </div>
       </div>
 
-      {/* Footer / Legend / Active Hover Display */}
-      <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs text-slate-400">
-        <div className="h-5 flex items-center">
+      {/* Legend & Hover Info */}
+      <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
+        <div className="min-h-[18px]">
           {hoveredDay ? (
-            <span className="text-slate-200">
-              <strong className="text-white font-mono">{hoveredDay.count}</strong> transactions on{' '}
-              <span className="text-blue-400">{hoveredDay.date}</span>
+            <span className="text-slate-300 font-mono">
+              <strong>{hoveredDay.count}</strong> events on {hoveredDay.date}
             </span>
           ) : (
-            <span>Hover over any block to inspect volume</span>
+            <span>Hover over a cell to view daily records</span>
           )}
         </div>
 
-        {/* 5-step intensity legend */}
-        <div className="flex items-center gap-1.5 text-[11px]">
+        <div className="flex items-center gap-1.5">
           <span>Less</span>
-          <div className="w-2.5 h-2.5 rounded-[2px] bg-slate-800/40 border border-white/5" />
-          <div className={`w-2.5 h-2.5 rounded-[2px] ${colorScheme === 'emerald' ? 'bg-emerald-700/25' : 'bg-indigo-800/30'}`} />
-          <div className={`w-2.5 h-2.5 rounded-[2px] ${colorScheme === 'emerald' ? 'bg-emerald-600/50' : 'bg-indigo-600/50'}`} />
-          <div className={`w-2.5 h-2.5 rounded-[2px] ${colorScheme === 'emerald' ? 'bg-emerald-500/80' : 'bg-blue-500/80'}`} />
-          <div className={`w-2.5 h-2.5 rounded-[2px] ${colorScheme === 'emerald' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+          {[0, 1, 2, 3, 4].map((intensity) => (
+            <div
+              key={`legend-scale-${intensity}`}
+              className={`w-2.5 h-2.5 rounded-[2px] ${getCellColor(intensity)}`}
+            />
+          ))}
           <span>More</span>
         </div>
       </div>

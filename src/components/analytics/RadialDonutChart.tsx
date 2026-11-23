@@ -9,29 +9,30 @@ export interface DonutSegment {
 }
 
 interface RadialDonutChartProps {
-  data: DonutSegment[];
+  data?: DonutSegment[];
   centerLabel?: string;
   centerValue?: string | number;
   height?: number;
 }
 
 export const RadialDonutChart: React.FC<RadialDonutChartProps> = ({
-  data,
+  data = [],
   centerLabel = 'Total',
   centerValue,
   height = 240,
 }) => {
-  const total = data.reduce((acc, curr) => acc + curr.value, 0);
+  const safeData = Array.isArray(data) ? data : [];
+  const total = safeData.reduce((acc, curr) => acc + (Number(curr?.value) || 0), 0);
   const displayValue = centerValue !== undefined ? centerValue : total;
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full">
-      <div style={{ width: '100%', height }} className="relative">
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ width: '100%', height, minHeight: height }} className="relative">
+        <ResponsiveContainer width="100%" height={height}>
           <PieChart>
             <Tooltip content={<ExecutiveTooltip />} />
             <Pie
-              data={data}
+              data={safeData}
               cx="50%"
               cy="50%"
               innerRadius="68%"
@@ -42,8 +43,8 @@ export const RadialDonutChart: React.FC<RadialDonutChartProps> = ({
               animationDuration={800}
               stroke="none"
             >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+              {safeData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry?.color || '#3B82F6'} />
               ))}
             </Pie>
           </PieChart>
@@ -62,8 +63,9 @@ export const RadialDonutChart: React.FC<RadialDonutChartProps> = ({
 
       {/* Modern Legend Pills with Tabular Figures */}
       <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-        {data.map((item, idx) => {
-          const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+        {safeData.map((item, idx) => {
+          const val = Number(item?.value) || 0;
+          const pct = total > 0 ? Math.round((val / total) * 100) : 0;
           return (
             <div
               key={`legend-${idx}`}
@@ -71,11 +73,11 @@ export const RadialDonutChart: React.FC<RadialDonutChartProps> = ({
             >
               <span
                 className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: item.color }}
+                style={{ backgroundColor: item?.color || '#3B82F6' }}
               />
-              <span className="text-slate-300 font-medium">{item.name}</span>
+              <span className="text-slate-300 font-medium">{item?.name || 'Item'}</span>
               <span className="text-white font-mono font-bold tabular-nums">
-                {item.value} ({pct}%)
+                {val} ({pct}%)
               </span>
             </div>
           );
