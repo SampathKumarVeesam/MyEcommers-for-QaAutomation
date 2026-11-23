@@ -392,32 +392,112 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div
       data-test="auth-modal"
       data-testid="auth-modal"
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#05070D]/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#030611] backdrop-blur-2xl flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
     >
-      {/* Ambient Flowing Neon Mesh Waves */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-cyan-500/20 blur-[120px] mix-blend-screen" />
-        <div className="absolute top-1/4 -right-20 w-[400px] h-[400px] rounded-full bg-indigo-600/25 blur-[130px] mix-blend-screen" />
-        <div className="absolute -bottom-32 left-1/3 w-[450px] h-[450px] rounded-full bg-purple-600/15 blur-[140px] mix-blend-screen" />
+      {/* 3D RIBBON NEON MESH WAVES BACKGROUND (Matching Reference Image 5) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-tr from-cyan-500/10 via-purple-600/10 to-transparent rounded-full blur-[160px]" />
+
+        {/* Purple/Magenta Wave (Right side of Image 5) */}
+        <svg
+          className="absolute -right-20 top-1/4 w-[650px] h-[650px] opacity-75 transform rotate-12"
+          viewBox="0 0 600 600"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g filter="blur(30px)">
+            {Array.from({ length: 18 }).map((_, i) => (
+              <path
+                key={`p-mesh-${i}`}
+                d={`M 100 ${120 + i * 16} C 280 ${50 + i * 18}, 420 ${280 + i * 14}, 580 ${160 + i * 20}`}
+                stroke={`rgba(${168 + i * 4}, ${40 + i * 6}, ${240 - i * 5}, ${0.35 - i * 0.015})`}
+                strokeWidth="2.5"
+              />
+            ))}
+          </g>
+        </svg>
+
+        {/* Orange/Cyan Wave (Left side of Image 5) */}
+        <svg
+          className="absolute -left-28 bottom-1/4 w-[700px] h-[700px] opacity-70 transform -rotate-12"
+          viewBox="0 0 600 600"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g filter="blur(32px)">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <path
+                key={`c-mesh-${i}`}
+                d={`M 20 ${350 - i * 14} C 160 ${460 - i * 16}, 360 ${220 - i * 14}, 550 ${380 - i * 18}`}
+                stroke={
+                  i < 8
+                    ? `rgba(249, 115, 22, ${0.4 - i * 0.02})`
+                    : `rgba(6, 182, 212, ${0.35 - (i - 8) * 0.02})`
+                }
+                strokeWidth="2.5"
+              />
+            ))}
+          </g>
+        </svg>
       </div>
 
-      <div
-        className="relative bg-slate-900/90 dark:bg-[#070C1B]/95 text-white rounded-[28px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] border border-white/15 w-full max-w-md overflow-hidden flex flex-col backdrop-blur-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Luminous Specular Top Highlight */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+      {/* Main Glass Pod Container (Matching Image 5) */}
+      <div className="relative w-full max-w-[440px] mx-auto z-10 animate-in fade-in zoom-in-95 duration-300">
+        <div className="absolute -inset-1 rounded-[56px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-orange-500/15 blur-xl pointer-events-none opacity-80" />
 
-        {/* Header Tabs */}
-        <div className="p-4 bg-white/[0.03] border-b border-white/10 flex items-center justify-between">
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+        <div
+          className="relative rounded-[50px] p-7 sm:p-9 bg-[#090D1A]/85 backdrop-blur-3xl border border-white/20 shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden text-white"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+          {/* Close Button */}
+          <button
+            data-test="auth-close-button"
+            data-testid="auth-close-button"
+            onClick={handleClose}
+            aria-label="Close"
+            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-20"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Header Section */}
+          <div className="text-center space-y-2.5 mb-6">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md ${
+              tab === 'admin'
+                ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+            }`}>
+              <ShieldCheck className="w-3 h-3" />
+              <span>{tab === 'admin' ? 'Administrator Console' : 'Customer Portal'}</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-[0.2em] uppercase">
+              {tab === 'login' ? 'LOGIN' : tab === 'register' ? 'REGISTER' : tab === 'forgot' ? 'RECOVER' : tab === 'reset' ? 'RESET' : 'ADMIN'}
+            </h1>
+
+            {notice && tab !== 'admin' && (
+              <div
+                data-test="auth-checkout-notice"
+                data-testid="auth-checkout-notice"
+                className="p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold flex items-center gap-2 shadow-2xs"
+              >
+                <ShoppingBag className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-[11px] leading-snug">{notice}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex bg-white/5 p-1 rounded-full border border-white/10 text-xs font-bold mb-5">
             <button
               data-test="auth-tab-login"
               data-testid="auth-tab-login"
               onClick={() => handleSwitchTab('login')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
                 tab === 'login'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-cyan-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -427,9 +507,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               data-test="auth-tab-register"
               data-testid="auth-tab-register"
               onClick={() => handleSwitchTab('register')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
                 tab === 'register'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-cyan-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -439,332 +519,119 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               data-test="auth-tab-admin"
               data-testid="auth-tab-admin"
               onClick={() => handleSwitchTab('admin')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-full transition-all text-center cursor-pointer flex items-center justify-center gap-1 ${
                 tab === 'admin'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-indigo-400'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-purple-300'
               }`}
             >
               <Lock className="w-3 h-3" />
               <span>Admin</span>
             </button>
-            {(tab === 'forgot' || tab === 'reset') && (
-              <span className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-xs flex items-center gap-1">
-                <KeyRound className="w-3 h-3" />
-                <span>{tab === 'forgot' ? 'Forgot Password' : 'Reset Password'}</span>
-              </span>
-            )}
           </div>
 
-          <button
-            data-test="auth-close-button"
-            data-testid="auth-close-button"
-            onClick={handleClose}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <div className="p-6">
-          {/* Checkout Login Notice */}
-          {notice && tab !== 'admin' && (
-            <div
-              data-test="auth-checkout-notice"
-              data-testid="auth-checkout-notice"
-              className="mb-4 p-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-semibold flex items-center gap-2.5 shadow-2xs animate-in fade-in duration-200"
-            >
-              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-4 h-4" />
-              </div>
-              <span className="leading-snug">{notice}</span>
-            </div>
-          )}
-
-          {/* Role Pill & Title Header */}
-          <div className="mb-4 space-y-1.5">
-            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-              tab === 'admin'
-                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
-                : 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-            }`}>
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{tab === 'admin' ? 'Administrator Console' : 'Customer Portal'}</span>
-            </div>
-            <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-              {tab === 'admin' && <ShieldCheck className="w-5 h-5 text-indigo-400" />}
-              {tab === 'login' && 'Welcome to ShopSphere'}
-              {tab === 'register' && 'Create Customer Account'}
-              {tab === 'admin' && 'Administrator Portal'}
-              {tab === 'forgot' && 'Reset Customer Password'}
-              {tab === 'reset' && 'Set New Password'}
-            </h3>
-            <p className="text-xs text-slate-400">
-              {tab === 'login' && 'Sign in securely with token authentication or social OAuth'}
-              {tab === 'register' && 'Register in seconds with automatic 24-hour token verification'}
-              {tab === 'admin' && 'Enter your administrator credentials to access PostgreSQL analytics and management console.'}
-              {tab === 'forgot' && 'Receive a 6-digit OTP verification code to reset your account password.'}
-              {tab === 'reset' && 'Enter the OTP sent to your email to verify and update your password.'}
-            </p>
-          </div>
-
-          {/* Social OAuth Buttons (Hidden on Admin Portal, or if no OAuth provider is configured) */}
+          {/* Social OAuth Buttons */}
           {tab !== 'admin' && hasAnyOAuth && (
-            <>
-              <div className="space-y-2 mb-4">
-                {/* Google OAuth */}
-                {isGoogleConfigured && (
-                  <button
-                    type="button"
-                    data-test="oauth-google-button"
-                    data-testid="oauth-google-button"
-                    onClick={() => handleOAuthLogin('google')}
-                    disabled={isOAuthLoading !== null}
-                    className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2.5 shadow-2xs transition-all active:scale-98 cursor-pointer disabled:opacity-50"
-                  >
-                    {isOAuthLoading === 'google' ? (
-                      <span className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                    )}
-                    <span>Continue with Google</span>
-                  </button>
-                )}
-
-                {/* Apple OAuth */}
-                {isAppleConfigured && (
-                  <button
-                    type="button"
-                    data-test="oauth-apple-button"
-                    data-testid="oauth-apple-button"
-                    onClick={() => handleOAuthLogin('apple')}
-                    disabled={isOAuthLoading !== null}
-                    className="w-full py-2.5 px-4 bg-slate-950 hover:bg-slate-900 border border-black text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2.5 shadow-2xs transition-all active:scale-98 cursor-pointer disabled:opacity-50"
-                  >
-                    {isOAuthLoading === 'apple' ? (
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg className="w-4 h-4 fill-white" viewBox="0 0 170 170">
-                        <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.77-7.97-12.24-14.67-6.05-9.11-10.82-19.73-14.33-31.85-3.5-12.12-5.26-23.85-5.26-35.19 0-14.89 3.51-26.97 10.53-36.24 7.02-9.28 15.82-14.05 26.41-14.33 4.8 0 10.05 1.16 15.75 3.48 5.7 2.33 9.49 3.59 11.37 3.79 2.12-.2 6.02-1.5 11.71-3.9 5.69-2.4 10.63-3.48 14.83-3.26 12.03.74 21.6 5.41 28.71 14.02-10.43 6.32-15.52 14.86-15.28 25.62.24 8.5 3.56 15.67 9.97 21.51 6.4 5.84 14.07 9.17 23 10-2.07 6.1-4.7 12.38-7.89 18.84zm-30.82-104.9c0-6.74 2.45-13.04 7.35-17.9 4.9-4.86 10.9-7.45 18-7.77.22 1.48.33 2.87.33 4.18 0 6.64-2.52 13.06-7.56 18.25-5.04 5.2-11.08 7.97-18.12 8.32z" />
-                      </svg>
-                    )}
-                    <span>Continue with Apple</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Divider */}
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                  <span className="bg-white px-2 text-slate-400">Or continue with email</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* =========================================================================
-              TAB: ADMIN LOGIN (Clean Manual Form - No Pre-filled Credentials)
-             ========================================================================= */}
-          {tab === 'admin' && (
-            <div className="space-y-4">
-              {adminGlobalError && (
-                <div
-                  data-test="admin-login-error"
-                  data-testid="admin-login-error"
-                  className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                  <span>{adminGlobalError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleAdminLoginSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Admin Username or Email
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      data-test="admin-login-identifier-input"
-                      data-testid="admin-login-identifier-input"
-                      placeholder="admin or admin@example.com"
-                      value={adminIdentifier}
-                      onChange={e => setAdminIdentifier(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        adminErrors.identifier ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-rose-500'
-                      }`}
-                    />
-                  </div>
-                  {adminErrors.identifier && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{adminErrors.identifier}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Admin Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showAdminPassword ? 'text' : 'password'}
-                      data-test="admin-login-password-input"
-                      data-testid="admin-login-password-input"
-                      placeholder="Enter administrator password"
-                      value={adminPassword}
-                      onChange={e => setAdminPassword(e.target.value)}
-                      className={`w-full pl-9 pr-10 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        adminErrors.password ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-rose-500'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      data-test="admin-password-toggle"
-                      data-testid="admin-password-toggle"
-                      onClick={() => setShowAdminPassword(!showAdminPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                      title={showAdminPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showAdminPassword ? <EyeOff className="w-4 h-4 text-slate-500" /> : <Eye className="w-4 h-4 text-slate-400" />}
-                    </button>
-                  </div>
-                  {adminErrors.password && (
-                    <p className="text-[11px] text-rose-500 mt-1 font-semibold">{adminErrors.password}</p>
-                  )}
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                    <ShieldCheck className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Protected Administrator Area</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                    Manual authentication required. Valid credentials will redirect immediately to the Admin &amp; Analytics Dashboard.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  data-test="admin-login-submit-button"
-                  data-testid="admin-login-submit-button"
-                  disabled={isAdminLoggingIn}
-                  className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  {isAdminLoggingIn ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span>Sign In to Admin Dashboard</span>
-                  )}
-                </button>
-              </form>
-
-              <div className="pt-2 text-center border-t border-slate-100">
+            <div className="space-y-2 mb-4">
+              {isGoogleConfigured && (
                 <button
                   type="button"
-                  onClick={() => handleSwitchTab('login')}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+                  data-test="oauth-google-button"
+                  data-testid="oauth-google-button"
+                  onClick={() => handleOAuthLogin('google')}
+                  disabled={isOAuthLoading !== null}
+                  className="w-full py-3 px-4 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 text-white rounded-full text-xs font-bold flex items-center justify-center gap-2.5 transition-all active:scale-98 cursor-pointer disabled:opacity-50"
                 >
-                  &larr; Return to Customer Sign In
+                  {isOAuthLoading === 'google' ? (
+                    <span className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                  )}
+                  <span>Continue with Google</span>
                 </button>
-              </div>
+              )}
             </div>
           )}
 
-          {/* =========================================================================
-              TAB: CUSTOMER SIGN IN
-             ========================================================================= */}
+          {/* TAB: CUSTOMER SIGN IN (Matching Reference Image 5) */}
           {tab === 'login' && (
             <div className="space-y-4">
               {loginGlobalError && (
-                <div data-test="login-error-message" data-testid="login-error-message" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <div data-test="login-error-message" data-testid="login-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                   <span>{loginGlobalError}</span>
                 </div>
               )}
 
-              <form onSubmit={handleLoginSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      data-test="login-email-input"
-                      data-testid="login-email-input"
-                      placeholder="you@example.com"
-                      value={loginEmail}
-                      onChange={e => setLoginEmail(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        loginErrors.email ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
-                      }`}
-                    />
-                  </div>
-                  {loginErrors.email && (
-                    <p data-test="login-email-error" data-testid="login-email-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.email}</p>
-                  )}
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    data-test="login-email-input"
+                    data-testid="login-email-input"
+                    placeholder="Username or Email"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-full text-white text-xs font-medium outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <User className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {loginErrors.email && (
+                  <p data-test="login-email-error" data-testid="login-email-error" className="text-[11px] text-rose-400 px-4 font-semibold">{loginErrors.email}</p>
+                )}
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showLoginPassword ? 'text' : 'password'}
-                      data-test="login-password-input"
-                      data-testid="login-password-input"
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={e => setLoginPassword(e.target.value)}
-                      className={`w-full pl-9 pr-10 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        loginErrors.password ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      data-test="login-password-toggle"
-                      data-testid="login-password-toggle"
-                      onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                      title={showLoginPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showLoginPassword ? (
-                        <EyeOff className="w-4 h-4 text-slate-500" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-slate-400" />
-                      )}
-                    </button>
-                  </div>
-                  {loginErrors.password && (
-                    <p data-test="login-password-error" data-testid="login-password-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{loginErrors.password}</p>
-                  )}
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    data-test="login-password-input"
+                    data-testid="login-password-input"
+                    placeholder="••••••••••••"
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-full text-white text-xs font-medium outline-none transition-all placeholder:text-slate-400 tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    data-test="login-password-toggle"
+                    data-testid="login-password-toggle"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white focus:outline-none cursor-pointer"
+                    title={showLoginPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                  </button>
                 </div>
+                {loginErrors.password && (
+                  <p data-test="login-password-error" data-testid="login-password-error" className="text-[11px] text-rose-400 px-4 font-semibold">{loginErrors.password}</p>
+                )}
 
-                {/* Forgot Password Link */}
-                <div className="flex items-center justify-between text-[11px] pt-0.5">
-                  <span className="text-slate-400">Can't remember password?</span>
+                {/* Remember Me & Forgot Password (Image 5) */}
+                <div className="flex items-center justify-between text-xs text-slate-300 px-2 pt-1 font-medium">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="rounded border-white/20 bg-white/10 text-cyan-500 focus:ring-0 cursor-pointer"
+                    />
+                    <span className="hover:text-white transition-colors">Remember me</span>
+                  </label>
                   <button
                     type="button"
                     data-test="link-forgot-password"
@@ -773,447 +640,137 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       setForgotEmail(loginEmail);
                       handleSwitchTab('forgot');
                     }}
-                    className="text-indigo-600 hover:text-indigo-800 font-bold transition-colors cursor-pointer"
+                    className="hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
                   >
-                    Forgot Password?
+                    Forgot password?
                   </button>
                 </div>
 
-                {/* Token-Based Security Badge */}
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                  <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Token Auth (JWT Bearer)
-                  </span>
-                  <span className="flex items-center gap-1 font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">
-                    <Clock className="w-3 h-3" />
-                    24-hour expiry
-                  </span>
-                </div>
-
+                {/* LOGIN Button (Pill shaped with dark glass gradient - Image 5) */}
                 <button
                   type="submit"
                   data-test="login-submit-button"
                   data-testid="login-submit-button"
                   disabled={isLoggingIn}
-                  className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-[0.25em] shadow-xl hover:shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
                 >
                   {isLoggingIn ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>LOGGING IN...</span>
+                    </>
                   ) : (
-                    <span>Sign In With Token</span>
+                    <span>LOGIN</span>
                   )}
                 </button>
               </form>
 
-              {/* QA Customer Quick Login Box (Exclusively customer profiles) */}
-              <div className="pt-3 border-t border-slate-100">
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                  Customer Test Accounts:
-                </p>
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    data-test="quick-login-customer1"
-                    data-testid="quick-login-customer1"
-                    onClick={async () => {
-                      await quickLogin('customer1');
-                      resetForms();
-                      onSuccess?.();
-                      onClose();
-                    }}
-                    className="w-full text-left p-2 rounded-xl bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-200 transition-all flex items-center justify-between text-xs cursor-pointer"
-                  >
-                    <div>
-                      <p className="font-bold text-slate-900">Jane Customer (Customer 1)</p>
-                      <p className="text-[10px] text-slate-500 font-mono">customer@practicesoftwaretesting.com</p>
-                    </div>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Customer</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    data-test="quick-login-customer2"
-                    data-testid="quick-login-customer2"
-                    onClick={async () => {
-                      await quickLogin('customer2');
-                      resetForms();
-                      onSuccess?.();
-                      onClose();
-                    }}
-                    className="w-full text-left p-2 rounded-xl bg-slate-50 hover:bg-indigo-50/80 border border-slate-200 hover:border-indigo-200 transition-all flex items-center justify-between text-xs cursor-pointer"
-                  >
-                    <div>
-                      <p className="font-bold text-slate-900">Alex Rivera (Customer 2)</p>
-                      <p className="text-[10px] text-slate-500 font-mono">customer2@practicesoftwaretesting.com</p>
-                    </div>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Customer</span>
-                  </button>
-                </div>
-
-                <div className="mt-3 text-center">
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchTab('admin')}
-                    className="text-[11px] font-semibold text-slate-500 hover:text-rose-600 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Administrator? <span className="underline font-bold">Admin Login &rarr;</span></span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* =========================================================================
-              TAB: FORGOT PASSWORD (Customer Email OTP Request)
-             ========================================================================= */}
-          {tab === 'forgot' && (
-            <div className="space-y-4">
-              <div className="text-center mb-2">
-                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-indigo-100">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-extrabold text-slate-900">Forgot Your Password?</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Enter your registered email address. We will send you a secure 6-digit OTP and reset link.
-                </p>
-              </div>
-
-              {forgotError && (
-                <div data-test="forgot-error-message" data-testid="forgot-error-message" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                  <span>{forgotError}</span>
-                </div>
-              )}
-
-              {forgotSuccess && (
-                <div data-test="forgot-success-message" data-testid="forgot-success-message" className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                    <span>{forgotSuccess}</span>
-                  </div>
-                  <button
-                    type="button"
-                    data-test="btn-proceed-to-reset"
-                    data-testid="btn-proceed-to-reset"
-                    onClick={() => handleSwitchTab('reset')}
-                    className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Enter 6-Digit OTP &amp; Reset Password &rarr;
-                  </button>
-                </div>
-              )}
-
-              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Registered Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      required
-                      data-test="forgot-email-input"
-                      data-testid="forgot-email-input"
-                      placeholder="you@example.com"
-                      value={forgotEmail}
-                      onChange={e => setForgotEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  data-test="forgot-submit-button"
-                  data-testid="forgot-submit-button"
-                  disabled={forgotLoading}
-                  className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {forgotLoading ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span>Send Verification OTP &amp; Reset Link</span>
-                  )}
-                </button>
-              </form>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+              {/* Quick Customer Demo Shortcuts */}
+              <div className="pt-3 border-t border-white/10 space-y-2">
                 <button
                   type="button"
-                  onClick={() => handleSwitchTab('login')}
-                  className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                  data-test="quick-login-customer1"
+                  data-testid="quick-login-customer1"
+                  onClick={async () => {
+                    await quickLogin('customer1');
+                    resetForms();
+                    onSuccess?.();
+                    onClose();
+                  }}
+                  className="w-full text-left p-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 transition-all flex items-center justify-between text-xs cursor-pointer px-4 text-slate-300 hover:text-white"
                 >
-                  &larr; Back to Sign In
-                </button>
-                <button
-                  type="button"
-                  data-test="link-have-otp"
-                  data-testid="link-have-otp"
-                  onClick={() => handleSwitchTab('reset')}
-                  className="font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
-                >
-                  Already have an OTP? Reset here &rarr;
+                  <span className="font-bold">⚡ Demo: Jane Customer</span>
+                  <span className="text-[10px] font-mono text-cyan-300">Quick Sign In &rarr;</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* =========================================================================
-              TAB: RESET PASSWORD (OTP Verification & New Password Setting)
-             ========================================================================= */}
-          {tab === 'reset' && (
-            <div className="space-y-4">
-              <div className="text-center mb-2">
-                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-indigo-100">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm font-extrabold text-slate-900">Set New Password</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Enter the 6-digit OTP code sent to your email along with your new password.
-                </p>
-              </div>
-
-              {resetError && (
-                <div data-test="reset-error-message" data-testid="reset-error-message" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                  <span>{resetError}</span>
-                </div>
-              )}
-
-              {resetSuccess && (
-                <div data-test="reset-success-message" data-testid="reset-success-message" className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                  <span>{resetSuccess}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Registered Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      required
-                      data-test="reset-email-input"
-                      data-testid="reset-email-input"
-                      placeholder="you@example.com"
-                      value={resetEmail}
-                      onChange={e => setResetEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Verification OTP</label>
-                  <div className="relative">
-                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      maxLength={6}
-                      data-test="reset-otp-input"
-                      data-testid="reset-otp-input"
-                      placeholder="123456"
-                      value={resetOtp}
-                      onChange={e => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold tracking-widest rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all text-center"
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Check your inbox/spam folder for the 6-digit code.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">New Password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showResetPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      data-test="reset-password-input"
-                      data-testid="reset-password-input"
-                      placeholder="At least 6 characters"
-                      value={resetPassword}
-                      onChange={e => setResetPassword(e.target.value)}
-                      className="w-full pl-9 pr-10 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowResetPassword(!showResetPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                    >
-                      {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Confirm New Password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showResetConfirmPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      data-test="reset-confirm-password-input"
-                      data-testid="reset-confirm-password-input"
-                      placeholder="Re-enter new password"
-                      value={resetConfirmPassword}
-                      onChange={e => setResetConfirmPassword(e.target.value)}
-                      className="w-full pl-9 pr-10 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                    >
-                      {showResetConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  data-test="reset-submit-button"
-                  data-testid="reset-submit-button"
-                  disabled={resetLoading}
-                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {resetLoading ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span>Verify OTP &amp; Update Password</span>
-                  )}
-                </button>
-              </form>
-
-              <div className="pt-3 border-t border-slate-100 text-center">
-                <button
-                  type="button"
-                  onClick={() => handleSwitchTab('login')}
-                  className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
-                >
-                  &larr; Return to Sign In
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* =========================================================================
-              TAB: CUSTOMER REGISTRATION
-             ========================================================================= */}
+          {/* TAB: CUSTOMER REGISTRATION (Matching Image 5) */}
           {tab === 'register' && (
             <div className="space-y-4">
               {regGlobalError && (
-                <div data-test="register-error-message" data-testid="register-error-message" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                <div data-test="register-error-message" data-testid="register-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                   <span>{regGlobalError}</span>
                 </div>
               )}
 
               {regSuccessMessage && (
-                <div data-test="register-success-message" data-testid="register-success-message" className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <div data-test="register-success-message" data-testid="register-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                   <span>{regSuccessMessage}</span>
                 </div>
               )}
 
-              <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      data-test="register-name-input"
-                      data-testid="register-name-input"
-                      placeholder="e.g. Sarah Connor"
-                      value={regName}
-                      onChange={e => setRegName(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        regErrors.name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
-                      }`}
-                    />
-                  </div>
-                  {regErrors.name && (
-                    <p data-test="register-name-error" data-testid="register-name-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.name}</p>
-                  )}
+              <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                <div className="relative">
+                  <input
+                    type="text"
+                    data-test="register-name-input"
+                    data-testid="register-name-input"
+                    placeholder="Full Name"
+                    value={regName}
+                    onChange={e => setRegName(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <User className="w-4 h-4 text-white/70 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {regErrors.name && (
+                  <p data-test="register-name-error" data-testid="register-name-error" className="text-[11px] text-rose-400 px-4 font-semibold">{regErrors.name}</p>
+                )}
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      data-test="register-email-input"
-                      data-testid="register-email-input"
-                      placeholder="sarah@example.com"
-                      value={regEmail}
-                      onChange={e => setRegEmail(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        regErrors.email ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
-                      }`}
-                    />
-                  </div>
-                  {regErrors.email && (
-                    <p data-test="register-email-error" data-testid="register-email-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.email}</p>
-                  )}
+                <div className="relative">
+                  <input
+                    type="email"
+                    data-test="register-email-input"
+                    data-testid="register-email-input"
+                    placeholder="Email Address"
+                    value={regEmail}
+                    onChange={e => setRegEmail(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <Mail className="w-4 h-4 text-white/70 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+                {regErrors.email && (
+                  <p data-test="register-email-error" data-testid="register-email-error" className="text-[11px] text-rose-400 px-4 font-semibold">{regErrors.email}</p>
+                )}
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showRegPassword ? 'text' : 'password'}
-                      data-test="register-password-input"
-                      data-testid="register-password-input"
-                      placeholder="Minimum 6 characters"
-                      value={regPassword}
-                      onChange={e => setRegPassword(e.target.value)}
-                      className={`w-full pl-9 pr-10 py-2 text-xs rounded-xl border bg-slate-50/50 outline-none focus:bg-white transition-all ${
-                        regErrors.password ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 focus:border-indigo-500'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      data-test="register-password-toggle"
-                      data-testid="register-password-toggle"
-                      onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                      title={showRegPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showRegPassword ? (
-                        <EyeOff className="w-4 h-4 text-slate-500" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-slate-400" />
-                      )}
-                    </button>
-                  </div>
-                  {regErrors.password && (
-                    <p data-test="register-password-error" data-testid="register-password-error" className="text-[11px] text-rose-500 mt-1 font-semibold">{regErrors.password}</p>
-                  )}
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    data-test="register-password-input"
+                    data-testid="register-password-input"
+                    placeholder="Password (min 6 characters)"
+                    value={regPassword}
+                    onChange={e => setRegPassword(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    data-test="register-password-toggle"
+                    data-testid="register-password-toggle"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                  >
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  </button>
                 </div>
+                {regErrors.password && (
+                  <p data-test="register-password-error" data-testid="register-password-error" className="text-[11px] text-rose-400 px-4 font-semibold">{regErrors.password}</p>
+                )}
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone (Optional)</label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="tel"
-                      data-test="register-phone-input"
-                      data-testid="register-phone-input"
-                      placeholder="+1 (555) 000-0000"
-                      value={regPhone}
-                      onChange={e => setRegPhone(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all"
-                    />
-                  </div>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    data-test="register-phone-input"
+                    data-testid="register-phone-input"
+                    placeholder="Phone (Optional)"
+                    value={regPhone}
+                    onChange={e => setRegPhone(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <Phone className="w-4 h-4 text-white/70 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
                 <button
@@ -1221,15 +778,259 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   data-test="register-submit-button"
                   data-testid="register-submit-button"
                   disabled={isRegistering}
-                  className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-[0.25em] shadow-xl hover:shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                 >
                   {isRegistering ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <span>Create Free Account</span>
+                    <span>CREATE ACCOUNT</span>
                   )}
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* TAB: ADMIN LOGIN (Within AuthModal) */}
+          {tab === 'admin' && (
+            <div className="space-y-4">
+              {adminGlobalError && (
+                <div data-test="admin-login-error" data-testid="admin-login-error" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{adminGlobalError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    data-test="admin-login-identifier-input"
+                    data-testid="admin-login-identifier-input"
+                    placeholder="Admin Username or Email"
+                    value={adminIdentifier}
+                    onChange={e => setAdminIdentifier(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-purple-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <User className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    data-test="admin-login-password-input"
+                    data-testid="admin-login-password-input"
+                    placeholder="Admin Password"
+                    value={adminPassword}
+                    onChange={e => setAdminPassword(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-purple-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    data-test="admin-password-toggle"
+                    data-testid="admin-password-toggle"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white"
+                  >
+                    {showAdminPassword ? <EyeOff className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  data-test="admin-login-submit-button"
+                  data-testid="admin-login-submit-button"
+                  disabled={isAdminLoggingIn}
+                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-[0.25em] shadow-xl hover:shadow-purple-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                >
+                  {isAdminLoggingIn ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <span>LOGIN AS ADMIN</span>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB: FORGOT & RESET PASSWORD */}
+          {tab === 'forgot' && (
+            <div className="space-y-4">
+              {forgotError && (
+                <div data-test="forgot-error-message" data-testid="forgot-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{forgotError}</span>
+                </div>
+              )}
+              {forgotSuccess && (
+                <div data-test="forgot-success-message" data-testid="forgot-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{forgotSuccess}</span>
+                  </div>
+                  <button
+                    type="button"
+                    data-test="btn-proceed-to-reset"
+                    data-testid="btn-proceed-to-reset"
+                    onClick={() => handleSwitchTab('reset')}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Enter 6-Digit OTP &amp; Reset Password &rarr;
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    data-test="forgot-email-input"
+                    data-testid="forgot-email-input"
+                    placeholder="Registered Email Address"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                  />
+                  <Mail className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                <button
+                  type="submit"
+                  data-test="forgot-submit-button"
+                  data-testid="forgot-submit-button"
+                  disabled={forgotLoading}
+                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {forgotLoading ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <span>SEND RECOVERY OTP</span>
+                  )}
+                </button>
+              </form>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTab('login')}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  &larr; Back to Login
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tab === 'reset' && (
+            <div className="space-y-4">
+              {resetError && (
+                <div data-test="reset-error-message" data-testid="reset-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{resetError}</span>
+                </div>
+              )}
+              {resetSuccess && (
+                <div data-test="reset-success-message" data-testid="reset-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>{resetSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    data-test="reset-email-input"
+                    data-testid="reset-email-input"
+                    placeholder="Registered Email"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                  />
+                  <Mail className="w-4 h-4 text-white/70 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    data-test="reset-otp-input"
+                    data-testid="reset-otp-input"
+                    placeholder="6-Digit OTP"
+                    value={resetOtp}
+                    onChange={e => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="w-full py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-sm font-mono font-bold tracking-widest text-center outline-none"
+                  />
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    data-test="reset-password-input"
+                    data-testid="reset-password-input"
+                    placeholder="New Password"
+                    value={resetPassword}
+                    onChange={e => setResetPassword(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                  >
+                    {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showResetConfirmPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    data-test="reset-confirm-password-input"
+                    data-testid="reset-confirm-password-input"
+                    placeholder="Confirm New Password"
+                    value={resetConfirmPassword}
+                    onChange={e => setResetConfirmPassword(e.target.value)}
+                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                  >
+                    {showResetConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  data-test="reset-submit-button"
+                  data-testid="reset-submit-button"
+                  disabled={resetLoading}
+                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {resetLoading ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <span>UPDATE PASSWORD</span>
+                  )}
+                </button>
+              </form>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTab('login')}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  &larr; Back to Login
+                </button>
+              </div>
             </div>
           )}
         </div>

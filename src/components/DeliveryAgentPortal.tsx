@@ -35,6 +35,7 @@ import { EmergencyTransferModal } from './EmergencyTransferModal.js';
 import { GENDER_PRESET_AVATARS, ProfileModal } from './ProfileModal.js';
 import { resolveAddressCoordinates } from '../config/hyderabadCoordinates.js';
 import { AgentAnalyticsHub } from './analytics/AgentAnalyticsHub.js';
+import { AuthGlassLayout } from './auth/AuthGlassLayout.js';
 
 interface DeliveryAgentPortalProps {
   isOpen: boolean;
@@ -81,8 +82,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  // Portal dashboard
-  const [activeTab, setActiveTab] = useState<'deliveries' | 'analytics' | 'earnings' | 'store-deposit'>('deliveries');
+  // Portal dashboard (Defaults to Image 4 Executive Sapphire Dashboard)
+  const [activeTab, setActiveTab] = useState<'analytics' | 'deliveries' | 'earnings' | 'store-deposit'>('analytics');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [transferringOrder, setTransferringOrder] = useState<Order | null>(null);
@@ -762,30 +763,343 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
   };
 
+  // 1. Unauthenticated Delivery Agent Sign In / Register Pod (Matching Reference Image 5)
+  if (!agent) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#030611] backdrop-blur-md animate-in fade-in duration-200">
+        <AuthGlassLayout
+          role="agent"
+          title={authTab === 'login' ? 'LOGIN' : authTab === 'register' ? 'REGISTER' : 'VERIFY'}
+          isModal={true}
+          onClose={onClose}
+          onNavigateHome={onClose}
+          rememberMeSlot={
+            authTab === 'login' ? (
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  defaultChecked
+                  className="rounded border-white/20 bg-white/10 text-emerald-500 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-slate-300 hover:text-white transition-colors">Remember me</span>
+              </label>
+            ) : null
+          }
+          forgotPasswordSlot={
+            authTab === 'login' ? (
+              <button
+                type="button"
+                data-test="link-agent-forgot-password"
+                data-testid="link-agent-forgot-password"
+                onClick={() => {
+                  setAgentForgotEmail(loginEmail);
+                  setAuthTab('forgot');
+                }}
+                className="text-slate-300 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
+              >
+                Forgot password?
+              </button>
+            ) : null
+          }
+        >
+          {/* Mode Switcher Pills */}
+          <div className="flex bg-white/5 p-1 rounded-full border border-white/10 text-xs font-bold mb-4">
+            <button
+              type="button"
+              data-test="tab-agent-login"
+              data-testid="tab-agent-login"
+              onClick={() => setAuthTab('login')}
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
+                authTab === 'login'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              data-test="tab-agent-register"
+              data-testid="tab-agent-register"
+              onClick={() => setAuthTab('register')}
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
+                authTab === 'register'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Register
+            </button>
+            <button
+              type="button"
+              data-test="tab-agent-verify"
+              data-testid="tab-agent-verify"
+              onClick={() => setAuthTab('verify')}
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
+                authTab === 'verify'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Verify Email
+            </button>
+          </div>
+
+          {errorMsg && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* TAB 1: LOGIN (Image 5 style) */}
+          {authTab === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={loginEmail}
+                  onChange={e => setLoginEmail(e.target.value)}
+                  placeholder="Username"
+                  data-test="input-agent-login-email"
+                  data-testid="input-agent-login-email"
+                  className="w-full pl-6 pr-14 py-4 bg-white/[0.08] border border-white/20 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 rounded-full text-white text-sm outline-none transition-all placeholder:text-slate-400 font-medium"
+                />
+                <UserIcon className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  placeholder="************"
+                  data-test="input-agent-login-password"
+                  data-testid="input-agent-login-password"
+                  className="w-full pl-6 pr-14 py-4 bg-white/[0.08] border border-white/20 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 rounded-full text-white text-sm outline-none transition-all placeholder:text-slate-400 font-medium tracking-widest"
+                />
+                <Lock className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                data-test="btn-agent-login"
+                data-testid="btn-agent-login"
+                className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-[0.25em] shadow-xl hover:shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+              >
+                {loading ? 'AUTHENTICATING...' : 'LOGIN'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleQuickDemoLogin}
+                data-test="btn-quick-demo-agent"
+                data-testid="btn-quick-demo-agent"
+                className="w-full py-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-white/10 flex items-center justify-center gap-2 mt-2"
+              >
+                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                <span>⚡ Quick Demo Login as Alex Rivers (Active Agent)</span>
+              </button>
+            </form>
+          )}
+
+          {/* TAB 2: REGISTER */}
+          {authTab === 'register' && (
+            <form onSubmit={handleRegister} className="space-y-3">
+              <div>
+                <input
+                  type="text"
+                  required
+                  value={regName}
+                  onChange={e => setRegName(e.target.value)}
+                  placeholder="Full Name"
+                  data-test="input-agent-reg-name"
+                  data-testid="input-agent-reg-name"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <div>
+                <input
+                  type="email"
+                  required
+                  value={regEmail}
+                  onChange={e => setRegEmail(e.target.value)}
+                  placeholder="Agent Email Address"
+                  data-test="input-agent-reg-email"
+                  data-testid="input-agent-reg-email"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <div>
+                <input
+                  type="tel"
+                  value={regPhone}
+                  onChange={e => setRegPhone(e.target.value)}
+                  placeholder="Phone Number (+91)"
+                  data-test="input-agent-reg-phone"
+                  data-testid="input-agent-reg-phone"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={regVehicle}
+                  onChange={e => setRegVehicle(e.target.value)}
+                  data-test="select-agent-vehicle"
+                  data-testid="select-agent-vehicle"
+                  className="px-4 py-2.5 bg-slate-900 border border-white/20 rounded-full text-white text-xs"
+                >
+                  <option value="Motorcycle">Motorcycle</option>
+                  <option value="Scooter">Scooter</option>
+                  <option value="Electric Bike">Electric Bike</option>
+                  <option value="Van">Delivery Van</option>
+                </select>
+                <select
+                  value={regZone}
+                  onChange={e => setRegZone(e.target.value)}
+                  data-test="select-agent-zone"
+                  data-testid="select-agent-zone"
+                  className="px-4 py-2.5 bg-slate-900 border border-white/20 rounded-full text-white text-xs"
+                >
+                  <option value="Hitech City Hub">Hitech City Hub</option>
+                  <option value="Madhapur / Jubilee Hills">Madhapur / Jubilee</option>
+                  <option value="Tellapur / Osman Nagar">Tellapur / Osman Nagar</option>
+                  <option value="Gachibowli Hub">Gachibowli Hub</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                data-test="btn-agent-register"
+                data-testid="btn-agent-register"
+                className="w-full py-3.5 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer mt-2"
+              >
+                {loading ? 'Submitting...' : 'Register as Delivery Partner'}
+              </button>
+            </form>
+          )}
+
+          {/* TAB 3: VERIFY EMAIL */}
+          {authTab === 'verify' && (
+            <form onSubmit={handleVerifyEmail} className="space-y-3">
+              <p className="text-[11px] text-slate-300 text-center">
+                Enter the 6-digit verification code sent to your email to receive your password.
+              </p>
+              <div>
+                <input
+                  type="email"
+                  required
+                  value={verifyEmail}
+                  onChange={e => setVerifyEmail(e.target.value)}
+                  placeholder="Registered Email"
+                  data-test="input-verify-email"
+                  data-testid="input-verify-email"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <div>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={verifyCode}
+                  onChange={e => setVerifyCode(e.target.value)}
+                  placeholder="6-Digit Verification Code"
+                  data-test="input-verify-code"
+                  data-testid="input-verify-code"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-center font-mono font-bold tracking-widest text-sm outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                data-test="btn-verify-submit"
+                data-testid="btn-verify-submit"
+                className="w-full py-3.5 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer"
+              >
+                {loading ? 'Verifying...' : 'Verify Email & Dispatch Password'}
+              </button>
+            </form>
+          )}
+
+          {/* TAB 4: FORGOT PASSWORD */}
+          {authTab === 'forgot' && (
+            <form onSubmit={handleAgentForgotPassword} className="space-y-3">
+              <p className="text-[11px] text-slate-300 text-center">
+                Enter your registered agent email to receive a password reset OTP.
+              </p>
+              <div>
+                <input
+                  type="email"
+                  required
+                  value={agentForgotEmail}
+                  onChange={e => setAgentForgotEmail(e.target.value)}
+                  placeholder="Agent Email Address"
+                  data-test="input-agent-forgot-email"
+                  data-testid="input-agent-forgot-email"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                data-test="btn-agent-forgot-submit"
+                data-testid="btn-agent-forgot-submit"
+                className="w-full py-3.5 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer"
+              >
+                {loading ? 'Sending OTP...' : 'Send Password Reset OTP'}
+              </button>
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAuthTab('login')}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  &larr; Back to Login
+                </button>
+              </div>
+            </form>
+          )}
+        </AuthGlassLayout>
+      </div>
+    );
+  }
+
+  // 2. Authenticated Delivery Agent Executive Dashboard (Matching Reference Image 4)
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
       <div
         data-test="delivery-agent-portal-modal"
         data-testid="delivery-agent-portal-modal"
-        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]"
+        className="bg-[#070C1B]/95 rounded-[32px] shadow-[0_0_80px_rgba(20,40,110,0.6)] max-w-7xl w-full overflow-hidden border border-blue-500/30 flex flex-col max-h-[94vh] text-white backdrop-blur-2xl"
       >
         {/* Header Bar */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-blue-500/20 bg-[#0B1536]/80 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-extrabold shadow-sm">
-              <Truck className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 flex items-center justify-center font-extrabold shadow-lg shadow-cyan-500/25">
+              <Truck className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black tracking-tight">
-                  ShopSphere Delivery Partner Portal 🇮🇳
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  ShopSphere Executive Logistics &bull; Hyderabad Hub 🇮🇳
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
-                  Hyderabad Hub
+                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold border border-cyan-500/30">
+                  {agent.agentCode || 'ACTIVE'}
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                FIFO Queue Auto-Assignment, Masked Logistics, OTP Gates &amp; Hyderabad Store Settlements
+                Agent: <strong className="text-cyan-300">{agent.name}</strong> &bull; Vehicle: {agent.vehicleType} &bull; Zone: {agent.deliveryZone}
               </p>
             </div>
           </div>
@@ -795,7 +1109,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               data-test="btn-delivery-back-storefront"
               data-testid="btn-delivery-back-storefront"
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer border border-slate-700"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold transition-colors cursor-pointer border border-white/10"
               title="Return to Customer Storefront"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -805,7 +1119,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               data-test="agent-portal-close"
               data-testid="agent-portal-close"
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -814,539 +1128,30 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
         {/* Global Notifications */}
         {errorMsg && (
-          <div className="p-3 bg-rose-50 border-b border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between">
+          <div className="p-3 bg-rose-500/20 border-b border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
-            <button onClick={() => setErrorMsg(null)} className="text-rose-500 hover:text-rose-700">
+            <button onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-200">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between">
+          <div className="p-3 bg-emerald-500/20 border-b border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{successMsg}</span>
             </div>
-            <button onClick={() => setSuccessMsg(null)} className="text-emerald-500 hover:text-emerald-700">
+            <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-emerald-200">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Unauthenticated Onboarding & Login Screen */}
-        {!agent ? (
-          <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
-            {/* Onboarding Mode Tabs */}
-            <div className="flex border-b border-slate-200 text-xs font-bold">
-              <button
-                type="button"
-                data-test="tab-agent-login"
-                data-testid="tab-agent-login"
-                onClick={() => setAuthTab('login')}
-                className={`pb-3 px-4 flex items-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
-                  authTab === 'login'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>1. Agent Sign In</span>
-              </button>
-              <button
-                type="button"
-                data-test="tab-agent-register"
-                data-testid="tab-agent-register"
-                onClick={() => setAuthTab('register')}
-                className={`pb-3 px-4 flex items-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
-                  authTab === 'register'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <UserIcon className="w-4 h-4" />
-                <span>2. Register Account</span>
-              </button>
-              <button
-                type="button"
-                data-test="tab-agent-verify"
-                data-testid="tab-agent-verify"
-                onClick={() => setAuthTab('verify')}
-                className={`pb-3 px-4 flex items-center gap-1.5 border-b-2 transition-colors cursor-pointer ${
-                  authTab === 'verify'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Mail className="w-4 h-4" />
-                <span>3. Verify Email &amp; Get Password</span>
-              </button>
-              {(authTab === 'forgot' || authTab === 'reset') && (
-                <div className="pb-3 px-4 flex items-center gap-1.5 border-b-2 border-indigo-600 text-indigo-600 font-bold text-xs">
-                  <KeyRound className="w-4 h-4" />
-                  <span>{authTab === 'forgot' ? '4. Forgot Password' : '5. Reset Password'}</span>
-                </div>
-              )}
-            </div>
-
-            {/* TAB 1: LOGIN */}
-            {authTab === 'login' && (
-              <form onSubmit={handleLogin} className="max-w-md mx-auto space-y-4">
-                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                    <span>Email-Verified Agent Portal (Hyderabad Hub)</span>
-                  </p>
-                  <p className="text-[11px] text-indigo-700 mt-0.5">
-                    Logging in activates your online presence and places you in the active FIFO assignment rotation.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Agent Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={loginEmail}
-                    onChange={e => setLoginEmail(e.target.value)}
-                    placeholder="agent.alex@shopsphere.test"
-                    data-test="input-agent-login-email"
-                    data-testid="input-agent-login-email"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Password (Temporary or Permanent)
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={loginPassword}
-                    onChange={e => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    data-test="input-agent-login-password"
-                    data-testid="input-agent-login-password"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <div className="flex justify-end pt-0.5">
-                  <button
-                    type="button"
-                    data-test="link-agent-forgot-password"
-                    data-testid="link-agent-forgot-password"
-                    onClick={() => {
-                      setAgentForgotEmail(loginEmail);
-                      setAuthTab('forgot');
-                    }}
-                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold transition-colors cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  data-test="btn-agent-login"
-                  data-testid="btn-agent-login"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                >
-                  {loading ? 'Authenticating & Joining Queue...' : 'Sign In to Agent Portal'}
-                </button>
-
-                <div className="pt-3 border-t border-slate-200 text-center">
-                  <p className="text-xs text-slate-500 mb-2">Quick Testing Shortcut:</p>
-                  <button
-                    type="button"
-                    onClick={handleQuickDemoLogin}
-                    data-test="btn-quick-demo-agent"
-                    data-testid="btn-quick-demo-agent"
-                    className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    ⚡ Quick Demo Login as Alex Rivers (Active Verified Agent)
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* TAB 2: REGISTER */}
-            {authTab === 'register' && (
-              <form onSubmit={handleRegister} className="max-w-xl mx-auto space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regName}
-                      onChange={e => setRegName(e.target.value)}
-                      placeholder="e.g. Ramesh Reddy"
-                      data-test="input-agent-reg-name"
-                      data-testid="input-agent-reg-name"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={regEmail}
-                      onChange={e => setRegEmail(e.target.value)}
-                      placeholder="ramesh.reddy@example.com"
-                      data-test="input-agent-reg-email"
-                      data-testid="input-agent-reg-email"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone (+91 🇮🇳)</label>
-                    <input
-                      type="tel"
-                      value={regPhone}
-                      onChange={e => setRegPhone(e.target.value)}
-                      placeholder="+91 98765 43210"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Vehicle</label>
-                    <select
-                      value={regVehicle}
-                      onChange={e => setRegVehicle(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                    >
-                      <option value="Motorcycle">Motorcycle</option>
-                      <option value="Electric Scooter">Electric Scooter</option>
-                      <option value="Bicycle">Bicycle / E-Bike</option>
-                      <option value="Car">Sedan / Hatchback</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Delivery Zone</label>
-                    <select
-                      value={regZone}
-                      onChange={e => setRegZone(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                    >
-                      <option value="Hitech City, Hyderabad">Hitech City, Hyderabad</option>
-                      <option value="Madhapur, Hyderabad">Madhapur, Hyderabad</option>
-                      <option value="Gachibowli, Hyderabad">Gachibowli, Hyderabad</option>
-                      <option value="Jubilee Hills, Hyderabad">Jubilee Hills, Hyderabad</option>
-                      <option value="Banjara Hills, Hyderabad">Banjara Hills, Hyderabad</option>
-                      <option value="Kukatpally, Hyderabad">Kukatpally, Hyderabad</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Gender Selector with Dynamic Avatar Matching */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2">
-                    Gender (Any gender welcome — automatically matches preset avatars)
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                    {[
-                      { id: 'male', label: 'Male' },
-                      { id: 'female', label: 'Female' },
-                      { id: 'non_binary', label: 'Non-Binary' },
-                      { id: 'prefer_not_to_say', label: 'Prefer Not to Say' },
-                    ].map(opt => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        data-test={`agent-reg-gender-${opt.id}`}
-                        data-testid={`agent-reg-gender-${opt.id}`}
-                        onClick={() => {
-                          setRegGender(opt.id as Gender);
-                          setRegAvatar(GENDER_PRESET_AVATARS[opt.id as Gender][0]);
-                        }}
-                        className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          regGender === opt.id
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-200'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Matching Avatar Grid */}
-                  <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">
-                    Select Avatar Preset for {regGender.replace(/_/g, ' ').toUpperCase()}:
-                  </label>
-                  <div className="grid grid-cols-4 gap-2.5">
-                    {GENDER_PRESET_AVATARS[regGender].map((url, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        data-test={`reg-avatar-${idx}`}
-                        data-testid={`reg-avatar-${idx}`}
-                        onClick={() => setRegAvatar(url)}
-                        className={`relative rounded-xl border-2 p-1 overflow-hidden transition-all cursor-pointer ${
-                          regAvatar === url
-                            ? 'border-indigo-600 ring-2 ring-indigo-200 bg-indigo-50/50'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <img src={url} alt="" className="w-full aspect-square rounded-lg object-cover" />
-                        {regAvatar === url && (
-                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  data-test="btn-agent-register"
-                  data-testid="btn-agent-register"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                >
-                  {loading ? 'Submitting Registration...' : 'Submit Application & Send Verification Token'}
-                </button>
-              </form>
-            )}
-
-            {/* TAB 3: VERIFY EMAIL */}
-            {authTab === 'verify' && (
-              <form onSubmit={handleVerifyEmail} className="max-w-md mx-auto space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <Mail className="w-4 h-4 text-amber-600" />
-                    <span>Check Your Registered Mailbox</span>
-                  </p>
-                  <p className="text-[11px] text-amber-700 mt-0.5">
-                    Enter the 6-digit verification code (OTP) sent to your registered email address. Once verified, your temporary login password will be delivered directly to your mailbox (not shown in the UI).
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Registered Agent Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={verifyEmail}
-                    onChange={e => setVerifyEmail(e.target.value)}
-                    placeholder="agent@example.com"
-                    data-test="input-verify-email"
-                    data-testid="input-verify-email"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    6-Digit Verification Code (OTP)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={verifyToken}
-                    onChange={e => setVerifyToken(e.target.value)}
-                    placeholder="Enter 6-digit OTP from email"
-                    data-test="input-verify-token"
-                    data-testid="input-verify-token"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono font-bold tracking-widest text-center"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  data-test="btn-verify-agent-email"
-                  data-testid="btn-verify-agent-email"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-                >
-                  {loading ? 'Verifying...' : 'Verify Email & Send Temporary Password'}
-                </button>
-              </form>
-            )}
-
-            {/* TAB 4: AGENT FORGOT PASSWORD */}
-            {authTab === 'forgot' && (
-              <form onSubmit={handleAgentForgotPassword} className="max-w-md mx-auto space-y-4">
-                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <KeyRound className="w-4 h-4 text-indigo-600" />
-                    <span>Agent Password Recovery (Email OTP)</span>
-                  </p>
-                  <p className="text-[11px] text-indigo-700 mt-0.5">
-                    Enter your registered delivery agent email address. We will dispatch a 6-digit verification OTP and reset link directly to your inbox.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Registered Delivery Agent Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={agentForgotEmail}
-                    onChange={e => setAgentForgotEmail(e.target.value)}
-                    placeholder="agent.alex@shopsphere.test"
-                    data-test="input-agent-forgot-email"
-                    data-testid="input-agent-forgot-email"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  data-test="btn-agent-forgot-submit"
-                  data-testid="btn-agent-forgot-submit"
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {loading ? 'Sending Recovery OTP...' : 'Send Verification OTP & Reset Link'}
-                </button>
-
-                <div className="pt-2 flex items-center justify-between text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setAuthTab('login')}
-                    className="text-slate-500 hover:text-indigo-600 font-bold transition-colors cursor-pointer"
-                  >
-                    &larr; Back to Agent Login
-                  </button>
-                  <button
-                    type="button"
-                    data-test="link-agent-have-otp"
-                    data-testid="link-agent-have-otp"
-                    onClick={() => setAuthTab('reset')}
-                    className="text-indigo-600 hover:text-indigo-800 font-bold transition-colors cursor-pointer"
-                  >
-                    Have OTP? Reset Password &rarr;
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* TAB 5: AGENT RESET PASSWORD */}
-            {authTab === 'reset' && (
-              <form onSubmit={handleAgentResetPassword} className="max-w-md mx-auto space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <Lock className="w-4 h-4 text-amber-600" />
-                    <span>Set New Delivery Agent Password</span>
-                  </p>
-                  <p className="text-[11px] text-amber-700 mt-0.5">
-                    Enter the 6-digit OTP code sent to your email and choose your new password.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Registered Agent Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={agentResetEmail}
-                    onChange={e => setAgentResetEmail(e.target.value)}
-                    placeholder="agent.alex@shopsphere.test"
-                    data-test="input-agent-reset-email"
-                    data-testid="input-agent-reset-email"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    6-Digit Verification OTP
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={agentResetOtp}
-                    onChange={e => setAgentResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
-                    data-test="input-agent-reset-otp"
-                    data-testid="input-agent-reset-otp"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold tracking-widest text-center focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    New Password (min. 6 characters)
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={agentResetPassword}
-                    onChange={e => setAgentResetPassword(e.target.value)}
-                    placeholder="••••••••"
-                    data-test="input-agent-reset-password"
-                    data-testid="input-agent-reset-password"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={agentResetConfirmPassword}
-                    onChange={e => setAgentResetConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    data-test="input-agent-reset-confirm-password"
-                    data-testid="input-agent-reset-confirm-password"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  data-test="btn-agent-reset-submit"
-                  data-testid="btn-agent-reset-submit"
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {loading ? 'Updating Password...' : 'Verify OTP & Update Password'}
-                </button>
-
-                <div className="pt-2 text-center text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setAuthTab('login')}
-                    className="text-slate-500 hover:text-indigo-600 font-bold transition-colors cursor-pointer"
-                  >
-                    &larr; Return to Agent Login
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        ) : agent.mustChangePassword ? (
+        {agent.mustChangePassword ? (
           /* Mandatory First-Login Password Change Prompt */
           <div className="p-6 max-w-md mx-auto my-auto space-y-4">
             <div className="text-center space-y-1">
@@ -1438,7 +1243,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             )}
 
             {/* Agent Bar */}
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-4 bg-[#0B1536]/80 border-b border-blue-500/20 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 text-white">
               <div className="flex items-center gap-3">
                 <img
                   src={agent.avatarUrl}
@@ -1558,16 +1363,16 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             </div>
 
             {/* Dashboard Tabs */}
-            <div className="flex border-b border-slate-200 text-xs font-bold px-4 pt-2 bg-white">
+            <div className="flex flex-wrap items-center gap-2 border-b border-blue-500/20 text-xs font-bold px-4 py-2.5 bg-[#080E24]">
               <button
                 type="button"
                 data-test="tab-active-deliveries"
                 data-testid="tab-active-deliveries"
                 onClick={() => setActiveTab('deliveries')}
-                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'deliveries'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
                 <Package className="w-4 h-4" />
@@ -1578,10 +1383,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-agent-performance"
                 data-testid="tab-agent-performance"
                 onClick={() => setActiveTab('analytics')}
-                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'analytics'
-                    ? 'border-emerald-600 text-emerald-600 font-bold'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
@@ -1592,10 +1397,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-earnings-wallet"
                 data-testid="tab-earnings-wallet"
                 onClick={() => setActiveTab('earnings')}
-                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'earnings'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
                 <DollarSign className="w-4 h-4" />
@@ -1606,10 +1411,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-store-deposit"
                 data-testid="tab-store-deposit"
                 onClick={() => setActiveTab('store-deposit')}
-                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'store-deposit'
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
                 <Banknote className="w-4 h-4" />
@@ -1623,11 +1428,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-              {activeTab === 'analytics' && token && (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[#060B19]">
+              {activeTab === 'analytics' && (
                 <div className="space-y-4">
                   <AgentAnalyticsHub
-                    token={token}
+                    token={token || 'demo-agent-token'}
                     isOnline={isOnline}
                     onToggleDuty={() => handleToggleDuty(!isOnline)}
                     activeStoreName="Hitech City / Madhapur Hub"

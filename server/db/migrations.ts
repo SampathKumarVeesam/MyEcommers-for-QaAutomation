@@ -46,6 +46,7 @@ export async function ensureSchemaMigrations(): Promise<void> {
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_name VARCHAR(255);
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_id VARCHAR(100);
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST';
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_accepted_at TIMESTAMP WITH TIME ZONE;
 
         CREATE TABLE IF NOT EXISTS order_transfers (
           id SERIAL PRIMARY KEY,

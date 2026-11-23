@@ -5,101 +5,116 @@ export type AuthRole = 'customer' | 'agent' | 'admin';
 
 interface AuthGlassLayoutProps {
   role: AuthRole;
-  title: string;
+  title?: string;
   subtitle?: string;
   onNavigateHome?: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
   isModal?: boolean;
   onClose?: () => void;
+  rememberMeSlot?: React.ReactNode;
+  forgotPasswordSlot?: React.ReactNode;
 }
 
 export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
   role,
-  title,
+  title = 'LOGIN',
   subtitle,
   onNavigateHome,
   children,
   footer,
   isModal = false,
   onClose,
+  rememberMeSlot,
+  forgotPasswordSlot,
 }) => {
   const roleConfig = {
     customer: {
       label: 'Customer Portal',
       icon: User,
-      pillColor: 'bg-blue-500/10 text-blue-400 border-blue-500/30 shadow-blue-500/10',
-      glowGradient: 'from-blue-600/25 via-indigo-600/20 to-transparent',
-      brandAccent: 'text-blue-400',
+      pillColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+      accentGlow: 'from-cyan-500/20 via-blue-600/15 to-transparent',
     },
     agent: {
       label: 'Delivery Partner Portal',
       icon: Truck,
-      pillColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-emerald-500/10',
-      glowGradient: 'from-emerald-600/25 via-teal-600/20 to-transparent',
-      brandAccent: 'text-emerald-400',
+      pillColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+      accentGlow: 'from-emerald-500/20 via-teal-600/15 to-transparent',
     },
     admin: {
       label: 'Administrator Console',
       icon: Shield,
-      pillColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 shadow-indigo-500/10',
-      glowGradient: 'from-indigo-600/25 via-violet-600/20 to-transparent',
-      brandAccent: 'text-indigo-400',
+      pillColor: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+      accentGlow: 'from-purple-500/20 via-indigo-600/15 to-transparent',
     },
   }[role];
 
   const RoleIcon = roleConfig.icon;
 
-  const content = (
-    <div className="relative w-full max-w-lg mx-auto">
-      {/* Dynamic Specular Glass Container */}
-      <div className="relative rounded-[28px] p-6 sm:p-9 bg-slate-900/60 dark:bg-[#070C1B]/80 backdrop-blur-2xl border border-white/15 dark:border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden">
-        {/* Subtle Top Specular Border Light */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+  const cardContent = (
+    <div className="relative w-full max-w-[440px] mx-auto z-10 animate-in fade-in zoom-in-95 duration-300">
+      {/* Outer Glow Halo */}
+      <div className="absolute -inset-1 rounded-[56px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-orange-500/15 blur-xl pointer-events-none opacity-80" />
 
-        {/* Modal close button */}
+      {/* Main Glass Pod Container (Matching Image 5) */}
+      <div className="relative rounded-[50px] p-8 sm:p-11 bg-[#090D1A]/75 dark:bg-[#050811]/85 backdrop-blur-3xl border border-white/20 shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden">
+        {/* Subtle Specular Arc Highlight */}
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+        {/* Modal Close Button */}
         {isModal && onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-20"
           >
             &times;
           </button>
         )}
 
-        {/* Role-Aware Top Pill & Header */}
-        <div className="text-center space-y-3 mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-bold uppercase tracking-wider shadow-sm transition-all duration-300 backdrop-blur-md ${roleConfig.pillColor}">
-            <RoleIcon className="w-3.5 h-3.5" />
+        {/* Header Section */}
+        <div className="text-center space-y-3 mb-7">
+          {/* Role Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-sm ${roleConfig.pillColor}">
+            <RoleIcon className="w-3 h-3" />
             <span>{roleConfig.label}</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          {/* Title (Matching Image 5 'LOGIN') */}
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-[0.2em] uppercase">
             {title}
           </h1>
+
           {subtitle && (
-            <p className="text-xs sm:text-sm text-slate-300 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
               {subtitle}
             </p>
           )}
         </div>
 
-        {/* Inner Form / Body Content */}
+        {/* Form Elements Slot */}
         <div className="relative z-10 space-y-4">
           {children}
         </div>
 
+        {/* Secondary Links: Remember Me & Forgot Password (Matching Image 5) */}
+        {(rememberMeSlot || forgotPasswordSlot) && (
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-5 px-1 font-medium">
+            <div>{rememberMeSlot}</div>
+            <div>{forgotPasswordSlot}</div>
+          </div>
+        )}
+
         {/* Optional Footer */}
         {footer && (
-          <div className="mt-6 pt-5 border-t border-white/10 text-center text-xs text-slate-400">
+          <div className="mt-6 pt-4 border-t border-white/10 text-center text-[11px] text-slate-500">
             {footer}
           </div>
         )}
       </div>
 
-      {/* Return to Storefront button when not in modal */}
+      {/* Back to storefront link */}
       {!isModal && onNavigateHome && (
         <div className="text-center mt-6">
           <button
@@ -108,7 +123,7 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
             className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Storefront</span>
+            <span>Back to Customer Storefront</span>
           </button>
         </div>
       )}
@@ -116,25 +131,76 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
   );
 
   if (isModal) {
-    return content;
+    return cardContent;
   }
 
   return (
-    <div className="min-h-screen bg-[#05070D] text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden selection:bg-blue-500/30">
-      {/* Ambient Flowing Neon Mesh Waves */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Cyan / Teal Ambient Glow */}
-        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-cyan-500/25 blur-[120px] mix-blend-screen animate-pulse" />
-        {/* Royal Indigo Mesh Light */}
-        <div className="absolute top-1/4 -right-20 w-[480px] h-[480px] rounded-full bg-indigo-600/30 blur-[140px] mix-blend-screen" />
-        {/* Soft Magenta / Violet Wave */}
-        <div className="absolute -bottom-32 left-1/3 w-[500px] h-[500px] rounded-full bg-purple-600/20 blur-[150px] mix-blend-screen" />
-        {/* Role Specific Ambient Center Light */}
-        <div className={`absolute inset-0 bg-radial ${roleConfig.glowGradient} blur-[160px] pointer-events-none`} />
+    <div className="min-h-screen bg-[#030611] text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden selection:bg-cyan-500/30">
+      {/* =========================================================================
+          3D RIBBON NEON MESH WAVES BACKGROUND (Matching Reference Image 5)
+         ========================================================================= */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+        {/* Deep ambient background mesh */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-tr from-cyan-500/10 via-purple-600/10 to-transparent rounded-full blur-[160px]" />
+
+        {/* Floating Neon Mesh Ribbon 1: Purple/Magenta Wave (Right side of Image 5) */}
+        <svg
+          className="absolute -right-20 top-1/4 w-[650px] h-[650px] opacity-75 transform rotate-12"
+          viewBox="0 0 600 600"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="purpleMesh" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#EC4899" stopOpacity="0.8" />
+              <stop offset="50%" stopColor="#8B5CF6" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.3" />
+            </linearGradient>
+          </defs>
+          {Array.from({ length: 18 }).map((_, i) => (
+            <path
+              key={`purple-line-${i}`}
+              d={`M 100,${50 + i * 22} C 250,${150 + i * 15} 400,${20 + i * 25} 550,${200 + i * 20} C 650,${350 + i * 15} 450,${500 + i * 10} 300,${450 + i * 12}`}
+              stroke="url(#purpleMesh)"
+              strokeWidth="1.2"
+              fill="none"
+              opacity={0.3 + (i % 3) * 0.2}
+            />
+          ))}
+        </svg>
+
+        {/* Floating Neon Mesh Ribbon 2: Orange/Red/Cyan Wave (Bottom-Left of Image 5) */}
+        <svg
+          className="absolute -left-28 bottom-0 w-[600px] h-[600px] opacity-70 transform -rotate-12"
+          viewBox="0 0 600 600"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="orangeMesh" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F97316" stopOpacity="0.8" />
+              <stop offset="50%" stopColor="#EF4444" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.4" />
+            </linearGradient>
+          </defs>
+          {Array.from({ length: 16 }).map((_, i) => (
+            <path
+              key={`orange-line-${i}`}
+              d={`M 50,${400 + i * 15} C 180,${320 + i * 18} 320,${480 + i * 12} 480,${350 + i * 16} C 560,${250 + i * 14} 420,${150 + i * 10} 250,${220 + i * 12}`}
+              stroke="url(#orangeMesh)"
+              strokeWidth="1.2"
+              fill="none"
+              opacity={0.25 + (i % 3) * 0.2}
+            />
+          ))}
+        </svg>
+
+        {/* Soft Radial Center Floor Reflection */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-64 bg-cyan-500/10 blur-[130px]" />
       </div>
 
-      {/* Center Glass Card */}
-      {content}
+      {/* Main Glass Pod Container */}
+      {cardContent}
     </div>
   );
 };
