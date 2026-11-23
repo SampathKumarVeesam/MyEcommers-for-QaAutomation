@@ -1,24 +1,79 @@
 import {
+  AlertCircle,
   Check,
   ChevronDown,
   Gift,
   HelpCircle,
+  Loader2,
   Mail,
   Send,
   ShieldCheck,
   Sparkles
 } from 'lucide-react';
 import React, { useState } from 'react';
+import { apiUrl } from '../config/api.js';
+import { useAuth } from '../context/AuthContext.js';
 
 export const NewsletterSection: React.FC = () => {
+  const { token, user } = useAuth();
   const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    alreadySubscribed: boolean;
+    message: string;
+    couponCode: string;
+  } | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // If user is Admin or Delivery Agent, this customer VIP section should not be displayed
+  if (user && (user.role === 'admin' || (user as any).role === 'delivery_agent')) {
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !email.includes('@')) return;
-    setSubscribed(true);
+    setErrorMsg(null);
+
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(apiUrl('/api/newsletter/subscribe'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: trimmed, source: 'storefront_footer' }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setResult({
+          success: true,
+          alreadySubscribed: Boolean(data.alreadySubscribed),
+          message: data.message || 'Subscribed successfully!',
+          couponCode: data.couponCode || 'SPHERE20',
+        });
+      } else {
+        setErrorMsg(data.message || 'Subscription failed. Please check your email and try again.');
+      }
+    } catch (err: any) {
+      console.error('[Newsletter Subscribe UI Error]:', err);
+      setErrorMsg('Unable to connect to newsletter service. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const faqs = [
@@ -60,18 +115,24 @@ export const NewsletterSection: React.FC = () => {
             Subscribe to receive insider drops, private flash sales, and early access to designer releases.
           </p>
 
-          {subscribed ? (
+          {result ? (
             <div
               data-test="newsletter-success-message"
               data-testid="newsletter-success-message"
-              className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs max-w-md mx-auto text-center animate-in fade-in duration-300"
+              className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs max-w-md mx-auto text-center animate-in fade-in duration-300 space-y-1"
             >
               <p className="font-bold text-sm flex items-center justify-center gap-1.5">
-                <Check className="w-4 h-4 text-emerald-400" /> You're on the VIP list!
+                <Check className="w-4 h-4 text-emerald-400" />
+                {result.alreadySubscribed ? "You're Already a VIP Member!" : "You're on the VIP list!"}
               </p>
-              <p className="mt-1 text-[11px] text-emerald-300">
-                Use your exclusive coupon code <strong className="text-white underline font-mono">SPHERE20</strong> in your cart for 20% off.
+              <p className="text-[11px] text-emerald-300">
+                {result.message}
               </p>
+              <div className="pt-1.5">
+                <span className="inline-block px-3 py-1 bg-white text-slate-900 font-mono font-bold text-xs rounded-lg shadow-xs">
+                  Coupon: {result.couponCode || 'SPHERE20'}
+                </span>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto pt-2">
@@ -83,8 +144,9 @@ export const NewsletterSection: React.FC = () => {
                   data-testid="newsletter-email-input"
                   placeholder="Enter your email address..."
                   value={email}
+                  disabled={loading}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 text-white placeholder-slate-400 text-xs rounded-xl border border-white/20 focus:border-white focus:bg-white/20 outline-none backdrop-blur-xs transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 text-white placeholder-slate-400 text-xs rounded-xl border border-white/20 focus:border-white focus:bg-white/20 outline-none backdrop-blur-xs transition-all disabled:opacity-60"
                   required
                 />
               </div>
@@ -92,12 +154,33 @@ export const NewsletterSection: React.FC = () => {
                 type="submit"
                 data-test="newsletter-submit-button"
                 data-testid="newsletter-submit-button"
-                className="px-6 py-3 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                disabled={loading}
+                className="px-6 py-3 bg-white hover:bg-slate-100 disabled:bg-slate-200 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
               >
-                <span>Subscribe</span>
-                <Send className="w-3.5 h-3.5" />
+                {loading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Subscribing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Subscribe</span>
+                    <Send className="w-3.5 h-3.5" />
+                  </>
+                )}
               </button>
             </form>
+          )}
+
+          {errorMsg && (
+            <div
+              data-test="newsletter-error-message"
+              data-testid="newsletter-error-message"
+              className="p-3 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-200 text-xs max-w-md mx-auto flex items-center justify-center gap-2 animate-in fade-in"
+            >
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
           )}
 
           <div className="flex items-center justify-center gap-4 text-[11px] text-indigo-300/70 pt-2">

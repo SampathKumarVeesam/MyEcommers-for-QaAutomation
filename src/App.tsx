@@ -28,10 +28,12 @@ import {
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from './config/api.js';
 import { AdminPanelModal } from './components/AdminPanelModal.js';
+import { AdminPortalPage } from './components/AdminPortalPage.js';
 import { AuthModal } from './components/AuthModal.js';
 import { CartDrawer } from './components/CartDrawer.js';
 import { CheckoutModal } from './components/CheckoutModal.js';
 import { DeliveryAgentPortal } from './components/DeliveryAgentPortal.js';
+import { DeliveryPortalPage } from './components/DeliveryPortalPage.js';
 import { FeedbackReminderModal } from './components/FeedbackReminderModal.js';
 import { Header } from './components/Header.js';
 import { HeroBanner } from './components/HeroBanner.js';
@@ -48,6 +50,23 @@ import { Product } from './types.js';
 
 function ShopSphereMain() {
   const { token, isAuthenticated, user } = useAuth();
+
+  // Dedicated Role-Based Path Routing (Customer / vs Delivery /delivery vs Admin /admin)
+  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
+
+  const navigate = (to: string) => {
+    window.history.pushState({}, '', to);
+    setCurrentPath(to);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Navigation & Filtering State
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -96,7 +115,7 @@ function ShopSphereMain() {
     }
   };
 
-  // URL Hash/Route protection for Admin Dashboard and Delivery Agent Portal
+  // URL Hash/Route synchronization for Admin Dashboard and Delivery Agent Portal
   useEffect(() => {
     const handleUrlRoute = () => {
       const hash = window.location.hash;
@@ -105,24 +124,20 @@ function ShopSphereMain() {
         setAuthModal({ open: true, tab: 'login' });
       } else if (hash.includes('reset-password') || search.includes('action=reset-password')) {
         if (hash.includes('agent') || search.includes('type=agent')) {
-          setIsAgentPortalOpen(true);
+          navigate('/delivery');
         } else {
           setAuthModal({ open: true, tab: 'reset' });
         }
       } else if (hash.includes('forgot-password') || search.includes('action=forgot-password')) {
         if (hash.includes('agent') || search.includes('type=agent')) {
-          setIsAgentPortalOpen(true);
+          navigate('/delivery');
         } else {
           setAuthModal({ open: true, tab: 'forgot' });
         }
       } else if (hash === '#admin' || search.includes('admin')) {
-        if (user?.role === 'admin') {
-          setIsAdminOpen(true);
-        } else {
-          setAuthModal({ open: true, tab: 'admin' });
-        }
+        navigate('/admin');
       } else if (hash === '#agent' || hash === '#delivery' || search.includes('agent') || search.includes('delivery')) {
-        setIsAgentPortalOpen(true);
+        navigate('/delivery');
       }
     };
     handleUrlRoute();
@@ -209,6 +224,25 @@ function ShopSphereMain() {
     }
   }, [selectedProduct]);
 
+  // 1. Dedicated Delivery Partner Portal URL (/delivery & /delivery/dashboard)
+  if (currentPath.startsWith('/delivery')) {
+    return (
+      <DeliveryPortalPage
+        onNavigateHome={() => navigate('/')}
+      />
+    );
+  }
+
+  // 2. Dedicated Administrator Console URL (/admin & /admin/dashboard)
+  if (currentPath.startsWith('/admin')) {
+    return (
+      <AdminPortalPage
+        onNavigateHome={() => navigate('/')}
+        onRefreshCatalog={fetchProducts}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/60 flex flex-col text-slate-900 font-sans selection:bg-indigo-500 selection:text-white">
       {/* 1. Header (Commercial Ecommerce with Wishlist, Live Search, Cart) */}
@@ -225,9 +259,9 @@ function ShopSphereMain() {
         }}
         onOpenAuth={tab => setAuthModal({ open: true, tab: tab || 'login' })}
         onOpenOrders={() => setIsOrdersOpen(true)}
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenAdmin={() => navigate('/admin')}
         onOpenProfile={() => setIsProfileOpen(true)}
-        onOpenAgentPortal={() => setIsAgentPortalOpen(true)}
+        onOpenAgentPortal={() => navigate('/delivery')}
         onSelectProduct={p => setSelectedProduct(p)}
       />
 
@@ -458,8 +492,8 @@ function ShopSphereMain() {
           </div>
         )}
 
-        {/* 3. Newsletter VIP Club & FAQ Accordion Section */}
-        <NewsletterSection />
+        {/* 3. Newsletter VIP Club & FAQ Accordion Section (Customer Storefront Only) */}
+        {(!user || user.role === 'customer') && <NewsletterSection />}
       </main>
 
       {/* 4. Real E-Commerce Footer */}
@@ -605,6 +639,33 @@ function ShopSphereMain() {
                     <span>Open Standalone Swagger UI</span>
                     <span className="font-mono text-[10px]">(/api-docs) ↗</span>
                   </a>
+                </div>
+
+                {/* Dedicated Staff & Partner Portals */}
+                <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Role Portals:</p>
+                  <div className="flex flex-col gap-1.5 text-xs">
+                    <button
+                      type="button"
+                      data-test="footer-delivery-portal-link"
+                      data-testid="footer-delivery-portal-link"
+                      onClick={() => navigate('/delivery')}
+                      className="text-left text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Truck className="w-3.5 h-3.5" />
+                      <span>Delivery Partner Portal (/delivery) →</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-test="footer-admin-portal-link"
+                      data-testid="footer-admin-portal-link"
+                      onClick={() => navigate('/admin')}
+                      className="text-left text-rose-400 hover:text-rose-300 font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Administrator Console (/admin) →</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -109,63 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs">
-      {/* 1. Top E-Commerce Announcement Bar */}
-      <div className="bg-slate-950 text-slate-300 text-[11px] px-4 py-2 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          {/* Left: Promotional Highlight */}
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              <Flame className="w-3 h-3 text-amber-400" />
-              FLASH SALE
-            </span>
-            <span className="hidden sm:inline text-slate-400">|</span>
-            <span className="text-slate-200 font-medium">
-              Extra <strong>20% OFF</strong> on all items! Use code <strong className="text-white underline decoration-indigo-400">SPHERE20</strong> at checkout
-            </span>
-          </div>
-
-          {/* Right: Customer Services & Utilities */}
-          <div className="flex items-center gap-4 text-slate-300 ml-auto">
-            <div className="hidden lg:flex items-center gap-1.5 text-slate-400">
-              <Truck className="w-3 h-3 text-emerald-400" />
-              <span>Free Worldwide Express over $50</span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-1 text-slate-400">
-              <Phone className="w-3 h-3" />
-              <span>+1 (800) 555-SHOP</span>
-            </div>
-
-            {/* Currency Selector */}
-            <div className="flex items-center gap-1 text-slate-400 hover:text-white cursor-pointer">
-              <Globe className="w-3 h-3" />
-              <select
-                data-test="currency-selector"
-                data-testid="currency-selector"
-                value={currency}
-                onChange={e => setCurrency(e.target.value)}
-                className="bg-transparent text-slate-300 font-semibold outline-none cursor-pointer text-[11px]"
-              >
-                <option value="USD" className="bg-slate-900 text-white">USD ($)</option>
-                <option value="EUR" className="bg-slate-900 text-white">EUR (€)</option>
-                <option value="GBP" className="bg-slate-900 text-white">GBP (£)</option>
-              </select>
-            </div>
-
-            {/* Track Orders shortcut */}
-            <button
-              data-test="nav-track-order"
-              data-testid="nav-track-order"
-              onClick={onOpenOrders}
-              className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              Track Order
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Main Navbar */}
+      {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Brand Logo */}
@@ -264,46 +208,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-1 sm:gap-2.5">
-            {/* Delivery Agent Portal Button */}
-            <button
-              data-test="nav-delivery-portal"
-              data-testid="nav-delivery-portal"
-              onClick={() => onOpenAgentPortal?.()}
-              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors cursor-pointer shadow-2xs"
-              title="Open Delivery Partner & COD Settlement Portal"
-            >
-              <Truck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span className="hidden sm:inline">Delivery Portal</span>
-              <span className="sm:hidden text-[11px]">Agent</span>
-            </button>
-
-            {/* Admin Portal / Admin Dashboard Button */}
-            {isAdmin ? (
-              <button
-                data-test="nav-admin-dashboard"
-                data-testid="nav-admin-dashboard"
-                onClick={onOpenAdmin}
-                className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer shadow-xs"
-                title="Open Admin Analytics Dashboard"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                <span className="hidden sm:inline">Admin Dashboard</span>
-                <span className="sm:hidden text-[11px]">Admin</span>
-              </button>
-            ) : (
-              <button
-                data-test="nav-admin-login"
-                data-testid="nav-admin-login"
-                onClick={() => onOpenAuth('admin')}
-                className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
-                title="Administrator Login"
-              >
-                <Lock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                <span className="hidden sm:inline">Admin Login</span>
-                <span className="sm:hidden text-[11px]">Admin</span>
-              </button>
-            )}
-
             {/* Customer Test Accounts Switcher Pill */}
             <div className="relative">
               <button

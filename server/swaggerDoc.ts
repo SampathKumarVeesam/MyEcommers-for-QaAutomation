@@ -1783,6 +1783,104 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/newsletter/subscribe": {
+      "post": {
+        "tags": [
+          "Customer - Storefront & VIP Club"
+        ],
+        "summary": "Subscribe customer email to VIP insider newsletter drops and receive $15 / 20% discount code",
+        "description": "Validates email address, verifies customer role (blocks delivery agents/admins), handles duplicate subscribers gracefully, and returns promotional coupon SPHERE20.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "vip.shopper@example.com"
+                  },
+                  "source": {
+                    "type": "string",
+                    "example": "storefront_footer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully subscribed to VIP newsletter with coupon code generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "alreadySubscribed": { "type": "boolean", "example": false },
+                    "message": { "type": "string", "example": "Welcome to the VIP Club! Your $15 VIP discount coupon code is SPHERE20." },
+                    "couponCode": { "type": "string", "example": "SPHERE20" }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Email already subscribed - returns active coupon code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "alreadySubscribed": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "You're already subscribed to our VIP insider club! Use code SPHERE20 for 20% off at checkout." },
+                    "couponCode": { "type": "string", "example": "SPHERE20" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email address format"
+          },
+          "403": {
+            "description": "Forbidden - Subscription restricted to storefront customers (delivery agents and admins blocked)"
+          }
+        }
+      }
+    },
+    "/subscribe": {
+      "post": {
+        "tags": [
+          "Customer - Storefront & VIP Club"
+        ],
+        "summary": "Alias endpoint for /newsletter/subscribe",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Already subscribed" },
+          "201": { "description": "Subscribed successfully" },
+          "400": { "description": "Invalid email" }
+        }
+      }
+    },
     "/categories": {
       "get": {
         "tags": [

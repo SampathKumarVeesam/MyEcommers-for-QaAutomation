@@ -73,6 +73,17 @@ export async function ensureSchemaMigrations(): Promise<void> {
         ALTER TABLE notifications ADD COLUMN IF NOT EXISTS event_type VARCHAR(100);
         ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
 
+        -- Newsletter Subscribers table for VIP storefront discounts
+        CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          source VARCHAR(100) DEFAULT 'storefront_footer',
+          status VARCHAR(50) DEFAULT 'active',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON newsletter_subscribers(email);
+
         -- Fix any legacy or default coordinates for orders with specific Hyderabad localities (e.g. Tellapur/Osman Nagar/BHEL)
         UPDATE "order"
         SET customer_lat = 17.4816, customer_lng = 78.2917, delivery_lat = 17.4816, delivery_lng = 78.2917

@@ -115,6 +115,16 @@ async function startServer() {
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_submitted_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_verified_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_rejection_note TEXT;
+
+        CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          source VARCHAR(100) DEFAULT 'storefront_footer',
+          status VARCHAR(50) DEFAULT 'active',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON newsletter_subscribers(email);
       `);
 
       const tableCheck = await query(`

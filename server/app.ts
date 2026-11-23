@@ -14,6 +14,7 @@ import { cartsRouter } from './routes/carts.js';
 import { ordersRouter } from './routes/orders.js';
 import { productsRouter } from './routes/products.js';
 import { wishlistRouter } from './routes/wishlist.js';
+import { newsletterRouter } from './routes/newsletter.js';
 import { productRepo } from './repositories/productRepo.js';
 import { DOT_WORKFLOW_DEFINITION, SWAGGER_SPEC } from './swaggerDoc.js';
 
@@ -61,6 +62,8 @@ export function createExpressApp() {
   app.use('/api/carts', cartsRouter);
   app.use('/api/orders', ordersRouter);
   app.use('/api/wishlist', wishlistRouter);
+  app.use('/api/newsletter', newsletterRouter);
+  app.post('/api/subscribe', (req, res, next) => newsletterRouter(req, res, next));
 
   // Auth direct route aliases
   app.post('/api/logout', (req, res, next) => authRouter(req, res, next));
