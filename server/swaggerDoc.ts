@@ -1220,6 +1220,79 @@ export const SWAGGER_SPEC = {
     }
   },
   "paths": {
+    "/admin/analytics/overview": {
+      "get": {
+        "tags": [
+          "Admin - Analytics"
+        ],
+        "summary": "Executive Platform Analytics Overview",
+        "description": "Returns 4-card KPI strip, 12-month stacked prepaid vs COD revenue, conversion funnel, store fulfillment, and COD settlement flow.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Platform analytics data retrieved successfully" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden - Admin access required" }
+        }
+      }
+    },
+    "/admin/analytics/customers/{customerId}": {
+      "get": {
+        "tags": [
+          "Admin - Analytics"
+        ],
+        "summary": "Individual Customer Analytics & Profile",
+        "description": "Returns customer spend trend, percentile rank bracket, order outcome radial donut, category affinity radar, milestone badges, and 365-day calendar heatmap.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Customer analytics loaded successfully" },
+          "404": { "description": "Customer not found" }
+        }
+      }
+    },
+    "/admin/analytics/agents/{agentId}": {
+      "get": {
+        "tags": [
+          "Admin - Analytics"
+        ],
+        "summary": "Individual Delivery Agent Analytics & Audit",
+        "description": "Returns agent earnings, store rank percentile, delivery outcomes donut, 3-minute FIFO gauge, 2-tier emergency transfer audit, COD liability, and 365-day heatmap.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Agent analytics loaded successfully" },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/agent/my-analytics": {
+      "get": {
+        "tags": [
+          "Delivery Agent"
+        ],
+        "summary": "Self-Service Performance & Earnings Hub",
+        "description": "Returns delivery agent personal performance, COD cash liability banner, 30D/12M earnings, delivery score radial donut, 3-min FIFO gauge, badges, and 365-day heatmap (peer data omitted).",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Personal agent analytics loaded" },
+          "401": { "description": "Unauthorized - Valid delivery agent token required" }
+        }
+      }
+    },
     "/users/register": {
       "post": {
         "tags": [

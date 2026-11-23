@@ -13,6 +13,7 @@ import {
   sendPasswordResetSuccessEmail,
 } from '../services/emailService.js';
 import { Gender } from '../../src/types.js';
+import { agentAnalyticsController } from '../controllers/agentAnalyticsController.js';
 
 export const agentRouter = Router();
 
@@ -741,6 +742,9 @@ agentRouter.post('/orders/:id/collect-payment', requireAgentAuth, async (req: Au
     res.status(500).json({ success: false, message: `Payment settlement failed: ${error.message}` });
   }
 });
+
+// GET /api/agent/my-analytics (Agent self-service performance, earnings, COD liability & heatmap)
+agentRouter.get('/my-analytics', requireAgentAuth, agentAnalyticsController.getMyAnalytics);
 
 // GET /api/agent/earnings (Get wallet earnings summary in INR with Cash Deposit Lock status)
 agentRouter.get('/earnings', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {

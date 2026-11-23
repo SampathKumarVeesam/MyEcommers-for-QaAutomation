@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Banknote,
+  BarChart3,
   Bell,
   Boxes,
   Check,
@@ -33,6 +34,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../config/api.js';
 import { useAuth } from '../context/AuthContext.js';
 import { LiveRouteMap } from './LiveRouteMap.js';
+import { AdminOverviewDashboard } from './analytics/AdminOverviewDashboard.js';
+import { UserAnalyticsModal } from './analytics/UserAnalyticsModal.js';
 import {
   AmountHandlingSummary,
   AnalyticsSummary,
@@ -57,7 +60,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onRefreshCatalog,
 }) => {
   const { token, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'inventory' | 'orders' | 'add-product' | 'agents' | 'amount-handling'>('analytics');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'inventory' | 'orders' | 'add-product' | 'agents' | 'amount-handling'>('overview');
+  const [analyticsModalUser, setAnalyticsModalUser] = useState<{ id: string; type: 'customer' | 'agent' } | null>(null);
   const contentBodyRef = useRef<HTMLDivElement>(null);
 
   const [viewMapOrderId, setViewMapOrderId] = useState<string | null>(null);
@@ -811,6 +815,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             {/* Primary Tab Switcher */}
             <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs overflow-x-auto scrollbar-none max-w-full">
               <button
+                data-test="admin-tab-overview"
+                data-testid="admin-tab-overview"
+                onClick={() => {
+                  setActiveTab('overview');
+                  setSelectedCustomerId(null);
+                }}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Overview &amp; Analytics</span>
+              </button>
+              <button
                 data-test="admin-tab-analytics"
                 data-testid="admin-tab-analytics"
                 onClick={() => {
@@ -1088,7 +1106,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         {/* Content Body */}
         <div ref={contentBodyRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* =========================================================================
-              SECTION 3: CUSTOMER ACTIVITY & ANALYTICS TAB (Default)
+              SECTION 0: EXECUTIVE OVERVIEW & PLATFORM ANALYTICS
+             ========================================================================= */}
+          {activeTab === 'overview' && token && (
+            <div className="space-y-6">
+              <AdminOverviewDashboard token={token} />
+            </div>
+          )}
+
+          {/* =========================================================================
+              SECTION 3: CUSTOMER ACTIVITY & ANALYTICS TAB
              ========================================================================= */}
           {activeTab === 'analytics' && (
             <div className="space-y-4">
@@ -1505,6 +1532,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             >
                               <Eye className="w-3.5 h-3.5" />
                               <span>{selectedCustomerId === cust.id ? 'Inspecting ↑' : 'Inspect Activity'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              data-test={`btn-view-customer-analytics-${cust.id}`}
+                              data-testid={`btn-view-customer-analytics-${cust.id}`}
+                              onClick={() => {
+                                setAnalyticsModalUser({ id: cust.id, type: 'customer' });
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white transition-all cursor-pointer shadow-2xs ml-1.5 border border-indigo-200/60"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5" />
+                              <span>View Analytics</span>
                             </button>
                           </td>
                         </tr>
@@ -2359,6 +2399,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <td className="p-3 text-right">
                           <button
                             type="button"
+                            data-test={`btn-view-agent-analytics-${ag.id}`}
+                            data-testid={`btn-view-agent-analytics-${ag.id}`}
+                            onClick={() => {
+                              setAnalyticsModalUser({ id: ag.id, type: 'agent' });
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors cursor-pointer mr-1.5 border border-blue-200"
+                          >
+                            <BarChart3 className="w-3.5 h-3.5" />
+                            <span>View Analytics</span>
+                          </button>
+
+                          <button
+                            type="button"
                             data-test={`btn-toggle-agent-status-${ag.id}`}
                             data-testid={`btn-toggle-agent-status-${ag.id}`}
                             onClick={() => handleToggleAgentActive(ag.id, ag.isActive)}
@@ -2730,6 +2783,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* User Analytics Profile Modal (Customer or Agent Dossier) */}
+      {analyticsModalUser && token && (
+        <UserAnalyticsModal
+          isOpen={Boolean(analyticsModalUser)}
+          onClose={() => setAnalyticsModalUser(null)}
+          userId={analyticsModalUser.id}
+          userType={analyticsModalUser.type}
+          token={token}
+        />
       )}
     </>
   );

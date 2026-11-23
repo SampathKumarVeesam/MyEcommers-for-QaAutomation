@@ -21,6 +21,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Truck,
   User as UserIcon,
   X,
@@ -33,6 +34,7 @@ import { DeliveryEtaCountdown } from './DeliveryEtaCountdown.js';
 import { EmergencyTransferModal } from './EmergencyTransferModal.js';
 import { GENDER_PRESET_AVATARS, ProfileModal } from './ProfileModal.js';
 import { resolveAddressCoordinates } from '../config/hyderabadCoordinates.js';
+import { AgentAnalyticsHub } from './analytics/AgentAnalyticsHub.js';
 
 interface DeliveryAgentPortalProps {
   isOpen: boolean;
@@ -80,7 +82,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
   // Portal dashboard
-  const [activeTab, setActiveTab] = useState<'deliveries' | 'earnings' | 'store-deposit'>('deliveries');
+  const [activeTab, setActiveTab] = useState<'deliveries' | 'analytics' | 'earnings' | 'store-deposit'>('deliveries');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [transferringOrder, setTransferringOrder] = useState<Order | null>(null);
@@ -1573,6 +1575,20 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               </button>
               <button
                 type="button"
+                data-test="tab-agent-performance"
+                data-testid="tab-agent-performance"
+                onClick={() => setActiveTab('analytics')}
+                className={`pb-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'analytics'
+                    ? 'border-emerald-600 text-emerald-600 font-bold'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <span>My Performance</span>
+              </button>
+              <button
+                type="button"
                 data-test="tab-earnings-wallet"
                 data-testid="tab-earnings-wallet"
                 onClick={() => setActiveTab('earnings')}
@@ -1608,6 +1624,17 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+              {activeTab === 'analytics' && token && (
+                <div className="space-y-4">
+                  <AgentAnalyticsHub
+                    token={token}
+                    isOnline={isOnline}
+                    onToggleDuty={() => handleToggleDuty(!isOnline)}
+                    activeStoreName="Hitech City / Madhapur Hub"
+                  />
+                </div>
+              )}
+
               {activeTab === 'deliveries' && (
                 <div className="space-y-4">
                   {orders.length === 0 ? (

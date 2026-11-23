@@ -3,11 +3,25 @@ import { query } from '../db/pool.js';
 import { AuthenticatedRequest, requireAdmin } from '../middleware/auth.js';
 import { userRepo } from '../repositories/userRepo.js';
 import { sendTestEmail } from '../services/emailService.js';
+import { adminAnalyticsController } from '../controllers/adminAnalyticsController.js';
 
 export const adminAnalyticsRouter = Router();
 
 // Protect all admin analytics routes with requireAdmin middleware
 adminAnalyticsRouter.use(requireAdmin);
+
+/**
+ * High-craft Executive Analytics Endpoints
+ */
+// GET /api/admin/analytics/overview
+adminAnalyticsRouter.get('/overview', adminAnalyticsController.getOverview);
+
+// GET /api/admin/analytics/customers/:customerId
+adminAnalyticsRouter.get('/customers/:customerId', adminAnalyticsController.getCustomerAnalytics);
+
+// GET /api/admin/analytics/agents/:agentId
+adminAnalyticsRouter.get('/agents/:agentId', adminAnalyticsController.getAgentAnalytics);
+
 
 /**
  * GET /api/admin/analytics/summary
