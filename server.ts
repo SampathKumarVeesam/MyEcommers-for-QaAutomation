@@ -110,8 +110,24 @@ async function startServer() {
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'COD';
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_collection_method VARCHAR(50);
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_settlement_status VARCHAR(50) DEFAULT 'PENDING';
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lat DOUBLE PRECISION DEFAULT 17.4375;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lng DOUBLE PRECISION DEFAULT 78.4482;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lat DOUBLE PRECISION DEFAULT 17.4375;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lng DOUBLE PRECISION DEFAULT 78.4482;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lat DOUBLE PRECISION DEFAULT 17.4486;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lng DOUBLE PRECISION DEFAULT 78.3908;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS order_proceeded_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER DEFAULT 1200;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_delivery_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_delayed BOOLEAN DEFAULT FALSE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delay_started_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS extra_delay_seconds INTEGER DEFAULT 0;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transfer_reason TEXT;
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_name VARCHAR(255);
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_id VARCHAR(100);
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST';
+        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_accepted_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_submitted_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_verified_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_rejection_note TEXT;
@@ -126,6 +142,10 @@ async function startServer() {
         );
         CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON newsletter_subscribers(email);
       `);
+
+      // Run comprehensive idempotent schema migrations
+      const { ensureSchemaMigrations } = await import('./server/db/migrations.js');
+      await ensureSchemaMigrations();
 
       const tableCheck = await query(`
         SELECT EXISTS (
@@ -174,7 +194,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
     app.use('*', async (req, res, next) => {
-      if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/api-docs')) {
+      const cleanUrl = req.originalUrl.split('?')[0];
+      if (cleanUrl.startsWith('/api') || cleanUrl.startsWith('/api-docs')) {
         return next();
       }
       try {

@@ -35,6 +35,7 @@ import { apiUrl } from '../config/api.js';
 import { useAuth } from '../context/AuthContext.js';
 import { LiveRouteMap } from './LiveRouteMap.js';
 import { AdminOverviewDashboard } from './analytics/AdminOverviewDashboard.js';
+import { ChartErrorBoundary } from './analytics/ChartErrorBoundary.js';
 import { UserAnalyticsModal } from './analytics/UserAnalyticsModal.js';
 import {
   AmountHandlingSummary,
@@ -1110,7 +1111,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
              ========================================================================= */}
           {activeTab === 'overview' && token && (
             <div className="space-y-6">
-              <AdminOverviewDashboard token={token} />
+              <ChartErrorBoundary fallbackTitle="Admin Executive Dashboard Unavailable">
+                <AdminOverviewDashboard token={token} />
+              </ChartErrorBoundary>
             </div>
           )}
 
@@ -2787,13 +2790,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
       {/* User Analytics Profile Modal (Customer or Agent Dossier) */}
       {analyticsModalUser && token && (
-        <UserAnalyticsModal
-          isOpen={Boolean(analyticsModalUser)}
-          onClose={() => setAnalyticsModalUser(null)}
-          userId={analyticsModalUser.id}
-          userType={analyticsModalUser.type}
-          token={token}
-        />
+        <ChartErrorBoundary fallbackTitle="User Dossier Analytics Unavailable">
+          <UserAnalyticsModal
+            isOpen={Boolean(analyticsModalUser)}
+            onClose={() => setAnalyticsModalUser(null)}
+            userId={analyticsModalUser.id}
+            userType={analyticsModalUser.type}
+            token={token}
+          />
+        </ChartErrorBoundary>
       )}
     </>
   );

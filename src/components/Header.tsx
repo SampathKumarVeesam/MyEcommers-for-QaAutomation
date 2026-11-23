@@ -431,7 +431,7 @@ export const Header: React.FC<HeaderProps> = ({
                           className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-amber-50 text-amber-700 font-semibold flex items-center gap-2 transition-colors cursor-pointer"
                         >
                           <Truck className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Delivery Partner Portal</span>
+                          <span>Delivery Agent Portal</span>
                         </button>
 
                         <div className="my-1 border-t border-slate-100" />

@@ -36,13 +36,13 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
       accentGlow: 'from-cyan-500/20 via-blue-600/15 to-transparent',
     },
     agent: {
-      label: 'Delivery Partner Portal',
+      label: 'ShopSphere Delivery Partner Portal',
       icon: Truck,
       pillColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
       accentGlow: 'from-emerald-500/20 via-teal-600/15 to-transparent',
     },
     admin: {
-      label: 'Administrator Console',
+      label: 'ShopSphere Administrator Portal & Analytics Console',
       icon: Shield,
       pillColor: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
       accentGlow: 'from-purple-500/20 via-indigo-600/15 to-transparent',
@@ -52,7 +52,11 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
   const RoleIcon = roleConfig.icon;
 
   const cardContent = (
-    <div className="relative w-full max-w-[440px] mx-auto z-10 animate-in fade-in zoom-in-95 duration-300">
+    <div
+      data-test={role === 'agent' ? 'delivery-agent-portal-modal' : role === 'admin' ? 'admin-portal-modal' : 'auth-glass-layout'}
+      data-testid={role === 'agent' ? 'delivery-agent-portal-modal' : role === 'admin' ? 'admin-portal-modal' : 'auth-glass-layout'}
+      className="relative w-full max-w-[440px] mx-auto z-10 animate-in fade-in zoom-in-95 duration-300"
+    >
       {/* Outer Glow Halo */}
       <div className="absolute -inset-1 rounded-[56px] bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-orange-500/15 blur-xl pointer-events-none opacity-80" />
 
@@ -119,6 +123,8 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
         <div className="text-center mt-6">
           <button
             type="button"
+            data-test="btn-delivery-back-storefront"
+            data-testid="btn-delivery-back-storefront"
             onClick={onNavigateHome}
             className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
           >
