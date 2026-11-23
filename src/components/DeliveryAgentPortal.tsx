@@ -1242,25 +1242,25 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               </div>
             )}
 
-            {/* Agent Bar */}
-            <div className="p-4 bg-[#0B1536]/80 border-b border-blue-500/20 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 text-white">
+            {/* Agent Bar (Executive Sapphire Glass) */}
+            <div className="p-4 bg-[#0B1536]/90 border-b border-blue-500/25 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 text-white shadow-lg">
               <div className="flex items-center gap-3">
                 <img
                   src={agent.avatarUrl}
                   alt={agent.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-indigo-600 shadow-sm ring-2 ring-indigo-100"
+                  className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-slate-900 text-sm">{agent.name}</span>
-                    <span className="font-mono text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-bold">
+                    <span className="font-extrabold text-white text-base tracking-tight">{agent.name}</span>
+                    <span className="font-mono text-[10px] bg-blue-900/60 text-cyan-300 border border-blue-400/40 px-2 py-0.5 rounded-full font-bold">
                       {agent.agentCode}
                     </span>
-                    <span className="px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
                       🟢 Online (FIFO Rank #{agent.fifoRank || 1})
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+                  <div className="flex items-center gap-3 text-xs text-slate-300 mt-1">
                     <span>🏍️ {agent.vehicleType}</span>
                     <span>📍 {agent.deliveryZone}</span>
                     <span>💼 {agent.gender.replace(/_/g, ' ')}</span>
@@ -1270,9 +1270,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
               {/* Wallet & Actions */}
               <div className="flex items-center gap-2.5">
-                <div className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-right">
-                  <div className="text-[10px] uppercase font-bold text-emerald-700">Wallet Earnings</div>
-                  <div className="text-sm font-extrabold text-emerald-900 font-mono">
+                <div className="bg-emerald-950/40 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right shadow-inner">
+                  <div className="text-[10px] uppercase font-bold text-emerald-400">Wallet Earnings</div>
+                  <div className="text-sm font-extrabold text-emerald-200 font-mono">
                     ₹{agent.totalEarnings.toFixed(2)}
                   </div>
                 </div>
@@ -1283,9 +1283,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     type="button"
                     onClick={() => setShowNotifDropdown(!showNotifDropdown)}
                     title="Alerts & Notifications"
-                    className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                    className="relative p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer border border-white/10"
                   >
-                    <Bell className="w-4 h-4" />
+                    <Bell className="w-4 h-4 text-cyan-300" />
                     {unreadNotifs > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
                         {unreadNotifs > 9 ? '9+' : unreadNotifs}
@@ -1294,23 +1294,23 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   </button>
 
                   {showNotifDropdown && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs">
-                      <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                          <Bell className="w-3.5 h-3.5 text-indigo-600" />
+                    <div className="absolute right-0 mt-2 w-80 bg-[#0B1536] border border-blue-500/40 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs text-white">
+                      <div className="p-3 bg-[#080E24] border-b border-blue-500/30 flex items-center justify-between">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5 text-cyan-400" />
                           Alerts ({unreadNotifs} unread)
                         </span>
                         {unreadNotifs > 0 && (
                           <button
                             type="button"
                             onClick={handleMarkAllAgentNotifsRead}
-                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                            className="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer"
                           >
                             Mark all read
                           </button>
                         )}
                       </div>
-                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                      <div className="max-h-72 overflow-y-auto divide-y divide-blue-500/20">
                         {notifications.length === 0 ? (
                           <div className="p-6 text-center text-slate-400">No alerts yet</div>
                         ) : (
@@ -1319,21 +1319,21 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               key={n.id}
                               onClick={() => !n.isRead && handleMarkAgentNotifRead(n.id)}
                               className={`p-3 transition-colors cursor-pointer ${
-                                n.isRead ? 'bg-white text-slate-500' : 'bg-indigo-50/50 text-slate-800'
-                              } hover:bg-slate-50`}
+                                n.isRead ? 'bg-[#0B1536]/80 text-slate-400' : 'bg-blue-600/20 text-white'
+                              } hover:bg-blue-600/30`}
                             >
                               <div className="flex items-start justify-between gap-1">
-                                <span className="font-bold text-slate-900">{n.title}</span>
+                                <span className="font-bold text-white">{n.title}</span>
                                 {n.amount && (
-                                  <span className="font-mono text-emerald-700 font-bold text-[11px]">
+                                  <span className="font-mono text-emerald-400 font-bold text-[11px]">
                                     ₹{Number(n.amount).toFixed(2)}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-600 mt-0.5">{n.message}</p>
+                              <p className="text-[11px] text-slate-300 mt-0.5">{n.message}</p>
                               <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
                                 <span>{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                {!n.isRead && <span className="text-rose-500 font-bold">● New</span>}
+                                {!n.isRead && <span className="text-cyan-400 font-bold">● New</span>}
                               </div>
                             </div>
                           ))
@@ -1346,7 +1346,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(true)}
-                  className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 cursor-pointer shadow-xs"
+                  className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-bold text-white cursor-pointer shadow-xs transition-colors"
                 >
                   Profile
                 </button>
@@ -1354,7 +1354,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-500/30"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -1362,8 +1362,22 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               </div>
             </div>
 
-            {/* Dashboard Tabs */}
-            <div className="flex flex-wrap items-center gap-2 border-b border-blue-500/20 text-xs font-bold px-4 py-2.5 bg-[#080E24]">
+            {/* Dashboard Tabs (Image 4 Sapphire Glass Navigation) */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-blue-500/20 text-xs font-bold px-4 py-3 bg-[#080E24]">
+              <button
+                type="button"
+                data-test="tab-agent-performance"
+                data-testid="tab-agent-performance"
+                onClick={() => setActiveTab('analytics')}
+                className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === 'analytics'
+                    ? 'bg-blue-600/40 text-cyan-300 border border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+                    : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4 text-cyan-400" />
+                <span>Dashboard (General Statistics)</span>
+              </button>
               <button
                 type="button"
                 data-test="tab-active-deliveries"
@@ -1371,7 +1385,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 onClick={() => setActiveTab('deliveries')}
                 className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'deliveries'
-                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    ? 'bg-blue-600/40 text-cyan-300 border border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
                     : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
@@ -1380,26 +1394,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               </button>
               <button
                 type="button"
-                data-test="tab-agent-performance"
-                data-testid="tab-agent-performance"
-                onClick={() => setActiveTab('analytics')}
-                className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === 'analytics'
-                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
-                    : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
-                }`}
-              >
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
-                <span>My Performance</span>
-              </button>
-              <button
-                type="button"
                 data-test="tab-earnings-wallet"
                 data-testid="tab-earnings-wallet"
                 onClick={() => setActiveTab('earnings')}
                 className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'earnings'
-                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    ? 'bg-blue-600/40 text-cyan-300 border border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
                     : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
@@ -1413,14 +1413,14 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 onClick={() => setActiveTab('store-deposit')}
                 className={`py-2 px-4 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                   activeTab === 'store-deposit'
-                    ? 'bg-blue-600/30 text-cyan-300 border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.35)]'
+                    ? 'bg-blue-600/40 text-cyan-300 border border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
                     : 'text-slate-400 hover:text-white bg-white/[0.03] border border-transparent'
                 }`}
               >
                 <Banknote className="w-4 h-4" />
                 <span>Store Cash Deposit</span>
                 {agent.hasPendingCashDeposit && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white shadow-xs">
                     🔒 Locked
                   </span>
                 )}

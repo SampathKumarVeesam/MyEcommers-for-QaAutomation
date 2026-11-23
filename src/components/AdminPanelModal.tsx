@@ -796,7 +796,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white tracking-tight">Admin &amp; Analytics Console</h2>
+                <h2 className="text-base font-bold text-white tracking-tight">ShopSphere Administrator Console</h2>
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
                   Role: {user?.role || 'Admin'}
                 </span>
