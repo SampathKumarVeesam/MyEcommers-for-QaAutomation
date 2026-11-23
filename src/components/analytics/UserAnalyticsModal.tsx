@@ -128,6 +128,8 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
 
           <button
             type="button"
+            data-testid="btn-close-user-analytics-modal"
+            aria-label="Close"
             onClick={onClose}
             className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
@@ -344,7 +346,7 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
                   ) : (
                     <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/10 backdrop-blur-xl space-y-3">
                       <h4 className="text-sm font-bold text-white tracking-tight">
-                        Agent Dispatch &amp; Transfer Audit
+                        Agent Dispatch &amp; Emergency Transfer Audit
                       </h4>
                       <div className="space-y-3 text-xs">
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">

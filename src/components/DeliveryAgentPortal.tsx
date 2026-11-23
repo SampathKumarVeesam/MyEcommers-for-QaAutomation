@@ -744,6 +744,26 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
     }
   };
 
+  const handleToggleDuty = async (nextStatus: boolean) => {
+    if (!token) return;
+    try {
+      const res = await fetch(apiUrl('/api/agent/status'), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isActive: nextStatus }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) setAgent(json.data);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   const refreshMe = async () => {
     if (!token) return;
     try {
@@ -1445,8 +1465,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <div className="space-y-4">
                   <AgentAnalyticsHub
                     token={token || 'demo-agent-token'}
-                    isOnline={isOnline}
-                    onToggleDuty={() => handleToggleDuty(!isOnline)}
+                    isOnline={Boolean(agent.isActive ?? true)}
+                    onToggleDuty={() => handleToggleDuty(!Boolean(agent.isActive ?? true))}
                     activeStoreName="Hitech City / Madhapur Hub"
                   />
                 </div>
