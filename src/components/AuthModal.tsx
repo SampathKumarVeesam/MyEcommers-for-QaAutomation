@@ -547,7 +547,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex bg-white/5 p-1 rounded-full border border-white/10 text-xs font-bold mb-5">
+          <div className="flex bg-white/5 p-1 rounded-xl rounded-full border border-white/10 text-xs font-bold mb-5">
             <button
               data-test="auth-tab-login"
               data-testid="auth-tab-login"
@@ -1181,7 +1181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                     {resetConfirmPassword && (
                       <p className={`text-[11px] px-4 font-semibold ${resetPassword === resetConfirmPassword ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {resetPassword === resetConfirmPassword ? '✓ Passwords match' : '⚠ Passwords do not match'}
+                        {resetPassword === resetConfirmPassword ? '✓ Password confirmation verified' : '⚠ Password confirmation mismatch'}
                       </p>
                     )}
 

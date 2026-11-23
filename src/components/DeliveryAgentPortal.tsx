@@ -1175,11 +1175,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               {agentResetStep === 'otp' && (
                 <div className="space-y-3">
                   <div className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium space-y-1">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                      <span>A 6-digit password reset OTP and reset link have been sent to your email address.</span>
-                    </div>
-                    <p className="text-[11px] text-emerald-200/90 pl-6">
+                    <p className="text-[11px] text-emerald-200/90">
                       OTP sent to: <span className="font-semibold text-white">{agentResetEmail || agentForgotEmail}</span>
                     </p>
                   </div>
@@ -1309,7 +1305,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
                   {agentResetConfirmPassword && (
                     <p className={`text-[11px] px-4 font-semibold ${agentResetPassword === agentResetConfirmPassword ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {agentResetPassword === agentResetConfirmPassword ? '✓ Passwords match' : '⚠ Passwords do not match'}
+                      {agentResetPassword === agentResetConfirmPassword ? '✓ Password confirmation verified' : '⚠ Password confirmation mismatch'}
                     </p>
                   )}
 
