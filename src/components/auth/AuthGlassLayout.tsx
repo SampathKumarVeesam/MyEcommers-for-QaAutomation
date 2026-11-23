@@ -31,18 +31,21 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
   const roleConfig = {
     customer: {
       label: 'Customer Portal',
+      bannerText: 'ShopSphere Customer Access',
       icon: User,
       pillColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
       accentGlow: 'from-cyan-500/20 via-blue-600/15 to-transparent',
     },
     agent: {
-      label: 'ShopSphere Delivery Partner Portal',
+      label: 'Delivery Partner Portal',
+      bannerText: 'ShopSphere Delivery Partner Portal',
       icon: Truck,
       pillColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
       accentGlow: 'from-emerald-500/20 via-teal-600/15 to-transparent',
     },
     admin: {
-      label: 'ShopSphere Administrator Portal & Analytics Console',
+      label: 'Administrator Console',
+      bannerText: 'ShopSphere Administrator Portal & Analytics Console',
       icon: Shield,
       pillColor: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
       accentGlow: 'from-purple-500/20 via-indigo-600/15 to-transparent',
@@ -78,11 +81,15 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
         )}
 
         {/* Header Section */}
-        <div className="text-center space-y-3 mb-7">
+        <div className="text-center space-y-2 mb-7">
           {/* Role Pill */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-sm ${roleConfig.pillColor}">
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider backdrop-blur-md shadow-sm ${roleConfig.pillColor}`}>
             <RoleIcon className="w-3 h-3" />
             <span>{roleConfig.label}</span>
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-400 tracking-wide">
+            {roleConfig.bannerText}
           </div>
 
           {/* Title (Matching Image 5 'LOGIN') */}

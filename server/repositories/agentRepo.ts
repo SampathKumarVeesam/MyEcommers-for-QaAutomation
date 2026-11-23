@@ -517,23 +517,25 @@ export class AgentRepository {
   async ensureSeedAgent(): Promise<DeliveryAgent> {
     const existing = await this.findByEmail('agent.alex@shopsphere.test');
     if (existing) {
-      // Ensure seed agent is active, logged in, and set to Hyderabad
+      // Ensure seed agent is active, logged in, and set to Hyderabad with synced Agent@123 hash
+      const hash123 = bcrypt.hashSync('Agent@123', 10);
       await query(
         `UPDATE delivery_agents
-         SET is_active = TRUE,
+         SET password_hash = $1,
+             is_active = TRUE,
              is_logged_in = TRUE,
              last_active_at = NOW(),
              phone = COALESCE(phone, '+91 98490 88776'),
              delivery_zone = 'Hitech City / Madhapur, Hyderabad',
              current_lat = 17.4486,
              current_lng = 78.3908
-         WHERE id = $1`,
-        [existing.id]
+         WHERE id = $2`,
+        [hash123, existing.id]
       );
       return existing;
     }
 
-    const hash = bcrypt.hashSync('Agent#2026!', 10);
+    const hash = bcrypt.hashSync('Agent@123', 10);
     const agent = await this.createAgent({
       name: 'Alex Rivers',
       email: 'agent.alex@shopsphere.test',
