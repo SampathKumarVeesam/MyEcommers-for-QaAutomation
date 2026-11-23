@@ -492,7 +492,7 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
         <ActivityHeatmap
           days={heatmap?.days || []}
           colorScheme="emerald"
-          title="365-Day Delivery Fulfillment Activity Calendar"
+          title="365-Day Delivery Activity Calendar"
           totalActiveDays={heatmap?.totalActiveDays || 84}
           streak={heatmap?.currentStreak || 19}
         />
