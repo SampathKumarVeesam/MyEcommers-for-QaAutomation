@@ -223,7 +223,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const quickLogin = async (account: 'admin' | 'customer1' | 'customer2') => {
     if (account === 'admin') {
-      await login('admin@practicesoftwaretesting.com', 'welcome01');
+      const res = await login('admin@practicesoftwaretesting.com', 'Sampath@123', 'admin');
+      if (!res.success) {
+        await login('admin@practicesoftwaretesting.com', 'welcome01', 'admin');
+      }
     } else if (account === 'customer1') {
       await login('customer@practicesoftwaretesting.com', 'User01');
     } else if (account === 'customer2') {

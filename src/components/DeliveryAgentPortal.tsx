@@ -25,6 +25,7 @@ import {
   Truck,
   User as UserIcon,
   X,
+  Zap,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { apiUrl } from '../config/api.js';
