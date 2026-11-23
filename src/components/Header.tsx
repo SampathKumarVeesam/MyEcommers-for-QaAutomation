@@ -440,7 +440,7 @@ export const Header: React.FC<HeaderProps> = ({
               ) : (
                 <div className="flex items-center gap-1">
                   <button
-                    data-test="nav-signin"
+                    data-test="nav-signin nav-signin-btn"
                     data-testid="nav-signin"
                     onClick={() => onOpenAuth('login')}
                     className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"

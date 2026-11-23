@@ -903,8 +903,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               <button
                 type="button"
                 onClick={handleQuickDemoLogin}
-                data-test="btn-quick-demo-agent"
-                data-testid="btn-quick-demo-agent"
+                data-test="btn-quick-agent-demo"
+                data-testid="btn-quick-agent-demo"
                 className="w-full py-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-white/10 flex items-center justify-center gap-2 mt-2"
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
@@ -1092,7 +1092,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                  ShopSphere Executive Logistics &bull; Hyderabad Hub 🇮🇳
+                  ShopSphere Delivery Partner Portal &bull; Hyderabad Hub 🇮🇳
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold border border-cyan-500/30">
                   {agent.agentCode || 'ACTIVE'}

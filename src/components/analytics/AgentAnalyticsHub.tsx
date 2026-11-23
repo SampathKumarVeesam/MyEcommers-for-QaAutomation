@@ -243,8 +243,9 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
             <div className="text-2xl font-black font-mono tabular-nums text-white">
               3,462
             </div>
-            <div className="text-[11px] font-bold text-blue-400">
-              <span>{profile.storeRankPercentile || 'Top 5% at Store'}</span>
+            <div className="text-[11px] font-bold text-blue-400 space-y-0.5">
+              <span>Hub Standing: {profile.storeRankPercentile || 'Top 5% at Store'}</span>
+              <span className="block text-[10px] text-cyan-300">3-Min FIFO Acceptance: 98.5%</span>
             </div>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 border border-blue-500/40 flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -256,7 +257,7 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
         <div className="p-5 rounded-[24px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(10,25,70,0.5)] flex items-center justify-between relative overflow-hidden group hover:border-emerald-400/50 transition-all">
           <div className="space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              On-Time SLA
+              Delivery SLA Performance Ratio
             </span>
             <div className="text-2xl font-black font-mono tabular-nums text-white">
               98.5%
@@ -275,13 +276,13 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
         <div className="p-5 rounded-[24px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(10,25,70,0.5)] flex items-center justify-between relative overflow-hidden group hover:border-amber-400/50 transition-all">
           <div className="space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              COD Cash In Hand
+              Store Cash Reconciliation
             </span>
             <div className="text-2xl font-black font-mono tabular-nums text-white">
               &#8377;{codLiability.pendingCashToDeposit?.toLocaleString('en-IN') || '0'}
             </div>
             <div className="text-[11px] font-bold text-amber-300">
-              {codLiability.pendingCashToDeposit === 0 ? 'Clean Ledger ✅' : 'Deposit Required ⚠️'}
+              Pending Cash to Deposit: &#8377;0
             </div>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -409,7 +410,7 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
         <div className="lg:col-span-8 p-6 rounded-[28px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-xl space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-extrabold text-white tracking-tight">Sales &amp; Commission Overview</h3>
+              <h3 className="text-sm font-extrabold text-white tracking-tight">Delivery Commission Earnings &amp; Sales Overview</h3>
               <p className="text-xs text-slate-400">15% Payout on verified customer completions</p>
             </div>
 
@@ -479,7 +480,7 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
       <ActivityHeatmap
         days={heatmap.days || []}
         colorScheme="sapphire"
-        title="365-Day Delivery Fulfillment Ledger"
+        title="365-Day Delivery Activity Calendar"
         totalActiveDays={heatmap.totalActiveDays}
         streak={heatmap.currentStreak}
       />
