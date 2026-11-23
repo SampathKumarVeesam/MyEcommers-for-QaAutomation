@@ -95,18 +95,18 @@ export const adminAnalyticsController = {
 
       // Funnel Stages with drop-offs
       const f = funnelRes.rows[0] || {};
-      const cartCount = Math.max(Number(f.cart_created || 0), Number(f.orders_placed || 0) * 2, 450);
-      const placedCount = Number(f.orders_placed || 0) || 120;
-      const assignedCount = Number(f.agent_assigned || 0) || 112;
-      const deliveredCount = Number(f.delivered || 0) || 98;
-      const reviewedCount = Number(f.reviewed || 0) || 45;
+      const cartCount = Number(f.cart_created || 0);
+      const placedCount = Number(f.orders_placed || 0);
+      const assignedCount = Number(f.agent_assigned || 0);
+      const deliveredCount = Number(f.delivered || 0);
+      const reviewedCount = Number(f.reviewed || 0);
 
       const funnelStages = [
         { stage: 'Cart Created', count: cartCount, conversionRate: 100, dropoffPct: 0 },
-        { stage: 'Order Placed', count: placedCount, conversionRate: Math.round((placedCount / cartCount) * 100), dropoffPct: Math.round((1 - placedCount / cartCount) * 100) },
-        { stage: 'Agent Assigned', count: assignedCount, conversionRate: Math.round((assignedCount / placedCount) * 100), dropoffPct: Math.round((1 - assignedCount / placedCount) * 100) },
-        { stage: 'Delivered', count: deliveredCount, conversionRate: Math.round((deliveredCount / assignedCount) * 100), dropoffPct: Math.round((1 - deliveredCount / assignedCount) * 100) },
-        { stage: 'Reviewed', count: reviewedCount, conversionRate: Math.round((reviewedCount / deliveredCount) * 100), dropoffPct: Math.round((1 - reviewedCount / deliveredCount) * 100) },
+        { stage: 'Order Placed', count: placedCount, conversionRate: cartCount > 0 ? Math.round((placedCount / cartCount) * 100) : 0, dropoffPct: cartCount > 0 ? Math.round((1 - placedCount / cartCount) * 100) : 0 },
+        { stage: 'Agent Assigned', count: assignedCount, conversionRate: placedCount > 0 ? Math.round((assignedCount / placedCount) * 100) : 0, dropoffPct: placedCount > 0 ? Math.round((1 - assignedCount / placedCount) * 100) : 0 },
+        { stage: 'Delivered', count: deliveredCount, conversionRate: assignedCount > 0 ? Math.round((deliveredCount / assignedCount) * 100) : 0, dropoffPct: assignedCount > 0 ? Math.round((1 - deliveredCount / assignedCount) * 100) : 0 },
+        { stage: 'Reviewed', count: reviewedCount, conversionRate: deliveredCount > 0 ? Math.round((reviewedCount / deliveredCount) * 100) : 0, dropoffPct: deliveredCount > 0 ? Math.round((1 - reviewedCount / deliveredCount) * 100) : 0 },
       ];
 
       // Store / Hub Fulfillment
@@ -160,12 +160,7 @@ export const adminAnalyticsController = {
           },
           monthlyTrends: monthlyData,
           conversionFunnel: funnelStages,
-          storeFulfillment: stores.length > 0 ? stores : [
-            { storeName: 'Hitech City Flagship Hub', totalAgents: 8, fulfilledOrders: 142, pendingCashLiability: 4250.00, totalAgentPayouts: 18500.00 },
-            { storeName: 'Banjara Hills Express Hub', totalAgents: 4, fulfilledOrders: 89, pendingCashLiability: 1800.00, totalAgentPayouts: 9200.00 },
-            { storeName: 'Gachibowli Cyber Hub', totalAgents: 5, fulfilledOrders: 110, pendingCashLiability: 2950.00, totalAgentPayouts: 14100.00 },
-            { storeName: 'Tellapur / Osman Nagar Node', totalAgents: 3, fulfilledOrders: 64, pendingCashLiability: 1200.00, totalAgentPayouts: 6700.00 },
-          ],
+          storeFulfillment: stores,
           codSettlementFlow: {
             totalCodCollected: parseFloat(codData.total_cod_amount || '0'),
             upiQrCollected: parseFloat(codData.upi_qr_amount || '0'),
@@ -276,22 +271,13 @@ export const adminAnalyticsController = {
       ];
 
       catRes.rows.forEach(r => {
-        const catName = r.category.toLowerCase();
+        const catName = (r.category || '').toLowerCase();
         if (catName.includes('elect') || catName.includes('tech') || catName.includes('smart')) categoryRadar[0].score += r.items_bought * 20;
         else if (catName.includes('fash') || catName.includes('dress')) categoryRadar[1].score += r.items_bought * 20;
         else if (catName.includes('audio') || catName.includes('ear') || catName.includes('sound')) categoryRadar[2].score += r.items_bought * 20;
         else if (catName.includes('frag') || catName.includes('perf') || catName.includes('beau')) categoryRadar[3].score += r.items_bought * 20;
         else categoryRadar[4].score += r.items_bought * 15;
       });
-
-      // Default reasonable baseline for visualization if brand new
-      if (categoryRadar.every(c => c.score === 0)) {
-        categoryRadar[0].score = 65;
-        categoryRadar[1].score = 45;
-        categoryRadar[2].score = 80;
-        categoryRadar[3].score = 50;
-        categoryRadar[4].score = 30;
-      }
 
       // 6. 365-Day Activity Heatmap
       const heatmapRes = await query(`
@@ -381,6 +367,30 @@ export const adminAnalyticsController = {
         },
       ];
 
+      // Dynamic Customer Spend Brackets across all patrons
+      const histogramRes = await query(`
+        SELECT
+          COUNT(CASE WHEN total_spent < 2000 THEN 1 END)::int AS b1,
+          COUNT(CASE WHEN total_spent >= 2000 AND total_spent < 10000 THEN 1 END)::int AS b2,
+          COUNT(CASE WHEN total_spent >= 10000 AND total_spent < 50000 THEN 1 END)::int AS b3,
+          COUNT(CASE WHEN total_spent >= 50000 AND total_spent < 150000 THEN 1 END)::int AS b4,
+          COUNT(CASE WHEN total_spent >= 150000 THEN 1 END)::int AS b5
+        FROM (
+          SELECT user_id, COALESCE(SUM(total_amount), 0) as total_spent
+          FROM "order"
+          WHERE status != 'cancelled'
+          GROUP BY user_id
+        ) spends
+      `);
+      const hRow = histogramRes.rows[0] || {};
+      const percentileHistogram = [
+        { bracket: '₹0 - ₹2k', count: hRow.b1 || 0, active: totalSpent < 2000 },
+        { bracket: '₹2k - ₹10k', count: hRow.b2 || 0, active: totalSpent >= 2000 && totalSpent < 10000 },
+        { bracket: '₹10k - ₹50k', count: hRow.b3 || 0, active: totalSpent >= 10000 && totalSpent < 50000 },
+        { bracket: '₹50k - ₹1.5L', count: hRow.b4 || 0, active: totalSpent >= 50000 && totalSpent < 150000 },
+        { bracket: '₹1.5L+', count: hRow.b5 || 0, active: totalSpent >= 150000 },
+      ];
+
       res.status(200).json({
         success: true,
         data: {
@@ -400,15 +410,9 @@ export const adminAnalyticsController = {
             spend: parseFloat(r.spend),
             orders: r.orders,
           })),
-          percentileHistogram: [
-            { bracket: '₹0 - ₹2k', count: 42, active: totalSpent < 2000 },
-            { bracket: '₹2k - ₹10k', count: 78, active: totalSpent >= 2000 && totalSpent < 10000 },
-            { bracket: '₹10k - ₹50k', count: 35, active: totalSpent >= 10000 && totalSpent < 50000 },
-            { bracket: '₹50k - ₹1.5L', count: 18, active: totalSpent >= 50000 && totalSpent < 150000 },
-            { bracket: '₹1.5L+', count: 7, active: totalSpent >= 150000 },
-          ],
+          percentileHistogram,
           orderOutcomes: [
-            { name: 'Delivered', value: outcomes.delivered || 1, color: '#10B981' },
+            { name: 'Delivered', value: outcomes.delivered, color: '#10B981' },
             { name: 'In Transit', value: outcomes.in_transit, color: '#6366F1' },
             { name: 'Cancelled', value: outcomes.cancelled, color: '#F43F5E' },
           ],
@@ -416,8 +420,8 @@ export const adminAnalyticsController = {
           milestones: badges,
           heatmap: {
             days: calendarDays,
-            totalActiveDays: activeDaysCount || 3,
-            maxStreak: Math.max(maxStreak, 1),
+            totalActiveDays: activeDaysCount,
+            maxStreak,
           },
         },
       });
@@ -499,15 +503,16 @@ export const adminAnalyticsController = {
       `, [agentDbId]);
 
       const sla = slaRes.rows[0] || { on_time: 0, delayed: 0, returned_or_cancelled: 0, total: 0 };
-      const onTimeDeliveries = sla.on_time || Math.max(1, agent.delivered_orders_count - sla.delayed);
+      const onTimeDeliveries = sla.on_time || 0;
       const delayedDeliveries = sla.delayed || 0;
       const returnedDeliveries = sla.returned_or_cancelled || 0;
 
       // 5. 3-Minute FIFO Acceptance Stats
-      const fifoAccepted = agent.delivered_orders_count || 12;
-      const fifoExpired = 1;
+      const fifoAccepted = Number(agent.delivered_orders_count || 0);
+      const fifoExpired = 0;
       const fifoRejected = 0;
-      const acceptanceRate = Math.round((fifoAccepted / (fifoAccepted + fifoExpired + fifoRejected)) * 100);
+      const totalFifo = fifoAccepted + fifoExpired + fifoRejected;
+      const acceptanceRate = totalFifo > 0 ? Math.round((fifoAccepted / totalFifo) * 100) : 100;
 
       // 6. 2-Tier Emergency Transfer Audit
       const transferAuditRes = await query(`
@@ -670,8 +675,8 @@ export const adminAnalyticsController = {
           milestones: badges,
           heatmap: {
             days: calendarDays,
-            totalActiveDays: activeDaysCount || 4,
-            maxStreak: Math.max(maxStreak, 1),
+            totalActiveDays: activeDaysCount,
+            maxStreak,
           },
         },
       });

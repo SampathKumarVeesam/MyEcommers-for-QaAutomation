@@ -27,6 +27,7 @@ export async function ensureSchemaMigrations(): Promise<void> {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE;
       `, 'users columns');
 
       // 2. Ensure delivery_agents table exists
@@ -76,6 +77,7 @@ export async function ensureSchemaMigrations(): Promise<void> {
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE;
       `, 'delivery_agents columns');
 
       // 4. Ensure order table columns exist (including emergency transfer & live routing fields)

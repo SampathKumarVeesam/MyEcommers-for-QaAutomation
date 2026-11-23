@@ -1476,6 +1476,51 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/users/verify-reset-otp": {
+      "post": {
+        "tags": [
+          "Customer - Auth"
+        ],
+        "summary": "Verify 6-digit OTP code for password recovery",
+        "description": "Validates the 6-digit OTP code against PostgreSQL records, verifies timestamp is within 10 minutes, marks otp_verified=true, and generates a scoped JWT resetToken for setting a new password.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "otp"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "customer@practicesoftwaretesting.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "482910"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully, returns scoped resetToken"
+          },
+          "400": {
+            "description": "Invalid OTP code or code expired"
+          },
+          "403": {
+            "description": "Reset restricted for administrator accounts"
+          },
+          "404": {
+            "description": "No registered account found"
+          }
+        }
+      }
+    },
     "/users/reset-password": {
       "post": {
         "tags": [
@@ -4150,6 +4195,33 @@ export const SWAGGER_SPEC = {
         "responses": {
           "200": { "description": "Password reset OTP dispatched to registered agent email" },
           "400": { "description": "Missing or invalid email" },
+          "404": { "description": "Agent account not found" }
+        }
+      }
+    },
+    "/agent/verify-reset-otp": {
+      "post": {
+        "tags": ["Delivery Agents"],
+        "summary": "Verify 6-digit OTP code for agent password recovery",
+        "description": "Validates the 6-digit OTP code against PostgreSQL delivery_agents table, marks otp_verified=true, and generates a scoped resetToken.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "otp"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "agent.alex@shopsphere.test" },
+                  "otp": { "type": "string", "example": "123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP verified successfully, returns scoped resetToken" },
+          "400": { "description": "Invalid OTP code or expired" },
           "404": { "description": "Agent account not found" }
         }
       }

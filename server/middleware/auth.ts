@@ -42,6 +42,30 @@ export function generateAgentToken(agent: DeliveryAgent): string {
   );
 }
 
+export function generateResetToken(email: string, role: 'customer' | 'delivery_agent'): string {
+  return jwt.sign(
+    {
+      email: email.trim().toLowerCase(),
+      role,
+      purpose: 'password_reset',
+    },
+    JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+}
+
+export function verifyResetToken(token: string): { email: string; role: 'customer' | 'delivery_agent' } | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (decoded && decoded.purpose === 'password_reset' && decoded.email) {
+      return { email: decoded.email, role: decoded.role };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

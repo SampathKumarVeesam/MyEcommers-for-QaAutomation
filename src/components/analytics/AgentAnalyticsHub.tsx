@@ -39,71 +39,55 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
   onToggleDuty,
   activeStoreName = 'Hitech City / Madhapur Hub',
 }) => {
-  // Executive fallback data modeled strictly after Reference Image 4
+  // Clean real-time zero baselines (Strictly dynamic PostgreSQL data)
   const defaultAnalyticsData = {
     profile: {
-      id: 'AGT-6787',
-      name: 'Alex Rivers',
-      email: 'agent.alex@shopsphere.test',
-      phone: '+91 989858968',
+      id: 'AGT-XXXX',
+      name: 'Delivery Executive',
+      email: '',
+      phone: 'N/A',
       role: 'delivery_agent',
       vehicleType: 'Motorcycle',
       deliveryZone: 'Hitech City / Madhapur Hub',
-      storeRankPercentile: 'Top 5% at Store',
-      totalEarnings: 155430,
+      storeRankPercentile: 'Top 10% at Store',
+      totalEarnings: 0,
     },
     codLiability: {
       pendingCashToDeposit: 0,
-      settledCashAtStore: 155430,
-      totalCollectedCash: 155430,
-      totalCollectedUpi: 42300,
+      settledCashAtStore: 0,
+      totalCollectedCash: 0,
+      totalCollectedUpi: 0,
       settlementPercentage: 100,
     },
-    earnings12M: [
-      { month: 'Jan', earnings: 11200, deliveries: 240 },
-      { month: 'Feb', earnings: 12400, deliveries: 265 },
-      { month: 'Mar', earnings: 14100, deliveries: 310 },
-      { month: 'Apr', earnings: 13800, deliveries: 290 },
-      { month: 'May', earnings: 15600, deliveries: 340 },
-      { month: 'Jun', earnings: 16900, deliveries: 380 },
-      { month: 'Jul', earnings: 14200, deliveries: 315 },
-      { month: 'Aug', earnings: 15800, deliveries: 350 },
-      { month: 'Sep', earnings: 17200, deliveries: 390 },
-      { month: 'Oct', earnings: 18500, deliveries: 410 },
-      { month: 'Nov', earnings: 21200, deliveries: 460 },
-      { month: 'Dec', earnings: 19800, deliveries: 430 },
-    ],
-    earnings30D: Array.from({ length: 30 }).map((_, i) => ({
-      date: `${i + 1} Nov`,
-      earnings: 450 + Math.floor((i % 7) * 120 + (i * 15)),
-      deliveries: 12 + Math.floor((i % 5) * 4),
-    })),
+    earnings12M: [] as Array<{ month: string; earnings: number; deliveries: number }>,
+    earnings30D: [] as Array<{ date: string; earnings: number; deliveries: number }>,
     deliveryScore: [
-      { name: 'On-Time', value: 3410, color: '#10B981' },
-      { name: 'Delayed', value: 42, color: '#F59E0B' },
-      { name: 'Returned', value: 10, color: '#F43F5E' },
+      { name: 'On-Time', value: 0, color: '#10B981' },
+      { name: 'Delayed', value: 0, color: '#F59E0B' },
+      { name: 'Returned', value: 0, color: '#F43F5E' },
     ],
     fifoGauge: {
-      acceptanceRate: 98.5,
-      avgResponseSeconds: 42,
+      acceptanceRate: 100,
+      avgResponseSeconds: 0,
       targetSeconds: 180,
     },
-    milestones: [
-      { id: '1', title: 'Clean Ledger Master', description: 'Zero outstanding COD cash liabilities at hub', unlocked: true, tier: 'gold', icon: 'ShieldCheck' },
-      { id: '2', title: 'Lightning FIFO Streak', description: 'Consistently accepted dispatch within 3-min window', unlocked: true, tier: 'platinum', icon: 'Zap' },
-      { id: '3', title: '100 Deliveries Club', description: 'Completed 100+ verified customer deliveries', unlocked: true, tier: 'gold', icon: 'Award' },
-      { id: '4', title: '5-Star Hub Favorite', description: 'Achieved 98%+ on-time SLA rating across all dispatches', unlocked: true, tier: 'diamond', icon: 'Star' },
-    ],
+    milestones: [] as any[],
     heatmap: {
-      days: Array.from({ length: 90 }).map((_, i) => ({
-        date: `2026-${String(Math.floor(i / 30) + 9).padStart(2, '0')}-${String((i % 30) + 1).padStart(2, '0')}`,
-        count: (i % 6) + 1,
-        intensity: (i % 5),
-      })),
-      totalActiveDays: 84,
-      currentStreak: 19,
-      maxStreak: 28,
+      days: [] as any[],
+      totalActiveDays: 0,
+      currentStreak: 0,
+      maxStreak: 0,
     },
+    weeklyActivity: [
+      { day: 'M', count: 0 },
+      { day: 'T', count: 0 },
+      { day: 'W', count: 0 },
+      { day: 'T', count: 0 },
+      { day: 'F', count: 0 },
+      { day: 'S', count: 0 },
+      { day: 'S', count: 0 },
+    ],
+    deliveryZones: [] as any[],
   };
 
   const [data, setData] = useState<any>(defaultAnalyticsData);
@@ -149,24 +133,25 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
       ? (earnings30D || []).map((item: any) => ({ label: item?.date || '', earnings: Number(item?.earnings || 0) }))
       : (earnings12M || []).map((item: any) => ({ label: item?.month || '', earnings: Number(item?.earnings || 0) }));
 
-  // Mock Active Users / Daily Deliveries for Bar Chart (Matching Image 4)
-  const barChartData = [
-    { day: 'M', count: 18 },
-    { day: 'T', count: 32 },
-    { day: 'W', count: 24 },
-    { day: 'T', count: 42 },
-    { day: 'F', count: 36 },
-    { day: 'S', count: 48 },
-    { day: 'S', count: 28 },
-  ];
+  // Dynamic Daily Deliveries for Bar Chart from PostgreSQL
+  const barChartData = Array.isArray(safeData.weeklyActivity) && safeData.weeklyActivity.length > 0
+    ? safeData.weeklyActivity
+    : [
+        { day: 'M', count: 0 },
+        { day: 'T', count: 0 },
+        { day: 'W', count: 0 },
+        { day: 'T', count: 0 },
+        { day: 'F', count: 0 },
+        { day: 'S', count: 0 },
+        { day: 'S', count: 0 },
+      ];
 
-  // Delivery Zones (Matching 'Sales by Country' in Image 4)
-  const zoneList = [
-    { zone: 'Tellapur & Osman Nagar', tag: 'IN-TG', orders: 1420, value: '₹1,02,400', pct: 96, color: 'bg-cyan-400' },
-    { zone: 'Hitech City / Madhapur', tag: 'IN-TG', orders: 980, value: '₹74,800', pct: 98, color: 'bg-blue-500' },
-    { zone: 'Gachibowli Hub', tag: 'IN-TG', orders: 620, value: '₹48,200', pct: 92, color: 'bg-indigo-500' },
-    { zone: 'Kondapur & Botanical', tag: 'IN-TG', orders: 442, value: '₹30,030', pct: 88, color: 'bg-violet-500' },
-  ];
+  // Dynamic Delivery Zones Performance from PostgreSQL
+  const zoneList = Array.isArray(safeData.deliveryZones) && safeData.deliveryZones.length > 0
+    ? safeData.deliveryZones
+    : [
+        { zone: profile.deliveryZone || 'Hitech City / Madhapur Hub', tag: 'IN-TG', orders: 0, value: '₹0', pct: 100, color: 'bg-cyan-400' },
+      ];
 
   return (
     <ChartErrorBoundary fallbackTitle="Agent Performance Dashboard Temporarily Unavailable">

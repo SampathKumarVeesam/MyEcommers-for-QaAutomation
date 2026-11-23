@@ -117,8 +117,9 @@ export const agentAnalyticsController = {
 
       const onTimeRate = Math.round((onTimeCount / totalAssigned) * 100);
 
-      // 6. 3-Minute FIFO Acceptance Rate Gauge (with safe fallback)
-      let fifoRate = 96;
+      // 6. 3-Minute FIFO Acceptance Rate Gauge & Response Speed
+      let fifoRate = 100;
+      let avgResponseSeconds = 0;
       try {
         const fifoRes = await query(`
           SELECT 
@@ -129,13 +130,43 @@ export const agentAnalyticsController = {
         `, [agentId]);
 
         const fastAccepts = fifoRes.rows[0]?.fast_accepts || 0;
-        const fifoTotal = Math.max(1, fifoRes.rows[0]?.total || 1);
-        fifoRate = Math.min(100, Math.max(88, Math.round((fastAccepts / fifoTotal) * 100)));
+        const fifoTotal = fifoRes.rows[0]?.total || 0;
+        fifoRate = fifoTotal > 0 ? Math.round((fastAccepts / fifoTotal) * 100) : 100;
+
+        const avgRes = await query(`
+          SELECT 
+            ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM (agent_accepted_at - assigned_at))), 0))::int AS avg_seconds
+          FROM "order"
+          WHERE assigned_agent_id = $1 AND agent_accepted_at IS NOT NULL AND assigned_at IS NOT NULL
+        `, [agentId]);
+        avgResponseSeconds = avgRes.rows[0]?.avg_seconds || 0;
       } catch (fifoErr) {
-        fifoRate = 95;
+        fifoRate = 100;
+        avgResponseSeconds = 0;
       }
 
-      // 7. 365-Day Delivery Heatmap
+      // 7. Weekly Activity for Bar Chart (Past 7 Days)
+      const weeklyRes = await query(`
+        SELECT TO_CHAR(d.day, 'Dy') AS day, COUNT(o.id)::int AS count
+        FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') d(day)
+        LEFT JOIN "order" o ON o.created_at::date = d.day::date AND o.assigned_agent_id = $1 AND o.status = 'delivered'
+        GROUP BY d.day ORDER BY d.day ASC
+      `, [agentId]);
+
+      // 8. Delivery Zones Performance
+      const zoneRes = await query(`
+        SELECT 
+          COALESCE(NULLIF(TRIM(delivery_zone), ''), $2) AS zone,
+          COUNT(id)::int AS orders,
+          COALESCE(SUM(total_amount * 0.15), 0)::numeric(10,2) AS earnings
+        FROM "order"
+        WHERE assigned_agent_id = $1 AND status = 'delivered'
+        GROUP BY delivery_zone
+        ORDER BY orders DESC
+        LIMIT 5
+      `, [agentId, agent.delivery_zone || 'Hitech City / Madhapur Hub']);
+
+      // 9. 365-Day Delivery Heatmap
       const heatmapRes = await query(`
         SELECT 
           d.day::date AS date,
@@ -248,22 +279,34 @@ export const agentAnalyticsController = {
             deliveries: r.deliveries,
           })),
           deliveryScore: [
-            { name: 'On-Time', value: Math.max(1, onTimeCount), color: '#10B981' },
+            { name: 'On-Time', value: onTimeCount, color: '#10B981' },
             { name: 'Delayed', value: delayedCount, color: '#F59E0B' },
             { name: 'Returned', value: returnedCount, color: '#F43F5E' },
           ],
           fifoGauge: {
             acceptanceRate: fifoRate,
-            avgResponseSeconds: 42,
+            avgResponseSeconds,
             targetSeconds: 180,
           },
           milestones: badges,
           heatmap: {
             days: calendarDays,
-            totalActiveDays: activeDaysCount || 1,
+            totalActiveDays: activeDaysCount,
             currentStreak,
-            maxStreak: Math.max(maxStreak, 1),
+            maxStreak,
           },
+          weeklyActivity: weeklyRes.rows.map(r => ({
+            day: String(r.day).trim().slice(0, 1),
+            count: Number(r.count || 0),
+          })),
+          deliveryZones: zoneRes.rows.map((r, idx) => ({
+            zone: r.zone,
+            tag: 'IN-TG',
+            orders: Number(r.orders || 0),
+            value: `₹${parseFloat(r.earnings || '0').toLocaleString('en-IN')}`,
+            pct: 100,
+            color: idx === 0 ? 'bg-cyan-400' : idx === 1 ? 'bg-blue-500' : idx === 2 ? 'bg-indigo-500' : 'bg-violet-500',
+          })),
         },
       });
     } catch (err: any) {

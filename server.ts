@@ -22,6 +22,7 @@ async function startServer() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE;
       `);
 
       // Ensure delivery_agents table exists
@@ -71,6 +72,7 @@ async function startServer() {
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_otp VARCHAR(10);
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
         ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS reset_password_expires_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE delivery_agents ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE;
       `);
 
       // Ensure persistent notifications table exists for Admin & Delivery Agents

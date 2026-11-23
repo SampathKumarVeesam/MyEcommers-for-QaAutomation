@@ -909,7 +909,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </form>
 
-              <div className="text-center pt-2">
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  data-test="link-have-otp"
+                  data-testid="link-have-otp"
+                  onClick={() => handleSwitchTab('reset')}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                >
+                  Already have an OTP code? Enter Code &rarr;
+                </button>
                 <button
                   type="button"
                   onClick={() => handleSwitchTab('login')}
@@ -1022,7 +1031,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </form>
 
-              <div className="text-center pt-2">
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  data-test="link-have-otp"
+                  data-testid="link-have-otp"
+                  onClick={() => handleSwitchTab('reset')}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                >
+                  Already have an OTP code? Enter Code &rarr;
+                </button>
                 <button
                   type="button"
                   onClick={() => handleSwitchTab('login')}

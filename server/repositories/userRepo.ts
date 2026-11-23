@@ -91,12 +91,53 @@ export class UserRepository {
     const normalized = email.trim().toLowerCase();
     const res = await query(
       `UPDATE users
-       SET reset_password_otp = $1, reset_password_token = $2, reset_password_expires_at = $3
+       SET reset_password_otp = $1, reset_password_token = $2, reset_password_expires_at = $3, otp_verified = FALSE
        WHERE LOWER(email) = LOWER($4) AND role != 'admin'
        RETURNING id, role`,
       [otp, token, expiresAt, normalized]
     );
     return (res.rowCount || 0) > 0;
+  }
+
+  async verifyResetOtp(email: string, otp: string): Promise<{ success: boolean; message: string; token?: string }> {
+    const normalized = email.trim().toLowerCase();
+    const cleanCode = otp.trim();
+
+    const userRes = await query(
+      `SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [normalized]
+    );
+    if (userRes.rows.length === 0) {
+      return { success: false, message: 'No customer account found with this email address.' };
+    }
+
+    const userRow = userRes.rows[0];
+    if (userRow.role === 'admin') {
+      return { success: false, message: 'Password reset is not permitted for administrator accounts.' };
+    }
+
+    if (!userRow.reset_password_otp) {
+      return { success: false, message: 'No active password reset request found. Please request a new OTP.' };
+    }
+
+    if (userRow.reset_password_expires_at && new Date() > new Date(userRow.reset_password_expires_at)) {
+      return { success: false, message: 'Password reset OTP has expired. Please request a new code.' };
+    }
+
+    if (String(userRow.reset_password_otp).trim() !== cleanCode) {
+      return { success: false, message: 'Invalid verification OTP. Please check the 6-digit code and try again.' };
+    }
+
+    await query(
+      `UPDATE users SET otp_verified = TRUE WHERE id = $1`,
+      [userRow.id]
+    );
+
+    return {
+      success: true,
+      message: 'OTP verified successfully.',
+      token: userRow.reset_password_token || undefined,
+    };
   }
 
   async verifyAndResetPassword(email: string, otpOrToken: string, newPasswordHash: string): Promise<{ success: boolean; message: string; user?: User }> {
@@ -116,7 +157,7 @@ export class UserRepository {
       return { success: false, message: 'Password reset is not permitted for administrator accounts.' };
     }
 
-    if (!userRow.reset_password_otp && !userRow.reset_password_token) {
+    if (!userRow.reset_password_otp && !userRow.reset_password_token && !userRow.otp_verified) {
       return { success: false, message: 'No active password reset request found. Please request a new OTP.' };
     }
 
@@ -126,14 +167,15 @@ export class UserRepository {
 
     const matchesOtp = userRow.reset_password_otp && String(userRow.reset_password_otp).trim() === cleanCode;
     const matchesToken = userRow.reset_password_token && String(userRow.reset_password_token).trim() === cleanCode;
+    const isAlreadyVerified = Boolean(userRow.otp_verified);
 
-    if (!matchesOtp && !matchesToken) {
+    if (!matchesOtp && !matchesToken && !isAlreadyVerified) {
       return { success: false, message: 'Invalid verification OTP or reset token. Please check and try again.' };
     }
 
     const updateRes = await query(
       `UPDATE users
-       SET password = $1, reset_password_otp = NULL, reset_password_token = NULL, reset_password_expires_at = NULL
+       SET password = $1, reset_password_otp = NULL, reset_password_token = NULL, reset_password_expires_at = NULL, otp_verified = FALSE
        WHERE id = $2
        RETURNING *`,
       [newPasswordHash, userRow.id]

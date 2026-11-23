@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { Request, Response, Router } from 'express';
-import { AuthenticatedAgentRequest, generateAgentToken, requireAgentAuth } from '../middleware/auth.js';
+import { AuthenticatedAgentRequest, generateAgentToken, generateResetToken, requireAgentAuth, verifyResetToken } from '../middleware/auth.js';
 import { agentRepo } from '../repositories/agentRepo.js';
 import { orderRepo } from '../repositories/orderRepo.js';
 import { notificationRepo } from '../repositories/notificationRepo.js';
@@ -242,16 +242,58 @@ agentRouter.post('/forgot-password', async (req: Request, res: Response): Promis
   }
 });
 
+// POST /api/agent/verify-reset-otp (Verifies OTP code for delivery agent)
+agentRouter.post('/verify-reset-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !email.trim()) {
+      res.status(400).json({ success: false, message: 'Please enter your registered delivery agent email address.' });
+      return;
+    }
+    if (!otp || !otp.trim()) {
+      res.status(400).json({ success: false, message: 'Please enter the 6-digit OTP verification code.' });
+      return;
+    }
+
+    const normalized = email.trim().toLowerCase();
+    const result = await agentRepo.verifyResetOtp(normalized, otp.trim());
+    if (!result.success) {
+      res.status(400).json({ success: false, message: result.message });
+      return;
+    }
+
+    const resetToken = generateResetToken(normalized, 'delivery_agent');
+    res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully. You may now set your new password.',
+      resetToken,
+      email: normalized,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/agent/reset-password (Verifies OTP/Token and updates delivery agent password)
 agentRouter.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, otp, token, newPassword } = req.body || {};
-    const otpOrToken = (otp || token || '').trim();
+    const { email, otp, token, resetToken, newPassword } = req.body || {};
+    let otpOrToken = (otp || token || resetToken || '').trim();
 
     if (!email || !email.trim()) {
       res.status(400).json({ success: false, message: 'Email address is required.' });
       return;
     }
+
+    const normalized = email.trim().toLowerCase();
+
+    if (resetToken) {
+      const verified = verifyResetToken(resetToken);
+      if (verified && verified.email === normalized) {
+        otpOrToken = 'TOKEN_VERIFIED';
+      }
+    }
+
     if (!otpOrToken) {
       res.status(400).json({ success: false, message: 'Please enter the 6-digit OTP code or reset token from your email.' });
       return;
@@ -261,7 +303,6 @@ agentRouter.post('/reset-password', async (req: Request, res: Response): Promise
       return;
     }
 
-    const normalized = email.trim().toLowerCase();
     const newPasswordHash = bcrypt.hashSync(newPassword.trim(), 10);
 
     const result = await agentRepo.verifyAndResetPassword(normalized, otpOrToken, newPasswordHash);

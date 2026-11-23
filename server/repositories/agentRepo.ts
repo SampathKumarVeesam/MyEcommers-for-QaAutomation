@@ -162,12 +162,49 @@ export class AgentRepository {
     const normalized = email.trim().toLowerCase();
     const res = await query(
       `UPDATE delivery_agents
-       SET reset_password_otp = $1, reset_password_token = $2, reset_password_expires_at = $3, updated_at = NOW()
+       SET reset_password_otp = $1, reset_password_token = $2, reset_password_expires_at = $3, otp_verified = FALSE, updated_at = NOW()
        WHERE LOWER(email) = LOWER($4)
        RETURNING id`,
       [otp, token, expiresAt, normalized]
     );
     return (res.rowCount || 0) > 0;
+  }
+
+  async verifyResetOtp(email: string, otp: string): Promise<{ success: boolean; message: string; token?: string }> {
+    const normalized = email.trim().toLowerCase();
+    const cleanCode = otp.trim();
+
+    const agentRes = await query(
+      `SELECT * FROM delivery_agents WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [normalized]
+    );
+    if (agentRes.rows.length === 0) {
+      return { success: false, message: 'No delivery agent account found with this email address.' };
+    }
+
+    const row = agentRes.rows[0];
+    if (!row.reset_password_otp) {
+      return { success: false, message: 'No active password reset request found. Please request a new OTP.' };
+    }
+
+    if (row.reset_password_expires_at && new Date() > new Date(row.reset_password_expires_at)) {
+      return { success: false, message: 'Password reset OTP has expired. Please request a new code.' };
+    }
+
+    if (String(row.reset_password_otp).trim() !== cleanCode) {
+      return { success: false, message: 'Invalid verification OTP. Please check the 6-digit code and try again.' };
+    }
+
+    await query(
+      `UPDATE delivery_agents SET otp_verified = TRUE WHERE id = $1`,
+      [row.id]
+    );
+
+    return {
+      success: true,
+      message: 'OTP verified successfully.',
+      token: row.reset_password_token || undefined,
+    };
   }
 
   async verifyAndResetPassword(email: string, otpOrToken: string, newPasswordHash: string): Promise<{ success: boolean; message: string; agent?: DeliveryAgent }> {
@@ -183,7 +220,7 @@ export class AgentRepository {
     }
 
     const row = agentRes.rows[0];
-    if (!row.reset_password_otp && !row.reset_password_token) {
+    if (!row.reset_password_otp && !row.reset_password_token && !row.otp_verified) {
       return { success: false, message: 'No active password reset request found. Please request a new OTP.' };
     }
 
@@ -193,14 +230,15 @@ export class AgentRepository {
 
     const matchesOtp = row.reset_password_otp && String(row.reset_password_otp).trim() === cleanCode;
     const matchesToken = row.reset_password_token && String(row.reset_password_token).trim() === cleanCode;
+    const isAlreadyVerified = Boolean(row.otp_verified);
 
-    if (!matchesOtp && !matchesToken) {
+    if (!matchesOtp && !matchesToken && !isAlreadyVerified) {
       return { success: false, message: 'Invalid verification OTP or reset token. Please check and try again.' };
     }
 
     const updateRes = await query(
       `UPDATE delivery_agents
-       SET password_hash = $1, must_change_password = FALSE, reset_password_otp = NULL, reset_password_token = NULL, reset_password_expires_at = NULL, updated_at = NOW()
+       SET password_hash = $1, must_change_password = FALSE, reset_password_otp = NULL, reset_password_token = NULL, reset_password_expires_at = NULL, otp_verified = FALSE, updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
       [newPasswordHash, row.id]

@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
-import { AuthenticatedRequest, generateToken, requireAuth } from '../middleware/auth.js';
+import { AuthenticatedRequest, generateResetToken, generateToken, requireAuth, verifyResetToken } from '../middleware/auth.js';
 import { userRepo } from '../repositories/userRepo.js';
 import { agentRepo } from '../repositories/agentRepo.js';
 import {
@@ -258,9 +258,20 @@ authRouter.post('/forgot-password', async (req: Request, res: Response): Promise
         }
       });
 
+      // Helper for masked email
+      const maskEmail = (em: string) => {
+        const parts = em.split('@');
+        if (parts.length !== 2) return em;
+        const [local, dom] = parts;
+        const masked = local.length > 2 ? `${local[0]}${'*'.repeat(local.length - 2)}${local.slice(-1)}` : `${local[0]}*`;
+        return `${masked}@${dom}`;
+      };
+
       res.status(200).json({
         success: true,
         message: 'A 6-digit password reset OTP and reset link have been sent to your email address.',
+        maskedEmail: maskEmail(user.email),
+        expiresInSeconds: 600,
       });
       return;
     }
@@ -291,9 +302,19 @@ authRouter.post('/forgot-password', async (req: Request, res: Response): Promise
         }
       });
 
+      const maskEmail = (em: string) => {
+        const parts = em.split('@');
+        if (parts.length !== 2) return em;
+        const [local, dom] = parts;
+        const masked = local.length > 2 ? `${local[0]}${'*'.repeat(local.length - 2)}${local.slice(-1)}` : `${local[0]}*`;
+        return `${masked}@${dom}`;
+      };
+
       res.status(200).json({
         success: true,
         message: 'A 6-digit password reset OTP and reset link have been sent to your delivery agent email address.',
+        maskedEmail: maskEmail(agent.email),
+        expiresInSeconds: 600,
       });
       return;
     }
@@ -312,16 +333,102 @@ authRouter.post('/forgot-password', async (req: Request, res: Response): Promise
   }
 });
 
+// POST /api/users/verify-reset-otp (Validates OTP code and issues scoped JWT resetToken)
+authRouter.post('/verify-reset-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !email.trim()) {
+      res.status(400).json({ success: false, message: 'Email address is required.' });
+      return;
+    }
+    if (!otp || !otp.trim()) {
+      res.status(400).json({ success: false, message: 'Please provide the 6-digit verification OTP.' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 1. Try customer verification
+    const userCheck = await userRepo.findByEmail(normalizedEmail);
+    if (userCheck) {
+      if (userCheck.role === 'admin') {
+        res.status(403).json({
+          success: false,
+          message: 'Password reset is restricted for administrator accounts. Please contact system administration.',
+        });
+        return;
+      }
+
+      const verifyRes = await userRepo.verifyResetOtp(normalizedEmail, otp.trim());
+      if (!verifyRes.success) {
+        res.status(400).json({ success: false, message: verifyRes.message });
+        return;
+      }
+
+      const resetToken = generateResetToken(normalizedEmail, 'customer');
+      res.status(200).json({
+        success: true,
+        message: 'OTP verified successfully. You may now set your new password.',
+        resetToken,
+        email: normalizedEmail,
+      });
+      return;
+    }
+
+    // 2. Try delivery agent verification
+    const agentCheck = await agentRepo.findByEmail(normalizedEmail);
+    if (agentCheck) {
+      const verifyRes = await agentRepo.verifyResetOtp(normalizedEmail, otp.trim());
+      if (!verifyRes.success) {
+        res.status(400).json({ success: false, message: verifyRes.message });
+        return;
+      }
+
+      const resetToken = generateResetToken(normalizedEmail, 'delivery_agent');
+      res.status(200).json({
+        success: true,
+        message: 'OTP verified successfully. You may now set your new password.',
+        resetToken,
+        email: normalizedEmail,
+      });
+      return;
+    }
+
+    res.status(404).json({
+      success: false,
+      message: 'No registered account found with this email address.',
+    });
+  } catch (err: any) {
+    console.error('[Verify Reset OTP Error]:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify reset OTP. Please try again.',
+      error: err.message,
+    });
+  }
+});
+
 // POST /api/users/reset-password (Verifies OTP/Token and updates password in DB)
 authRouter.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, otp, token, newPassword } = req.body || {};
-    const otpOrToken = (otp || token || '').trim();
+    const { email, otp, token, resetToken, newPassword } = req.body || {};
+    let otpOrToken = (otp || token || resetToken || '').trim();
 
     if (!email || !email.trim()) {
       res.status(400).json({ success: false, message: 'Email address is required.' });
       return;
     }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if resetToken JWT was provided
+    if (resetToken) {
+      const verified = verifyResetToken(resetToken);
+      if (verified && verified.email === normalizedEmail) {
+        otpOrToken = 'TOKEN_VERIFIED';
+      }
+    }
+
     if (!otpOrToken) {
       res.status(400).json({ success: false, message: 'Please provide the 6-digit OTP code or reset token from your email.' });
       return;
@@ -330,8 +437,6 @@ authRouter.post('/reset-password', async (req: Request, res: Response): Promise<
       res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
       return;
     }
-
-    const normalizedEmail = email.trim().toLowerCase();
 
     // Check if user is an admin - restrict reset
     const userCheck = await userRepo.findByEmail(normalizedEmail);

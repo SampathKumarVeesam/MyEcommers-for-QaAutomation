@@ -1080,6 +1080,96 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               >
                 {loading ? 'Sending OTP...' : 'Send Password Reset OTP'}
               </button>
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  data-test="link-agent-have-otp"
+                  data-testid="link-agent-have-otp"
+                  onClick={() => {
+                    setAgentResetEmail(agentForgotEmail);
+                    setAuthTab('reset');
+                  }}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                >
+                  Already have an OTP code? Reset Password &rarr;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthTab('login')}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  &larr; Back to Login
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* TAB 5: RESET PASSWORD */}
+          {authTab === 'reset' && (
+            <form onSubmit={handleAgentResetPassword} className="space-y-3">
+              <p className="text-[11px] text-slate-300 text-center">
+                Enter your registered agent email, 6-digit OTP, and new password.
+              </p>
+              <div>
+                <input
+                  type="email"
+                  required
+                  value={agentResetEmail}
+                  onChange={e => setAgentResetEmail(e.target.value)}
+                  placeholder="Agent Email Address"
+                  data-test="input-agent-reset-email"
+                  data-testid="input-agent-reset-email"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <div>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={agentResetOtp}
+                  onChange={e => setAgentResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="6-Digit Verification OTP"
+                  data-test="input-agent-reset-otp"
+                  data-testid="input-agent-reset-otp"
+                  className="w-full py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-sm font-mono font-bold tracking-widest text-center outline-none"
+                />
+              </div>
+              <div>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={agentResetPassword}
+                  onChange={e => setAgentResetPassword(e.target.value)}
+                  placeholder="New Agent Password"
+                  data-test="input-agent-reset-password"
+                  data-testid="input-agent-reset-password"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <div>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={agentResetConfirmPassword}
+                  onChange={e => setAgentResetConfirmPassword(e.target.value)}
+                  placeholder="Confirm New Password"
+                  data-test="input-agent-reset-confirm-password"
+                  data-testid="input-agent-reset-confirm-password"
+                  className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                data-test="btn-agent-reset-submit"
+                data-testid="btn-agent-reset-submit"
+                className="w-full py-3.5 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer"
+              >
+                {loading ? 'Updating Password...' : 'Reset & Update Password'}
+              </button>
               <div className="text-center pt-2">
                 <button
                   type="button"
