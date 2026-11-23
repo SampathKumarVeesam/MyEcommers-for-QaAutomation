@@ -49,13 +49,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loginGlobalError, setLoginGlobalError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Forgot Password state
+  // 3-Step Password Reset State Machine ('email' -> 'otp' -> 'new_password')
+  const [resetStep, setResetStep] = useState<'email' | 'otp' | 'new_password'>('email');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState('');
 
-  // Reset Password state
+  // Reset Password & OTP Verification state
   const [resetEmail, setResetEmail] = useState('');
   const [resetOtp, setResetOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -64,6 +65,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [otpVerifyLoading, setOtpVerifyLoading] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
@@ -101,6 +104,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setForgotLoading(false);
     setForgotError('');
     setForgotSuccess('');
+    setResetStep('email');
+    setOtpVerifyLoading(false);
+    setOtpVerified(false);
 
     setResetEmail('');
     setResetOtp('');
@@ -300,13 +306,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleForgotPasswordSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setForgotLoading(true);
     setForgotError('');
     setForgotSuccess('');
 
-    if (!forgotEmail || !forgotEmail.trim()) {
+    const targetEmail = (forgotEmail || resetEmail).trim();
+    if (!targetEmail) {
       setForgotError('Please enter your registered email address');
       setForgotLoading(false);
       return;
@@ -316,12 +323,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const res = await fetch(apiUrl('/api/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail.trim() }),
+        body: JSON.stringify({ email: targetEmail }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setForgotSuccess(data.message || 'OTP and password reset link sent to your registered email!');
-        setResetEmail(forgotEmail.trim());
+        setForgotSuccess(data.message || 'A 6-digit password reset OTP and reset link have been sent to your email address.');
+        setResetEmail(targetEmail);
+        setForgotEmail(targetEmail);
+        setResetStep('otp');
       } else {
         setForgotError(data.message || 'Failed to send password reset request');
       }
@@ -332,13 +341,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const handleVerifyOtpSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setOtpVerifyLoading(true);
+    setResetError('');
+    setForgotError('');
+
+    const targetEmail = (resetEmail || forgotEmail).trim();
+    if (!targetEmail) {
+      setResetError('Email address is required');
+      setOtpVerifyLoading(false);
+      return;
+    }
+    if (!resetOtp || resetOtp.trim().length !== 6) {
+      setResetError('Please enter the full 6-digit verification OTP');
+      setOtpVerifyLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(apiUrl('/api/auth/verify-reset-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail, otp: resetOtp.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOtpVerified(true);
+        if (data.resetToken) setResetToken(data.resetToken);
+        setResetSuccess('Email OTP Verified ✓');
+        setResetStep('new_password');
+      } else {
+        setResetError(data.message || 'Invalid verification OTP. Please check and try again.');
+      }
+    } catch (err: any) {
+      setResetError(err.message || 'Network error verifying OTP. Please try again.');
+    } finally {
+      setOtpVerifyLoading(false);
+    }
+  };
+
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetLoading(true);
     setResetError('');
     setResetSuccess('');
 
-    if (!resetEmail.trim()) {
+    const targetEmail = (resetEmail || forgotEmail).trim();
+    if (!targetEmail) {
       setResetError('Email address is required');
       setResetLoading(false);
       return;
@@ -364,7 +414,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: resetEmail.trim(),
+          email: targetEmail,
           otp: resetOtp.trim(),
           token: resetToken.trim() || undefined,
           newPassword: resetPassword,
@@ -373,11 +423,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const data = await res.json();
       if (res.ok && data.success) {
         setResetSuccess(data.message || 'Password reset successfully! Redirecting to sign in...');
-        setTimeout(() => {
-          setLoginEmail(resetEmail.trim());
-          setTab('login');
-          setResetSuccess('');
-        }, 1500);
+        setTimeout(async () => {
+          const autoLoginRes = await login(targetEmail, resetPassword);
+          if (autoLoginRes.success) {
+            resetForms();
+            onSuccess?.();
+            onClose();
+          } else {
+            setLoginEmail(targetEmail);
+            setTab('login');
+            setResetSuccess('');
+          }
+        }, 1200);
       } else {
         setResetError(data.message || 'Failed to reset password');
       }
@@ -474,7 +531,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-[0.2em] uppercase">
-              {tab === 'login' ? 'LOGIN' : tab === 'register' ? 'REGISTER' : tab === 'forgot' ? 'RECOVER' : tab === 'reset' ? 'RESET' : 'ADMIN'}
+              {tab === 'login' ? 'LOGIN' : tab === 'register' ? 'REGISTER' : (tab === 'forgot' || tab === 'reset') ? (resetStep === 'email' ? 'RECOVER' : resetStep === 'otp' ? 'VERIFY OTP' : 'NEW PASSWORD') : 'ADMIN'}
             </h1>
 
             {notice && tab !== 'admin' && (
@@ -852,203 +909,319 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {/* TAB: FORGOT & RESET PASSWORD */}
-          {tab === 'forgot' && (
+          {/* TAB: FORGOT & RESET PASSWORD (3-STEP STATE MACHINE) */}
+          {(tab === 'forgot' || tab === 'reset') && (
             <div className="space-y-4">
-              {forgotError && (
-                <div data-test="forgot-error-message" data-testid="forgot-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                  <span>{forgotError}</span>
-                </div>
-              )}
-              {forgotSuccess && (
-                <div data-test="forgot-success-message" data-testid="forgot-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>{forgotSuccess}</span>
+              {/* STEP 1: EMAIL INPUT */}
+              {resetStep === 'email' && (
+                <div className="space-y-4">
+                  {forgotError && (
+                    <div data-test="forgot-error-message" data-testid="forgot-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{forgotError}</span>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-slate-300 text-center">
+                    Enter your registered email address to receive a 6-digit recovery OTP.
+                  </p>
+
+                  <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        data-test="forgot-email-input"
+                        data-testid="forgot-email-input"
+                        placeholder="Registered Email Address"
+                        value={forgotEmail}
+                        onChange={e => {
+                          setForgotEmail(e.target.value);
+                          setResetEmail(e.target.value);
+                        }}
+                        className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                      />
+                      <Mail className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+
+                    <button
+                      type="submit"
+                      data-test="forgot-submit-button"
+                      data-testid="forgot-submit-button"
+                      disabled={forgotLoading}
+                      className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {forgotLoading ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <span>SEND RECOVERY OTP</span>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      data-test="link-have-otp"
+                      data-testid="link-have-otp"
+                      onClick={() => {
+                        setResetEmail(forgotEmail);
+                        setResetStep('new_password');
+                        setTab('reset');
+                      }}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                    >
+                      Already have an OTP code? Enter Code &rarr;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchTab('login')}
+                      className="text-xs text-slate-400 hover:text-white transition-colors"
+                    >
+                      &larr; Back to Login
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    data-test="btn-proceed-to-reset"
-                    data-testid="btn-proceed-to-reset"
-                    onClick={() => handleSwitchTab('reset')}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Enter 6-Digit OTP &amp; Reset Password &rarr;
-                  </button>
                 </div>
               )}
 
-              <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-                <div className="relative">
-                  <input
-                    type="email"
-                    required
-                    data-test="forgot-email-input"
-                    data-testid="forgot-email-input"
-                    placeholder="Registered Email Address"
-                    value={forgotEmail}
-                    onChange={e => setForgotEmail(e.target.value)}
-                    className="w-full pl-6 pr-14 py-3.5 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
-                  />
-                  <Mail className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                <button
-                  type="submit"
-                  data-test="forgot-submit-button"
-                  data-testid="forgot-submit-button"
-                  disabled={forgotLoading}
-                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {forgotLoading ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <span>SEND RECOVERY OTP</span>
+              {/* STEP 2: OTP VERIFICATION */}
+              {resetStep === 'otp' && (
+                <div className="space-y-4">
+                  {forgotSuccess && (
+                    <div data-test="forgot-success-message" data-testid="forgot-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                        <span>{forgotSuccess}</span>
+                      </div>
+                      <p className="text-[11px] text-emerald-200/90 pl-6">
+                        OTP sent to: <span className="font-semibold text-white">{resetEmail || forgotEmail}</span>
+                      </p>
+                      <button
+                        type="button"
+                        data-test="btn-proceed-to-reset"
+                        data-testid="btn-proceed-to-reset"
+                        onClick={() => {
+                          setResetStep('new_password');
+                          setTab('reset');
+                        }}
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Enter New Password Directly &rarr;
+                      </button>
+                    </div>
                   )}
-                </button>
-              </form>
 
-              <div className="flex flex-col items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  data-test="link-have-otp"
-                  data-testid="link-have-otp"
-                  onClick={() => handleSwitchTab('reset')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-                >
-                  Already have an OTP code? Enter Code &rarr;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchTab('login')}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
-                >
-                  &larr; Back to Login
-                </button>
-              </div>
-            </div>
-          )}
-
-          {tab === 'reset' && (
-            <div className="space-y-4">
-              {resetError && (
-                <div data-test="reset-error-message" data-testid="reset-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                  <span>{resetError}</span>
-                </div>
-              )}
-              {resetSuccess && (
-                <div data-test="reset-success-message" data-testid="reset-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                  <span>{resetSuccess}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
-                <div className="relative">
-                  <input
-                    type="email"
-                    required
-                    data-test="reset-email-input"
-                    data-testid="reset-email-input"
-                    placeholder="Registered Email"
-                    value={resetEmail}
-                    onChange={e => setResetEmail(e.target.value)}
-                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
-                  />
-                  <Mail className="w-4 h-4 text-white/70 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    data-test="reset-otp-input"
-                    data-testid="reset-otp-input"
-                    placeholder="6-Digit OTP"
-                    value={resetOtp}
-                    onChange={e => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="w-full py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-sm font-mono font-bold tracking-widest text-center outline-none"
-                  />
-                </div>
-
-                <div className="relative">
-                  <input
-                    type={showResetPassword ? 'text' : 'password'}
-                    required
-                    minLength={6}
-                    data-test="reset-password-input"
-                    data-testid="reset-password-input"
-                    placeholder="New Password"
-                    value={resetPassword}
-                    onChange={e => setResetPassword(e.target.value)}
-                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowResetPassword(!showResetPassword)}
-                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                  >
-                    {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <input
-                    type={showResetConfirmPassword ? 'text' : 'password'}
-                    required
-                    minLength={6}
-                    data-test="reset-confirm-password-input"
-                    data-testid="reset-confirm-password-input"
-                    placeholder="Confirm New Password"
-                    value={resetConfirmPassword}
-                    onChange={e => setResetConfirmPassword(e.target.value)}
-                    className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
-                    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                  >
-                    {showResetConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  data-test="reset-submit-button"
-                  data-testid="reset-submit-button"
-                  disabled={resetLoading}
-                  className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {resetLoading ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <span>UPDATE PASSWORD</span>
+                  {resetError && (
+                    <div data-test="reset-error-message" data-testid="reset-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{resetError}</span>
+                    </div>
                   )}
-                </button>
-              </form>
 
-              <div className="flex flex-col items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  data-test="link-have-otp"
-                  data-testid="link-have-otp"
-                  onClick={() => handleSwitchTab('reset')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-                >
-                  Already have an OTP code? Enter Code &rarr;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchTab('login')}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
-                >
-                  &larr; Back to Login
-                </button>
-              </div>
+                  <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        maxLength={6}
+                        data-test="reset-otp-input"
+                        data-testid="reset-otp-input"
+                        placeholder="Enter 6-Digit Email OTP"
+                        value={resetOtp}
+                        onChange={e => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="w-full py-3.5 bg-white/[0.08] border border-white/20 focus:border-cyan-400 rounded-full text-white text-base font-mono font-bold tracking-widest text-center outline-none transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      data-test="btn-verify-otp"
+                      data-testid="btn-verify-otp"
+                      disabled={otpVerifyLoading || resetOtp.length !== 6}
+                      className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {otpVerifyLoading ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <span>VERIFY OTP &amp; PROCEED</span>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      data-test="btn-resend-otp"
+                      data-testid="btn-resend-otp"
+                      onClick={handleForgotPasswordSubmit}
+                      disabled={forgotLoading}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                    >
+                      Resend OTP Code
+                    </button>
+                    <button
+                      type="button"
+                      data-test="link-have-otp"
+                      data-testid="link-have-otp"
+                      onClick={() => {
+                        setResetEmail(resetEmail || forgotEmail);
+                        setResetStep('new_password');
+                        setTab('reset');
+                      }}
+                      className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Enter Password Screen Directly &rarr;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetStep('email')}
+                      className="text-xs text-slate-400 hover:text-white transition-colors"
+                    >
+                      &larr; Back to Email
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: NEW PASSWORD */}
+              {resetStep === 'new_password' && (
+                <div className="space-y-4">
+                  <div data-test="otp-verified-badge" data-testid="otp-verified-badge" className="p-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Email OTP Verified ✓</span>
+                  </div>
+
+                  {resetError && (
+                    <div data-test="reset-error-message" data-testid="reset-error-message" className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{resetError}</span>
+                    </div>
+                  )}
+                  {resetSuccess && (
+                    <div data-test="reset-success-message" data-testid="reset-success-message" className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>{resetSuccess}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        data-test="reset-email-input"
+                        data-testid="reset-email-input"
+                        placeholder="Registered Email"
+                        value={resetEmail || forgotEmail}
+                        onChange={e => {
+                          setResetEmail(e.target.value);
+                          setForgotEmail(e.target.value);
+                        }}
+                        className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                      />
+                      <Mail className="w-4 h-4 text-white/70 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        data-test="reset-otp-input"
+                        data-testid="reset-otp-input"
+                        placeholder="6-Digit OTP"
+                        value={resetOtp}
+                        onChange={e => setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="w-full py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-sm font-mono font-bold tracking-widest text-center outline-none transition-all placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type={showResetPassword ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        data-test="reset-password-input"
+                        data-testid="reset-password-input"
+                        placeholder="Set New Password (min 6 chars)"
+                        value={resetPassword}
+                        onChange={e => setResetPassword(e.target.value)}
+                        className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowResetPassword(!showResetPassword)}
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                      >
+                        {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type={showResetConfirmPassword ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        data-test="reset-confirm-password-input"
+                        data-testid="reset-confirm-password-input"
+                        placeholder="Confirm New Password"
+                        value={resetConfirmPassword}
+                        onChange={e => setResetConfirmPassword(e.target.value)}
+                        className="w-full pl-6 pr-14 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none transition-all placeholder:text-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                      >
+                        {showResetConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {resetConfirmPassword && (
+                      <p className={`text-[11px] px-4 font-semibold ${resetPassword === resetConfirmPassword ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {resetPassword === resetConfirmPassword ? '✓ Passwords match' : '⚠ Passwords do not match'}
+                      </p>
+                    )}
+
+                    <button
+                      type="submit"
+                      data-test="reset-submit-button"
+                      data-testid="reset-submit-button"
+                      disabled={resetLoading}
+                      className="w-full py-4 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 hover:border-white/60 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {resetLoading ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <span>SAVE PASSWORD &amp; LOGIN</span>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="flex flex-col items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      data-test="link-have-otp"
+                      data-testid="link-have-otp"
+                      onClick={() => {
+                        setResetStep('otp');
+                      }}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                    >
+                      &larr; Re-enter OTP Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchTab('login')}
+                      className="text-xs text-slate-400 hover:text-white transition-colors"
+                    >
+                      &larr; Back to Login
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
