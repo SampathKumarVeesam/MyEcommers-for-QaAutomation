@@ -1,2 +1,12 @@
-# Netlify Single Page Application (SPA) rewrite rules
-/*    /index.html   200
+# Netlify Redirects & Proxy Rules (Evaluated top-to-bottom)
+
+# 1. Proxy all API traffic to the live Render PostgreSQL backend
+/api/*          https://myecommers-for-qaautomation.onrender.com/api/:splat    200!
+
+# 2. Redirect API documentation routes to live Swagger UI
+/api-docs*      https://myecommers-for-qaautomation.onrender.com/api-docs:splat  302!
+/docs           https://myecommers-for-qaautomation.onrender.com/api-docs/     302!
+/swagger        https://myecommers-for-qaautomation.onrender.com/api-docs/     302!
+
+# 3. Single Page Application (SPA) HTML5 History fallback for /delivery, /admin, etc.
+/*              /index.html                                                    200
