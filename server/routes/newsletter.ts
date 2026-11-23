@@ -8,7 +8,7 @@ export const newsletterRouter = Router();
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // POST /api/newsletter/subscribe (and alias /api/subscribe)
-newsletterRouter.post('/subscribe', async (req: Request, res: Response): Promise<void> => {
+newsletterRouter.post(['/subscribe', '/'], async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, source = 'storefront_footer' } = req.body || {};
 
