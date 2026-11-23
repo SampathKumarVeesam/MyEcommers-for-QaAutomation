@@ -63,7 +63,7 @@ export function createExpressApp() {
   app.use('/api/orders', ordersRouter);
   app.use('/api/wishlist', wishlistRouter);
   app.use('/api/newsletter', newsletterRouter);
-  app.post('/api/subscribe', (req, res, next) => newsletterRouter(req, res, next));
+  app.use('/api/subscribe', newsletterRouter);
 
   // Auth direct route aliases
   app.post('/api/logout', (req, res, next) => authRouter(req, res, next));
