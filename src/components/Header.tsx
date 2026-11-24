@@ -212,6 +212,46 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-1 sm:gap-2.5">
+            {/* Delivery Agent Portal Button */}
+            <button
+              data-test="nav-delivery-portal"
+              data-testid="nav-delivery-portal"
+              onClick={() => onOpenAgentPortal?.()}
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition-colors cursor-pointer shadow-2xs"
+              title="Open Delivery Partner & COD Settlement Portal"
+            >
+              <Truck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="hidden sm:inline">Delivery Portal</span>
+              <span className="sm:hidden text-[11px]">Agent</span>
+            </button>
+
+            {/* Admin Portal / Admin Dashboard Button */}
+            {isAdmin ? (
+              <button
+                data-test="nav-admin-dashboard"
+                data-testid="nav-admin-dashboard"
+                onClick={onOpenAdmin}
+                className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer shadow-xs"
+                title="Open Admin Analytics Dashboard"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span className="hidden sm:inline">Admin Dashboard</span>
+                <span className="sm:hidden text-[11px]">Admin</span>
+              </button>
+            ) : (
+              <button
+                data-test="nav-admin-login"
+                data-testid="nav-admin-login"
+                onClick={() => onOpenAuth('admin')}
+                className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 sm:py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                title="Administrator Login"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                <span className="hidden sm:inline">Admin Login</span>
+                <span className="sm:hidden text-[11px]">Admin</span>
+              </button>
+            )}
+
             {/* Customer Test Accounts Switcher Pill */}
             <div ref={demoMenuRef} className="relative">
               <button
