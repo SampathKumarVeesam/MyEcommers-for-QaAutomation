@@ -1092,7 +1092,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
           {authTab === 'verify' && (
             <form onSubmit={handleVerifyEmail} className="space-y-3">
               <p className="text-[11px] text-slate-300 text-center">
-                Please check your registered mailbox for the 6-digit verification code sent to your email to receive your password.
+                Enter the 6-digit verification code sent to your email to receive your password.
               </p>
               <div>
                 <input
