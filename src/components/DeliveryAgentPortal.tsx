@@ -991,12 +991,23 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin('agent.uday@shopsphere.test')}
-                data-test="btn-quick-agent-demo btn-quick-demo-agent"
-                data-testid="btn-quick-demo-agent"
+                data-test="btn-quick-agent-demo"
+                data-testid="btn-quick-agent-demo"
                 className="w-full py-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-white/10 flex items-center justify-center gap-2 mt-2"
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
                 <span>⚡ Quick Demo Login as Uday (Active Verified Agent)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('agent.alex@shopsphere.test')}
+                data-test="btn-quick-demo-agent"
+                data-testid="btn-quick-demo-agent"
+                className="w-full py-2 rounded-full bg-white/[0.02] hover:bg-white/[0.06] text-amber-300 font-bold text-xs transition-colors cursor-pointer border border-white/5 flex items-center justify-center gap-2 mt-1"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>⚡ Quick Demo Login as Alex Rivers (Active Verified Agent)</span>
               </button>
             </form>
           )}

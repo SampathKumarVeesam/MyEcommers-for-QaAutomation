@@ -170,21 +170,21 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
   const barChartData = Array.isArray(safeData.weeklyActivity) && safeData.weeklyActivity.length > 0
     ? safeData.weeklyActivity
     : [
-        { day: 'M', count: 0 },
-        { day: 'T', count: 0 },
-        { day: 'W', count: 0 },
-        { day: 'T', count: 0 },
-        { day: 'F', count: 0 },
-        { day: 'S', count: 0 },
-        { day: 'S', count: 0 },
-      ];
+      { day: 'M', count: 0 },
+      { day: 'T', count: 0 },
+      { day: 'W', count: 0 },
+      { day: 'T', count: 0 },
+      { day: 'F', count: 0 },
+      { day: 'S', count: 0 },
+      { day: 'S', count: 0 },
+    ];
 
   // Dynamic Delivery Zones Performance from PostgreSQL
   const zoneList = Array.isArray(safeData.deliveryZones) && safeData.deliveryZones.length > 0
     ? safeData.deliveryZones
     : [
-        { zone: profile.deliveryZone || 'Hitech City / Madhapur Hub', tag: 'IN-TG', orders: 0, value: '₹0', pct: 100, color: 'bg-cyan-400' },
-      ];
+      { zone: profile.deliveryZone || 'Hitech City / Madhapur Hub', tag: 'IN-TG', orders: 0, value: '₹0', pct: 100, color: 'bg-cyan-400' },
+    ];
 
   return (
     <ChartErrorBoundary fallbackTitle="Agent Performance Dashboard Temporarily Unavailable">
@@ -210,11 +210,10 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
             <button
               type="button"
               onClick={onToggleDuty}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-xs shadow-lg transition-all active:scale-95 cursor-pointer border ${
-                isOnline
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-xs shadow-lg transition-all active:scale-95 cursor-pointer border ${isOnline
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30 shadow-emerald-500/10'
                   : 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
-              }`}
+                }`}
             >
               <Power className="w-3.5 h-3.5" />
               <span>Duty: {isOnline ? 'Online (Accepting)' : 'Offline (Paused)'}</span>
@@ -432,22 +431,20 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
                 <button
                   type="button"
                   onClick={() => setEarningsView('30D')}
-                  className={`px-3 py-1 rounded-full font-bold transition-all ${
-                    earningsView === '30D'
+                  className={`px-3 py-1 rounded-full font-bold transition-all ${earningsView === '30D'
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   30D
                 </button>
                 <button
                   type="button"
                   onClick={() => setEarningsView('12M')}
-                  className={`px-3 py-1 rounded-full font-bold transition-all ${
-                    earningsView === '12M'
+                  className={`px-3 py-1 rounded-full font-bold transition-all ${earningsView === '12M'
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   12M
                 </button>

@@ -52,7 +52,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onSelectCategory }) => {
       subtitle: 'Snapdragon 8 Gen 3, 2K 120Hz LTPO AMOLED & 200MP Leica optics. Built for power users.',
       category: 'electronics',
       cta: 'Shop Smartphones',
-      discount: 'UP TO $200 OFF',
+      discount: 'UP TO $200 OFF • CODE SPHERE20',
       gradient: 'from-slate-950 via-slate-900 to-indigo-950',
       accentColor: 'text-sky-400',
       image: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=1000&q=80',
