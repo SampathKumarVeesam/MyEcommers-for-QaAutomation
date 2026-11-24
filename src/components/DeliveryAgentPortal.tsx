@@ -853,12 +853,13 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // 1. Unauthenticated Delivery Agent Sign In / Register Pod (Matching Reference Image 5)
   if (!agent) {
     const authPod = (
-      <AuthGlassLayout
-        role="agent"
-        title={authTab === 'login' ? 'LOGIN' : authTab === 'register' ? 'REGISTER' : authTab === 'verify' ? 'VERIFY' : (authTab === 'forgot' || authTab === 'reset') ? (agentResetStep === 'email' ? 'RECOVER' : agentResetStep === 'otp' ? 'VERIFY OTP' : 'NEW PASSWORD') : 'AGENT'}
-        isModal={isModal}
-        onClose={onClose}
-        onNavigateHome={onClose}
+      <div data-test="delivery-agent-portal-modal" data-testid="delivery-agent-portal-modal" className="w-full">
+        <AuthGlassLayout
+          role="agent"
+          title={authTab === 'login' ? 'LOGIN' : authTab === 'register' ? 'REGISTER' : authTab === 'verify' ? 'VERIFY' : (authTab === 'forgot' || authTab === 'reset') ? (agentResetStep === 'email' ? 'RECOVER' : agentResetStep === 'otp' ? 'VERIFY OTP' : 'NEW PASSWORD') : 'AGENT'}
+          isModal={isModal}
+          onClose={onClose}
+          onNavigateHome={onClose}
           rememberMeSlot={
             authTab === 'login' ? (
               <label className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -990,8 +991,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin('agent.uday@shopsphere.test')}
-                data-test="btn-quick-agent-demo"
-                data-testid="btn-quick-agent-demo"
+                data-test="btn-quick-agent-demo btn-quick-demo-agent"
+                data-testid="btn-quick-demo-agent"
                 className="w-full py-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-emerald-300 font-bold text-xs transition-colors cursor-pointer border border-white/10 flex items-center justify-center gap-2 mt-2"
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
@@ -1102,16 +1103,16 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   value={verifyToken}
                   onChange={e => setVerifyToken(e.target.value)}
                   placeholder="6-Digit Verification Code"
-                  data-test="input-verify-code"
-                  data-testid="input-verify-code"
+                  data-test="input-verify-code input-verify-token"
+                  data-testid="input-verify-token"
                   className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-center font-mono font-bold tracking-widest text-sm outline-none"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                data-test="btn-verify-submit"
-                data-testid="btn-verify-submit"
+                data-test="btn-verify-submit btn-verify-agent-email"
+                data-testid="btn-verify-agent-email"
                 className="w-full py-3.5 rounded-full bg-gradient-to-b from-white/25 via-white/10 to-black/60 border border-white/30 text-white font-extrabold text-xs uppercase tracking-widest shadow-xl transition-all cursor-pointer"
               >
                 {loading ? 'Verifying...' : 'Verify Email & Dispatch Password'}
@@ -1353,6 +1354,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             </div>
           )}
         </AuthGlassLayout>
+      </div>
     );
 
     if (isModal) {
@@ -1541,13 +1543,13 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-slate-900 text-base tracking-tight">{agent.name}</span>
+                    <span className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">{agent.name}</span>
                     <span className="font-mono text-[10px] bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-bold">
                       {agent.agentCode || 'AGT-6787'}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Online (FIFO Rank #{agent.fifoRank || 1})
+                      🟢 Online (FIFO Rank #{agent.fifoRank || 1})
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
@@ -1562,7 +1564,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               <div className="flex items-center gap-2.5">
                 <div className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl text-right">
                   <div className="text-[10px] uppercase font-bold text-emerald-700">Wallet Earnings</div>
-                  <div className="text-sm font-black text-emerald-800 font-mono">
+                  <div className="text-sm font-extrabold font-mono text-emerald-900">
                     ₹{Number(agent.totalEarnings || 60).toFixed(2)}
                   </div>
                 </div>
