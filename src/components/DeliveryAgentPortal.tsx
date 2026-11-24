@@ -57,6 +57,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showAgentLoginPassword, setShowAgentLoginPassword] = useState(false);
 
   // 3-Step Agent Password Reset State Machine ('email' -> 'otp' -> 'new_password')
   const [agentResetStep, setAgentResetStep] = useState<'email' | 'otp' | 'new_password'>('email');
@@ -72,6 +73,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   const [agentResetToken, setAgentResetToken] = useState('');
   const [agentResetPassword, setAgentResetPassword] = useState('');
   const [agentResetConfirmPassword, setAgentResetConfirmPassword] = useState('');
+  const [showAgentResetPassword, setShowAgentResetPassword] = useState(false);
+  const [showAgentResetConfirmPassword, setShowAgentResetConfirmPassword] = useState(false);
 
   // Register form
   const [regName, setRegName] = useState('');
@@ -997,9 +1000,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <UserIcon className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
-              <div className="relative">
+              <div className="relative flex items-center">
                 <input
-                  type="password"
+                  type={showAgentLoginPassword ? 'text' : 'password'}
                   required
                   value={loginPassword}
                   onChange={e => setLoginPassword(e.target.value)}
@@ -1008,7 +1011,20 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   data-testid="input-agent-login-password"
                   className="w-full pl-6 pr-14 py-4 bg-white/[0.08] border border-white/20 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 rounded-full text-white text-sm outline-none transition-all placeholder:text-slate-400 font-medium tracking-widest"
                 />
-                <Lock className="w-5 h-5 text-white/80 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <button
+                  type="button"
+                  data-test="agent-login-password-toggle"
+                  data-testid="agent-login-password-toggle"
+                  onClick={() => setShowAgentLoginPassword(!showAgentLoginPassword)}
+                  aria-label={showAgentLoginPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors p-1 cursor-pointer"
+                >
+                  {showAgentLoginPassword ? (
+                    <EyeOff className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <Eye className="w-5 h-5 text-white/80 hover:text-white" />
+                  )}
+                </button>
               </div>
 
               <button
@@ -1330,9 +1346,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       className="w-full py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-sm font-mono font-bold tracking-widest text-center outline-none"
                     />
                   </div>
-                  <div>
+                  <div className="relative flex items-center">
                     <input
-                      type="password"
+                      type={showAgentResetPassword ? 'text' : 'password'}
                       required
                       minLength={6}
                       value={agentResetPassword}
@@ -1340,12 +1356,24 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       placeholder="New Agent Password (min 6 chars)"
                       data-test="input-agent-reset-password"
                       data-testid="input-agent-reset-password"
-                      className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                      className="w-full pl-5 pr-12 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowAgentResetPassword(!showAgentResetPassword)}
+                      aria-label={showAgentResetPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-4 text-white/70 hover:text-white transition-colors p-1 cursor-pointer"
+                    >
+                      {showAgentResetPassword ? (
+                        <EyeOff className="w-4 h-4 text-cyan-400" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-white/70 hover:text-white" />
+                      )}
+                    </button>
                   </div>
-                  <div>
+                  <div className="relative flex items-center">
                     <input
-                      type="password"
+                      type={showAgentResetConfirmPassword ? 'text' : 'password'}
                       required
                       minLength={6}
                       value={agentResetConfirmPassword}
@@ -1353,8 +1381,20 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       placeholder="Confirm New Password"
                       data-test="input-agent-reset-confirm-password"
                       data-testid="input-agent-reset-confirm-password"
-                      className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
+                      className="w-full pl-5 pr-12 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowAgentResetConfirmPassword(!showAgentResetConfirmPassword)}
+                      aria-label={showAgentResetConfirmPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-4 text-white/70 hover:text-white transition-colors p-1 cursor-pointer"
+                    >
+                      {showAgentResetConfirmPassword ? (
+                        <EyeOff className="w-4 h-4 text-cyan-400" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-white/70 hover:text-white" />
+                      )}
+                    </button>
                   </div>
 
                   {agentResetConfirmPassword && (

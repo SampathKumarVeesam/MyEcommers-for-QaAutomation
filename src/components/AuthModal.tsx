@@ -672,7 +672,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="absolute right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white focus:outline-none cursor-pointer"
                     title={showLoginPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                    {showLoginPassword ? <EyeOff className="w-5 h-5 text-cyan-400" /> : <Eye className="w-5 h-5 text-white/80" />}
                   </button>
                 </div>
                 {loginErrors.password && (
@@ -810,7 +810,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onClick={() => setShowRegPassword(!showRegPassword)}
                     className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
                   >
-                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    {showRegPassword ? <EyeOff className="w-4 h-4 text-cyan-400" /> : <Eye className="w-4 h-4 text-white/70" />}
                   </button>
                 </div>
                 {regErrors.password && (
@@ -888,7 +888,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onClick={() => setShowAdminPassword(!showAdminPassword)}
                     className="absolute right-6 top-1/2 -translate-y-1/2 text-white/80 hover:text-white"
                   >
-                    {showAdminPassword ? <EyeOff className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                    {showAdminPassword ? <EyeOff className="w-5 h-5 text-purple-400" /> : <Eye className="w-5 h-5 text-white/80" />}
                   </button>
                 </div>
 
@@ -1152,9 +1152,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowResetPassword(!showResetPassword)}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white cursor-pointer"
+                        title={showResetPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        {showResetPassword ? <EyeOff className="w-4 h-4 text-cyan-400" /> : <Eye className="w-4 h-4 text-white/70" />}
                       </button>
                     </div>
 
@@ -1173,9 +1174,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white cursor-pointer"
+                        title={showResetConfirmPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showResetConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        {showResetConfirmPassword ? <EyeOff className="w-4 h-4 text-cyan-400" /> : <Eye className="w-4 h-4 text-white/70" />}
                       </button>
                     </div>
 

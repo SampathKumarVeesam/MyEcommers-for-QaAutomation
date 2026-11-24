@@ -385,7 +385,7 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
 
                   {/* Milestone Badges Shelf */}
                   <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/10 backdrop-blur-xl">
-                    <MilestoneBadgesShelf badges={milestones} columns={1} />
+                    <MilestoneBadgesShelf badges={milestones} columns={2} />
                   </div>
                 </div>
 
