@@ -853,7 +853,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // 1. Unauthenticated Delivery Agent Sign In / Register Pod (Matching Reference Image 5)
   if (!agent) {
     const authPod = (
-      <div data-test="delivery-agent-portal-modal" data-testid="delivery-agent-portal-modal" className="w-full">
+      <div className="w-full">
         <AuthGlassLayout
           role="agent"
           title={authTab === 'login' ? 'LOGIN' : authTab === 'register' ? 'REGISTER' : authTab === 'verify' ? 'VERIFY' : (authTab === 'forgot' || authTab === 'reset') ? (agentResetStep === 'email' ? 'RECOVER' : agentResetStep === 'otp' ? 'VERIFY OTP' : 'NEW PASSWORD') : 'AGENT'}
