@@ -663,7 +663,7 @@ function ShopSphereMain() {
                       className="text-left text-rose-400 hover:text-rose-300 font-bold transition-colors cursor-pointer flex items-center gap-1.5"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>Administrator Console (/admin) →</span>
+                      <span>Administrator Login & Console (/admin) →</span>
                     </button>
                   </div>
                 </div>
