@@ -790,12 +790,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         onClick={e => e.stopPropagation()}
       >
         {/* Top Navbar Row 1: Title & Action Tools (Exit button always visible) */}
-        <div className="px-5 sm:px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+        <div className="px-5 sm:px-6 py-4 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800 shrink-0 relative z-20 min-h-[68px]">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shadow-inner shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col justify-center">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-white tracking-tight">ShopSphere Administrator Console</h2>
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
@@ -806,7 +806,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   PostgreSQL 18
                 </span>
               </div>
-              <p className="text-xs text-slate-400 truncate">
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
                 Logged in as <strong className="text-white">{user?.name}</strong> ({user?.email})
               </p>
             </div>

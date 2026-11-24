@@ -180,8 +180,12 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                         <span>{profile.email || 'N/A'}</span>
-                        <span>&bull;</span>
-                        <span>{profile.phone || '+91 98765 43210'}</span>
+                        {profile.phone && (
+                          <>
+                            <span>&bull;</span>
+                            <span>{profile.phone}</span>
+                          </>
+                        )}
                         {profile.deliveryZone && (
                           <>
                             <span>&bull;</span>
@@ -352,7 +356,7 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                           <span className="text-slate-400">3-Min FIFO Acceptance</span>
                           <span className="font-mono font-bold text-emerald-400">
-                            {data?.fifoGauge?.acceptanceRate || 98.5}%
+                            {data?.fifoGauge?.acceptanceRate ?? 100}%
                           </span>
                         </div>
                         <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
@@ -381,7 +385,7 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
 
                   {/* Milestone Badges Shelf */}
                   <div className="p-5 rounded-3xl bg-slate-900/60 border border-white/10 backdrop-blur-xl">
-                    <MilestoneBadgesShelf badges={milestones} />
+                    <MilestoneBadgesShelf badges={milestones} columns={1} />
                   </div>
                 </div>
 

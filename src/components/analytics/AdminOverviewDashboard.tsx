@@ -105,8 +105,8 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
 
   const revenueDelta =
     typeof kpis.totalRevenue === 'object' && kpis.totalRevenue !== null
-      ? (kpis.totalRevenue.delta || '+14.2%')
-      : (kpis.revenueDelta30d || '+14.2%');
+      ? (kpis.totalRevenue.delta ?? '+0.0%')
+      : (kpis.revenueDelta30d ?? '+0.0%');
 
   const activeOrdersFormatted =
     typeof kpis.activeOrders === 'object' && kpis.activeOrders !== null
@@ -120,8 +120,8 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
 
   const codSettlementRateFormatted =
     typeof kpis.codSettlementRate === 'object' && kpis.codSettlementRate !== null
-      ? (kpis.codSettlementRate.formatted || `${kpis.codSettlementRate.value || 96.8}%`)
-      : `${kpis.codSettlementRate || 96.8}%`;
+      ? (kpis.codSettlementRate.formatted || `${kpis.codSettlementRate.value ?? 0}%`)
+      : `${kpis.codSettlementRate ?? 0}%`;
 
   const settledCodAmountFormatted =
     typeof codFlow?.storeDeposited === 'number'
@@ -130,8 +130,8 @@ export const AdminOverviewDashboard: React.FC<AdminOverviewDashboardProps> = ({ 
 
   const avgDispatchTimeFormatted =
     typeof kpis.avgDispatchTime === 'object' && kpis.avgDispatchTime !== null
-      ? (kpis.avgDispatchTime.formatted || `${kpis.avgDispatchTime.value || 12.4} min`)
-      : `${kpis.avgDispatchMinutes || 12.4} min`;
+      ? (kpis.avgDispatchTime.formatted || `${kpis.avgDispatchTime.value ?? 0} min`)
+      : `${kpis.avgDispatchMinutes ?? 0} min`;
 
   return (
     <div className="space-y-6">

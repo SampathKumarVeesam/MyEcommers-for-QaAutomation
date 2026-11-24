@@ -30,6 +30,7 @@ export function mapAgentRow(row: any): DeliveryAgent {
     commissionRate: parseFloat(row.commission_rate || '15.00'),
     totalEarnings: parseFloat(row.total_earnings || '0.00'),
     deliveredOrdersCount: parseInt(row.delivered_orders_count || '0', 10),
+    fifoRank: row.calculated_fifo_rank ? parseInt(row.calculated_fifo_rank, 10) : (row.fifo_rank ? parseInt(row.fifo_rank, 10) : 1),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
   };
@@ -52,7 +53,15 @@ export class AgentRepository {
 
   async findById(id: string): Promise<DeliveryAgent | null> {
     const res = await query(
-      `SELECT * FROM delivery_agents WHERE id = $1 OR agent_code = $1 LIMIT 1`,
+      `WITH ranked AS (
+        SELECT *,
+          DENSE_RANK() OVER (
+            PARTITION BY (is_logged_in = TRUE AND has_pending_cash_deposit = FALSE)
+            ORDER BY fifo_queue_joined_at ASC, id ASC
+          ) as calculated_fifo_rank
+        FROM delivery_agents
+      )
+      SELECT * FROM ranked WHERE id = $1 OR agent_code = $1 LIMIT 1`,
       [id]
     );
     if (res.rows.length === 0) return null;

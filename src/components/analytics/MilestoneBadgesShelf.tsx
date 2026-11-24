@@ -13,11 +13,13 @@ export interface MilestoneBadge {
 interface MilestoneBadgesShelfProps {
   badges: MilestoneBadge[];
   title?: string;
+  columns?: 1 | 2;
 }
 
 export const MilestoneBadgesShelf: React.FC<MilestoneBadgesShelfProps> = ({
   badges,
   title = 'Unlocked Achievements & Milestones',
+  columns = 2,
 }) => {
   const getBadgeIcon = (iconName?: string) => {
     switch (iconName) {
@@ -89,7 +91,7 @@ export const MilestoneBadgesShelf: React.FC<MilestoneBadgesShelfProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className={`grid ${columns === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'} gap-3`}>
         {badges.map((badge) => {
           const styles = getTierStyles(badge.tier, badge.unlocked);
           const Icon = getBadgeIcon(badge.icon);
@@ -110,12 +112,12 @@ export const MilestoneBadgesShelf: React.FC<MilestoneBadgesShelfProps> = ({
               </div>
 
               <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1.5 min-w-0">
-                  <h5 className="text-xs font-bold text-white tracking-tight truncate min-w-0">
+                <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap">
+                  <h5 className="text-xs font-bold text-white tracking-tight leading-snug">
                     {badge.title}
                   </h5>
                   {badge.unlocked && (
-                    <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-slate-300 border border-white/10">
+                    <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/15">
                       {badge.tier}
                     </span>
                   )}

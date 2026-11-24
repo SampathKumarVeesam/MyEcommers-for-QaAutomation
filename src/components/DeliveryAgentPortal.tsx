@@ -1369,14 +1369,14 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
   // 2. Authenticated Delivery Agent Executive Dashboard (Matching Reference Image 7)
   return (
-    <div className={isModal ? "fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" : "min-h-screen bg-[#030611] text-slate-900 flex flex-col justify-center items-center p-2 sm:p-4 md:p-6"}>
+    <div className={isModal ? "fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" : "min-h-screen bg-[#030611] text-slate-100 flex flex-col justify-center items-center p-2 sm:p-4 md:p-6"}>
       <div
         data-test="delivery-agent-portal-modal"
         data-testid="delivery-agent-portal-modal"
-        className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full mx-auto overflow-hidden border border-slate-200 flex flex-col max-h-[94vh] text-slate-900 animate-in fade-in zoom-in-95 duration-200"
+        className="bg-[#070D1E] rounded-3xl shadow-2xl max-w-5xl w-full mx-auto overflow-hidden border border-blue-500/20 flex flex-col max-h-[94vh] text-white animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header Bar */}
-        <div className="p-4 sm:p-5 bg-[#0F172A] text-white flex items-center justify-between">
+        <div className="p-4 sm:p-5 bg-[#0B132B] text-white flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-extrabold shadow-md">
               <Truck className="w-5 h-5 text-amber-400" />
@@ -1420,24 +1420,24 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
         {/* Global Notifications */}
         {errorMsg && (
-          <div className="p-3 bg-rose-50 border-b border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between">
+          <div className="p-3 bg-rose-500/20 border-b border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               <span>{errorMsg}</span>
             </div>
-            <button onClick={() => setErrorMsg(null)} className="text-rose-600 hover:text-rose-800 cursor-pointer">
+            <button onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-200 cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* Signed In Queue Status Banner (Matching Image 7) */}
-        <div className="p-3 bg-emerald-50 border-b border-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-between">
+        <div className="p-3 bg-emerald-500/15 border-b border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{successMsg || 'Signed in successfully! Joined active Hyderabad FIFO queue.'}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-800 cursor-pointer">
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-emerald-200 cursor-pointer">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -1534,7 +1534,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             )}
 
             {/* Agent Bar (Matching Image 7) */}
-            <div className="p-4 bg-white border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 text-slate-800">
+            <div className="p-4 bg-[#0B132B]/90 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 text-white">
               <div className="flex items-center gap-3">
                 <img
                   src={agent.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80'}
@@ -1543,16 +1543,18 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight">{agent.name}</span>
-                    <span className="font-mono text-[10px] bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full font-bold">
-                      {agent.agentCode || 'AGT-6787'}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="font-extrabold text-white text-sm sm:text-base tracking-tight">{agent.name}</span>
+                    {agent.agentCode && (
+                      <span className="font-mono text-[10px] bg-white/10 text-slate-300 border border-white/15 px-2 py-0.5 rounded-full font-bold">
+                        {agent.agentCode}
+                      </span>
+                    )}
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       🟢 Online (FIFO Rank #{agent.fifoRank || 1})
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
                     <span>🏍️ {agent.vehicleType || 'Motorcycle'}</span>
                     <span>📍 {agent.deliveryZone || 'Downtown'}</span>
                     <span>💼 {agent.gender ? agent.gender.replace(/_/g, ' ') : 'male'}</span>
@@ -1562,10 +1564,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
               {/* Wallet & Actions (Matching Image 7) */}
               <div className="flex items-center gap-2.5">
-                <div className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl text-right">
-                  <div className="text-[10px] uppercase font-bold text-emerald-700">Wallet Earnings</div>
-                  <div className="text-sm font-extrabold font-mono text-emerald-900">
-                    ₹{Number(agent.totalEarnings || 60).toFixed(2)}
+                <div className="bg-emerald-500/15 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
+                  <div className="text-[10px] uppercase font-bold text-emerald-400">Wallet Earnings</div>
+                  <div className="text-sm font-extrabold font-mono text-emerald-300">
+                    ₹{Number(agent.totalEarnings ?? 0).toFixed(2)}
                   </div>
                 </div>
 
@@ -1575,9 +1577,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                     type="button"
                     onClick={() => setShowNotifDropdown(!showNotifDropdown)}
                     title="Alerts & Notifications"
-                    className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                    className="relative p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer border border-white/10"
                   >
-                    <Bell className="w-4 h-4 text-slate-700" />
+                    <Bell className="w-4 h-4 text-slate-300" />
                     {unreadNotifs > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
                         {unreadNotifs > 9 ? '9+' : unreadNotifs}
@@ -1586,46 +1588,46 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   </button>
 
                   {showNotifDropdown && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs text-slate-800">
-                      <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                        <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <Bell className="w-3.5 h-3.5 text-indigo-600" />
+                    <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden text-xs text-slate-200">
+                      <div className="p-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5 text-indigo-400" />
                           Alerts ({unreadNotifs} unread)
                         </span>
                         {unreadNotifs > 0 && (
                           <button
                             type="button"
                             onClick={handleMarkAllAgentNotifsRead}
-                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
                           >
                             Mark all read
                           </button>
                         )}
                       </div>
-                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-800">
                         {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-slate-400">No alerts yet</div>
+                          <div className="p-6 text-center text-slate-500">No alerts yet</div>
                         ) : (
                           notifications.map(n => (
                             <div
                               key={n.id}
                               onClick={() => !n.isRead && handleMarkAgentNotifRead(n.id)}
                               className={`p-3 transition-colors cursor-pointer ${
-                                n.isRead ? 'bg-white text-slate-400' : 'bg-indigo-50/50 text-slate-800'
-                              } hover:bg-slate-50`}
+                                n.isRead ? 'bg-slate-900/40 text-slate-400' : 'bg-slate-800/60 text-slate-200'
+                              } hover:bg-slate-800`}
                             >
                               <div className="flex items-start justify-between gap-1">
-                                <span className="font-bold text-slate-900">{n.title}</span>
+                                <span className="font-bold text-white">{n.title}</span>
                                 {n.amount && (
-                                  <span className="font-mono text-emerald-600 font-bold text-[11px]">
+                                  <span className="font-mono text-emerald-400 font-bold text-[11px]">
                                     ₹{Number(n.amount).toFixed(2)}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-600 mt-0.5">{n.message}</p>
-                              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                              <p className="text-[11px] text-slate-300 mt-0.5">{n.message}</p>
+                              <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
                                 <span>{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                {!n.isRead && <span className="text-indigo-600 font-bold">● New</span>}
+                                {!n.isRead && <span className="text-indigo-400 font-bold">● New</span>}
                               </div>
                             </div>
                           ))
@@ -1638,7 +1640,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(true)}
-                  className="px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer shadow-xs transition-colors"
+                  className="px-3.5 py-1.5 bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl text-xs font-bold text-white cursor-pointer shadow-xs transition-colors"
                 >
                   Profile
                 </button>
@@ -1646,7 +1648,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-200"
+                  className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-500/20"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
@@ -1655,7 +1657,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             </div>
 
             {/* Dashboard Tabs (Matching Image 7) */}
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 text-xs font-bold px-4 py-2 bg-white">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 text-xs font-bold px-4 py-2 bg-[#070D1E]">
               <button
                 type="button"
                 data-test="tab-active-deliveries"
@@ -1663,12 +1665,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 onClick={() => setActiveTab('deliveries')}
                 className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'deliveries'
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>Assigned Deliveries ({orders.length || 4})</span>
+                <span>Assigned Deliveries ({orders.length})</span>
               </button>
               <button
                 type="button"
@@ -1677,8 +1679,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 onClick={() => setActiveTab('analytics')}
                 className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'analytics'
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <TrendingUp className="w-4 h-4" />
@@ -1691,8 +1693,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 onClick={() => setActiveTab('earnings')}
                 className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'earnings'
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <DollarSign className="w-4 h-4" />
@@ -1705,8 +1707,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 onClick={() => setActiveTab('store-deposit')}
                 className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'store-deposit'
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 font-extrabold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <Banknote className="w-4 h-4" />
@@ -1720,7 +1722,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-slate-50/70 text-slate-900">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[#040814] text-slate-100">
               {activeTab === 'analytics' && (
                 <div className="space-y-4">
                   <AgentAnalyticsHub
@@ -2130,9 +2132,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             )}
 
                             {isDelivered && (
-                              <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-emerald-700 font-bold">
+                              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-emerald-400 font-bold">
                                 <span>✓ Delivered &amp; Commission Credited</span>
-                                <span className="font-mono">+₹{(order.deliveryFee || 150).toFixed(2)}</span>
+                                <span className="font-mono">+₹{(order.deliveryFee ?? agent.commissionRate ?? 15).toFixed(2)}</span>
                               </div>
                             )}
                           </div>
@@ -2147,51 +2149,51 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               {activeTab === 'earnings' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
-                      <div className="text-xs font-bold text-emerald-700 uppercase">Total Wallet Balance</div>
-                      <div className="text-2xl font-black text-emerald-900 font-mono mt-1">
+                    <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/25">
+                      <div className="text-xs font-bold text-emerald-400 uppercase">Total Wallet Balance</div>
+                      <div className="text-2xl font-black text-emerald-300 font-mono mt-1">
                         ₹{agent.totalEarnings.toFixed(2)}
                       </div>
-                      <p className="text-[11px] text-emerald-600 mt-1">Ready for weekly bank transfer (+91 UPI)</p>
+                      <p className="text-[11px] text-emerald-500 mt-1">Ready for weekly bank transfer (+91 UPI)</p>
                     </div>
 
-                    <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-200">
-                      <div className="text-xs font-bold text-indigo-700 uppercase">Delivered Orders</div>
-                      <div className="text-2xl font-black text-indigo-900 font-mono mt-1">
+                    <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/25">
+                      <div className="text-xs font-bold text-indigo-400 uppercase">Delivered Orders</div>
+                      <div className="text-2xl font-black text-indigo-300 font-mono mt-1">
                         {agent.deliveredOrdersCount}
                       </div>
-                      <p className="text-[11px] text-indigo-600 mt-1">Successfully fulfilled</p>
+                      <p className="text-[11px] text-indigo-400 mt-1">Successfully fulfilled</p>
                     </div>
 
-                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200">
-                      <div className="text-xs font-bold text-blue-700 uppercase">Per-Order Commission</div>
-                      <div className="text-2xl font-black text-blue-900 font-mono mt-1">
-                        ₹{(agent.commissionRate || 150).toFixed(2)}
+                    <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/25">
+                      <div className="text-xs font-bold text-blue-400 uppercase">Per-Order Commission</div>
+                      <div className="text-2xl font-black text-blue-300 font-mono mt-1">
+                        ₹{(agent.commissionRate ?? 15).toFixed(2)}
                       </div>
-                      <p className="text-[11px] text-blue-600 mt-1">Guaranteed payout per order</p>
+                      <p className="text-[11px] text-blue-400 mt-1">Guaranteed payout per order</p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200">
-                    <h4 className="font-bold text-slate-900 text-xs uppercase mb-3">
+                  <div className="p-4 bg-[#0B132B]/80 rounded-2xl border border-white/10">
+                    <h4 className="font-bold text-white text-xs uppercase mb-3">
                       Completed Deliveries History ({orders.filter(o => o.orderStatus === 'delivered').length})
                     </h4>
-                    <div className="divide-y divide-slate-100 text-xs">
+                    <div className="divide-y divide-white/5 text-xs">
                       {orders
                         .filter(o => o.orderStatus === 'delivered')
                         .map(o => (
                           <div key={o.id} className="py-2.5 flex items-center justify-between">
                             <div>
-                              <p className="font-mono font-bold text-indigo-700">{o.orderNumber}</p>
-                              <p className="text-slate-500 text-[11px]">
+                              <p className="font-mono font-bold text-indigo-400">{o.orderNumber}</p>
+                              <p className="text-slate-400 text-[11px]">
                                 {o.userName} • {o.shippingAddress.city}
                               </p>
                             </div>
                             <div className="text-right">
-                              <span className="font-mono font-extrabold text-emerald-700">
-                                +₹{(o.deliveryFee || 150).toFixed(2)}
+                              <span className="font-mono font-extrabold text-emerald-400">
+                                +₹{(o.deliveryFee ?? agent.commissionRate ?? 15).toFixed(2)}
                               </span>
-                              <p className="text-[10px] text-slate-400">Credited to Wallet</p>
+                              <p className="text-[10px] text-slate-500">Credited to Wallet</p>
                             </div>
                           </div>
                         ))}
@@ -2206,26 +2208,26 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   {/* Status Banner */}
                   <div className={`p-4 rounded-2xl border ${
                     agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
-                      ? 'bg-rose-50 border-rose-300'
+                      ? 'bg-rose-500/10 border-rose-500/30'
                       : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                      ? 'bg-amber-50 border-amber-300'
+                      ? 'bg-amber-500/10 border-amber-500/30'
                       : agent.hasPendingCashDeposit
-                      ? 'bg-amber-50/70 border-amber-300'
-                      : 'bg-emerald-50 border-emerald-300'
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : 'bg-emerald-500/10 border-emerald-500/30'
                   }`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
                           <Banknote className={`w-5 h-5 ${
                             agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
-                              ? 'text-rose-600'
+                              ? 'text-rose-400'
                               : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                              ? 'text-amber-600'
+                              ? 'text-amber-400'
                               : agent.hasPendingCashDeposit
-                              ? 'text-amber-600'
-                              : 'text-emerald-600'
+                              ? 'text-amber-400'
+                              : 'text-emerald-400'
                           }`} />
-                          <h4 className="font-extrabold text-slate-900 text-sm">
+                          <h4 className="font-extrabold text-white text-sm">
                             {agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                               ? 'Deposit Rejected by Store Admin'
                               : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
@@ -2235,10 +2237,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               : 'Account Unlocked & Ready for Orders'}
                           </h4>
                         </div>
-                        <p className="text-xs text-slate-600 mt-1">
+                        <p className="text-xs text-slate-300 mt-1">
                           {agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED' ? (
                             <>
-                              <strong>Rejection Reason:</strong> {agent.depositRejectionReason || 'Cash mismatch'}. Please visit the Hyderabad Flagship Store counter to rectify and resubmit confirmation.
+                              <strong className="text-rose-300">Rejection Reason:</strong> {agent.depositRejectionReason || 'Cash mismatch'}. Please visit the Hyderabad Flagship Store counter to rectify and resubmit confirmation.
                             </>
                           ) : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL' ? (
                             <>
@@ -2257,9 +2259,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       </div>
 
                       <div className="text-right shrink-0">
-                        <div className="text-[10px] uppercase font-bold text-slate-500">Cash Balance</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Cash Balance</div>
                         <div className={`font-mono text-xl font-extrabold ${
-                          agent.hasPendingCashDeposit ? 'text-rose-700' : 'text-emerald-700'
+                          agent.hasPendingCashDeposit ? 'text-rose-400' : 'text-emerald-400'
                         }`}>
                           ₹{(agent.pendingCashAmount || 0).toFixed(2)}
                         </div>
@@ -2268,10 +2270,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
                     {/* Action Button */}
                     {agent.hasPendingCashDeposit && (
-                      <div className="mt-4 pt-3 border-t border-slate-200/80">
+                      <div className="mt-4 pt-3 border-t border-white/10">
                         {agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL' ? (
-                          <div className="p-2.5 bg-amber-100/80 rounded-xl text-center text-xs font-bold text-amber-950 flex items-center justify-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
+                          <div className="p-2.5 bg-amber-500/20 rounded-xl text-center text-xs font-bold text-amber-300 flex items-center justify-center gap-2 border border-amber-500/30">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                             <span>Submitted to Store Counter. Waiting for Admin verification...</span>
                           </div>
                         ) : (
@@ -2302,45 +2304,45 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   </div>
 
                   {/* Hyderabad Store Details Card */}
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-2">
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                      <MapPin className="w-4 h-4 text-indigo-600" />
+                  <div className="p-4 bg-[#0B132B]/80 border border-white/10 rounded-2xl text-xs space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-white">
+                      <MapPin className="w-4 h-4 text-indigo-400" />
                       <span>ShopSphere Hyderabad Flagship Store &amp; Dispatch Hub</span>
                     </div>
-                    <p className="text-slate-600">
+                    <p className="text-slate-400">
                       Address: Plot 42, Hitech City Main Rd, Madhapur, Hyderabad, Telangana 500081<br />
                       Counter Hours: 08:00 AM – 10:00 PM IST | Cashier Desk: Counter #3 (Logistics Settlement)
                     </p>
                   </div>
 
                   {/* Breakdown of Linked COD Cash Orders */}
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200">
-                    <h4 className="font-bold text-slate-900 text-xs uppercase mb-3">
+                  <div className="p-4 bg-[#0B132B]/80 rounded-2xl border border-white/10">
+                    <h4 className="font-bold text-white text-xs uppercase mb-3">
                       Cash on Delivery Orders in Hand ({orders.filter(o => o.codPaymentMethod === 'cash' || o.paymentMethod === 'cod').length})
                     </h4>
                     {orders.filter(o => o.codPaymentMethod === 'cash' || o.paymentMethod === 'cod').length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-4">No COD cash orders recorded</p>
+                      <p className="text-xs text-slate-500 text-center py-4">No COD cash orders recorded</p>
                     ) : (
-                      <div className="divide-y divide-slate-100 text-xs">
+                      <div className="divide-y divide-white/5 text-xs">
                         {orders
                           .filter(o => o.codPaymentMethod === 'cash' || o.paymentMethod === 'cod')
                           .map(o => (
                             <div key={o.id} className="py-2.5 flex items-center justify-between">
                               <div>
-                                <p className="font-mono font-bold text-slate-900">#{o.orderNumber}</p>
-                                <p className="text-slate-500 text-[11px]">{o.userName} • {o.shippingAddress.city}</p>
+                                <p className="font-mono font-bold text-white">#{o.orderNumber}</p>
+                                <p className="text-slate-400 text-[11px]">{o.userName} • {o.shippingAddress.city}</p>
                                 <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.2 rounded-full font-bold ${
                                   o.paymentSettlementStatus === 'CASH_DEPOSITED_AT_STORE' || o.paymentSettlementStatus === 'SETTLED'
-                                    ? 'bg-emerald-100 text-emerald-800'
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                     : o.paymentSettlementStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-rose-100 text-rose-800'
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                                 }`}>
                                   {o.paymentSettlementStatus || 'CASH_COLLECTED'}
                                 </span>
                               </div>
                               <div className="text-right">
-                                <span className="font-mono font-extrabold text-slate-900">
+                                <span className="font-mono font-extrabold text-white">
                                   ₹{Number(o.grandTotal).toFixed(2)}
                                 </span>
                               </div>

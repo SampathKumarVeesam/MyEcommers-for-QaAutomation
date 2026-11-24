@@ -227,17 +227,18 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
            ========================================================================= */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Today's Volume / Earnings */}
+          {/* Card 1: Total Earnings (100% Dynamic PostgreSQL Data) */}
           <div className="p-5 rounded-[24px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(10,25,70,0.5)] flex items-center justify-between relative overflow-hidden group hover:border-cyan-400/50 transition-all">
             <div className="space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Total Earnings
               </span>
               <div className="text-2xl font-black font-mono tabular-nums text-white">
-                &#8377;{Number(profile?.totalEarnings || 155430).toLocaleString('en-IN')}
+                &#8377;{Number(safeData.kpis?.totalEarnings ?? profile?.totalEarnings ?? 0).toLocaleString('en-IN')}
               </div>
               <div className="flex items-center gap-1 text-[11px] font-bold text-cyan-400">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>+14.8%</span>
+                <span>{safeData.kpis?.earningsGrowthPct || '+0.0%'}</span>
                 <span className="text-slate-400 font-normal">vs last month</span>
               </div>
             </div>
@@ -246,18 +247,18 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
             </div>
           </div>
 
-          {/* Card 2: New Dispatches */}
+          {/* Card 2: Assigned Orders (100% Dynamic PostgreSQL Data) */}
           <div className="p-5 rounded-[24px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(10,25,70,0.5)] flex items-center justify-between relative overflow-hidden group hover:border-blue-400/50 transition-all">
             <div className="space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Assigned Orders
               </span>
               <div className="text-2xl font-black font-mono tabular-nums text-white">
-                3,462
+                {Number(safeData.kpis?.assignedOrders ?? profile?.deliveredOrdersCount ?? 0).toLocaleString('en-IN')}
               </div>
               <div className="text-[11px] font-bold text-blue-400 space-y-0.5">
-                <span>Hub Standing: {profile?.storeRankPercentile || 'Top 5% at Store'}</span>
-                <span className="block text-[10px] text-cyan-300">3-Min FIFO Acceptance: {fifoGauge?.acceptanceRate || 98.5}%</span>
+                <span>Hub Standing: {profile?.storeRankPercentile || 'Store Partner'}</span>
+                <span className="block text-[10px] text-cyan-300">3-Min FIFO Acceptance: {fifoGauge?.acceptanceRate ?? 100}%</span>
               </div>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 border border-blue-500/40 flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -265,14 +266,14 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
             </div>
           </div>
 
-          {/* Card 3: On-Time Delivery SLA */}
+          {/* Card 3: On-Time Delivery SLA (100% Dynamic PostgreSQL Data) */}
           <div className="p-5 rounded-[24px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(10,25,70,0.5)] flex items-center justify-between relative overflow-hidden group hover:border-emerald-400/50 transition-all">
             <div className="space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Delivery SLA Performance Ratio
               </span>
               <div className="text-2xl font-black font-mono tabular-nums text-white">
-                98.5%
+                {safeData.kpis?.onTimeRate ?? (deliveryScore && deliveryScore[0]?.value + deliveryScore[1]?.value + deliveryScore[2]?.value > 0 ? Math.round((deliveryScore[0].value / (deliveryScore[0].value + deliveryScore[1].value + deliveryScore[2].value)) * 100) : 100)}%
               </div>
               <div className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -284,17 +285,19 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
             </div>
           </div>
 
-          {/* Card 4: Store Cash Reconciliation */}
+          {/* Card 4: Store Cash Reconciliation (100% Dynamic PostgreSQL Data) */}
           <div className="p-5 rounded-[24px] bg-[#0B1536]/80 backdrop-blur-xl border border-blue-500/30 shadow-[0_10px_30px_rgba(10,25,70,0.5)] flex items-center justify-between relative overflow-hidden group hover:border-amber-400/50 transition-all">
             <div className="space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Pending Cash to Deposit
               </span>
               <div className="text-2xl font-black font-mono tabular-nums text-white">
-                &#8377;{Number(codLiability?.pendingCashToDeposit || 0).toLocaleString('en-IN')}
+                &#8377;{Number(codLiability?.pendingCashToDeposit ?? 0).toLocaleString('en-IN')}
               </div>
               <div className="text-[11px] font-bold text-slate-400">
-                Store Cash Reconciliation: <span className="text-emerald-400">100% Settled</span>
+                Store Cash Reconciliation: <span className={Number(codLiability?.pendingCashToDeposit ?? 0) === 0 ? "text-emerald-400" : "text-amber-400"}>
+                  {Number(codLiability?.pendingCashToDeposit ?? 0) === 0 ? '100% Settled' : `${codLiability?.settlementPercentage ?? 0}% Settled`}
+                </span>
               </div>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -388,7 +391,7 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
                 <span>Hyderabad GPS Core (17.4483° N, 78.3742° E)</span>
               </h4>
               <p className="text-[11px] text-slate-400">
-                Live OSRM Routing &bull; Active FIFO Node: <span className="text-cyan-300 font-bold">{profile?.name || 'Alex Rivers'}</span>
+                Live OSRM Routing &bull; Active FIFO Node: <span className="text-cyan-300 font-bold">{profile?.name || 'Active Agent'}</span>
               </p>
             </div>
           </div>
@@ -511,8 +514,8 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
           days={heatmap?.days || []}
           colorScheme="emerald"
           title="365-Day Delivery Activity Calendar"
-          totalActiveDays={heatmap?.totalActiveDays || 84}
-          streak={heatmap?.currentStreak || 19}
+          totalActiveDays={heatmap?.totalActiveDays ?? 0}
+          streak={heatmap?.currentStreak ?? 0}
         />
       </div>
     </ChartErrorBoundary>

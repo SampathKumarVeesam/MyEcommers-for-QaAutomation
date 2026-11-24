@@ -20,7 +20,9 @@ export const agentAnalyticsController = {
       // 1. Fetch Agent Profile
       const agentRes = await query(
         `SELECT id, agent_code, name, email, phone, avatar_url, role, vehicle_type, delivery_zone, 
-                is_active, is_online, commission_rate, total_deliveries, created_at
+                is_active, is_online, commission_rate, total_deliveries, total_earnings,
+                pending_cash_amount, has_pending_cash_deposit, cash_deposit_status, deposit_rejection_reason,
+                created_at
          FROM delivery_agents
          WHERE id = $1
          LIMIT 1`,
@@ -113,9 +115,10 @@ export const agentAnalyticsController = {
       const onTimeCount = slaRes.rows[0]?.on_time || 0;
       const delayedCount = slaRes.rows[0]?.delayed || 0;
       const returnedCount = slaRes.rows[0]?.returned || 0;
-      const totalAssigned = Math.max(1, slaRes.rows[0]?.total_assigned || 0);
+      const totalAssignedOrders = slaRes.rows[0]?.total_assigned || 0;
+      const totalAssigned = Math.max(1, totalAssignedOrders);
 
-      const onTimeRate = Math.round((onTimeCount / totalAssigned) * 100);
+      const onTimeRate = totalAssignedOrders > 0 ? Math.round((onTimeCount / totalAssigned) * 100) : 100;
 
       // 6. 3-Minute FIFO Acceptance Rate Gauge & Response Speed
       let fifoRate = 100;
@@ -244,6 +247,17 @@ export const agentAnalyticsController = {
         },
       ];
 
+      // Compute month-over-month earnings growth from database
+      const thisMonthEarnings = earningsRes.rows.length > 0 ? parseFloat(earningsRes.rows[earningsRes.rows.length - 1]?.earnings || '0') : 0;
+      const prevMonthEarnings = earningsRes.rows.length > 1 ? parseFloat(earningsRes.rows[earningsRes.rows.length - 2]?.earnings || '0') : 0;
+      let earningsGrowthPct = '+0.0%';
+      if (prevMonthEarnings > 0) {
+        const pct = (((thisMonthEarnings - prevMonthEarnings) / prevMonthEarnings) * 100).toFixed(1);
+        earningsGrowthPct = `${Number(pct) >= 0 ? '+' : ''}${pct}%`;
+      } else if (thisMonthEarnings > 0) {
+        earningsGrowthPct = '+100%';
+      }
+
       res.status(200).json({
         success: true,
         data: {
@@ -260,6 +274,21 @@ export const agentAnalyticsController = {
             isOnline: Boolean(agent.is_online),
             storeRankPercentile: `Top ${topPercentile}% at Store`,
             rawPercentile: topPercentile,
+            totalEarnings: parseFloat(agent.total_earnings || '0.00'),
+            deliveredOrdersCount: Number(agent.total_deliveries || onTimeCount || 0),
+            pendingCashAmount: parseFloat(agent.pending_cash_amount || '0.00'),
+            hasPendingCashDeposit: Boolean(agent.has_pending_cash_deposit),
+            cashDepositStatus: agent.cash_deposit_status || 'NONE',
+          },
+          kpis: {
+            totalEarnings: parseFloat(agent.total_earnings || '0.00'),
+            assignedOrders: totalAssignedOrders,
+            deliveredOrders: onTimeCount,
+            onTimeRate: onTimeRate,
+            pendingCashToDeposit: pendingCash,
+            storeRankPercentile: `Top ${topPercentile}% at Store`,
+            fifoAcceptanceRate: fifoRate,
+            earningsGrowthPct,
           },
           codLiability: {
             pendingCashToDeposit: pendingCash,

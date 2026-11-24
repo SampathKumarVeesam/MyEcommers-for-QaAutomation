@@ -63,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [searchPreviewResults, setSearchPreviewResults] = useState<Product[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const demoMenuRef = useRef<HTMLDivElement>(null);
 
   // Live search preview query
   useEffect(() => {
@@ -88,11 +89,14 @@ export const Header: React.FC<HeaderProps> = ({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Click outside search preview to close
+  // Click outside search preview and demo menu to close
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setIsSearchFocused(false);
+      }
+      if (demoMenuRef.current && !demoMenuRef.current.contains(e.target as Node)) {
+        setIsDemoMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -209,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Right Action Buttons */}
           <div className="flex items-center gap-1 sm:gap-2.5">
             {/* Customer Test Accounts Switcher Pill */}
-            <div className="relative">
+            <div ref={demoMenuRef} className="relative">
               <button
                 data-test="demo-accounts-menu"
                 data-testid="demo-accounts-menu"
