@@ -10,7 +10,7 @@ import { productRepo } from '../repositories/productRepo.js';
 import { notificationRepo } from '../repositories/notificationRepo.js';
 import { storeRepo } from '../repositories/storeRepo.js';
 import { userRepo } from '../repositories/userRepo.js';
-import { sendOrderStatusUpdateEmail, sendTestEmail } from '../services/emailService.js';
+import { sendAgentWelcomeProvisionEmail, sendOrderStatusUpdateEmail, sendTestEmail } from '../services/emailService.js';
 
 export const adminRouter = Router();
 
@@ -735,7 +735,7 @@ adminRouter.post('/agents', async (req: AuthenticatedRequest, res: Response): Pr
       return;
     }
 
-    const rawPassword = password || 'Agent@123';
+    const rawPassword = password || `ShopAgent_${Math.random().toString(36).slice(2, 6).toUpperCase()}!9`;
     const passwordHash = bcrypt.hashSync(rawPassword, 10);
 
     const created = await agentRepo.createAgent({
@@ -748,14 +748,24 @@ adminRouter.post('/agents', async (req: AuthenticatedRequest, res: Response): Pr
       avatarUrl,
       passwordHash,
       isEmailVerified: true,
-      mustChangePassword: false,
+      mustChangePassword: true,
       commissionRate: commissionRate !== undefined ? parseFloat(commissionRate) : 15.00,
     });
 
+    // Send official fleet welcome onboarding email with temporary password & login link
+    try {
+      await sendAgentWelcomeProvisionEmail(created, rawPassword);
+    } catch (emailErr) {
+      console.error('[Admin Provision Agent Welcome Email Error]:', emailErr);
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Delivery agent created successfully in PostgreSQL',
-      data: created,
+      message: 'Delivery agent created successfully and official welcome credentials email dispatched!',
+      data: {
+        ...created,
+        tempPasswordSent: rawPassword,
+      },
     });
   } catch (err: any) {
     console.error('[Admin Create Agent Error]:', err);

@@ -635,12 +635,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSaveMessage('Delivery agent created successfully!');
+        const tempPassMsg = data.data?.tempPasswordSent ? ` (Temp Password: ${data.data.tempPasswordSent})` : '';
+        setSaveMessage(`Delivery agent provisioned! Official onboarding email sent to ${newAgentEmail}${tempPassMsg}`);
         setShowAddAgentForm(false);
         setNewAgentName('');
         setNewAgentEmail('');
         setNewAgentPhone('');
-        setTimeout(() => setSaveMessage(null), 2500);
+        setTimeout(() => setSaveMessage(null), 4000);
         await fetchAgents();
       }
     } catch (err) {
@@ -918,7 +919,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Top Navbar Row 2: Full-Width Primary Navigation Tabs Bar */}
         <div className="px-5 sm:px-6 py-2.5 bg-slate-950 border-b border-slate-800 shrink-0 overflow-x-auto">
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
             <button
               data-test="admin-tab-overview"
               data-testid="admin-tab-overview"

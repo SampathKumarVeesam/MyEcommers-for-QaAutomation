@@ -112,12 +112,12 @@ export const MilestoneBadgesShelf: React.FC<MilestoneBadgesShelfProps> = ({
               </div>
 
               <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap">
-                  <h5 className="text-xs font-bold text-white tracking-tight leading-snug">
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <h5 className="text-xs font-bold text-white tracking-tight leading-snug truncate" title={badge.title}>
                     {badge.title}
                   </h5>
                   {badge.unlocked && (
-                    <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/15">
+                    <span className="shrink-0 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/15">
                       {badge.tier}
                     </span>
                   )}

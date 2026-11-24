@@ -230,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   data-test="demo-accounts-dropdown"
                   data-testid="demo-accounts-dropdown"
-                  className="absolute right-0 mt-2 w-72 sm:w-80 min-w-[290px] bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 mt-2 w-72 sm:w-80 min-w-[290px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] ring-1 ring-slate-900/10 border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onMouseLeave={() => setIsDemoMenuOpen(false)}
                 >
                   <div className="px-3 py-2 border-b border-slate-100">

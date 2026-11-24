@@ -667,7 +667,105 @@ export async function sendAgentTemporaryPasswordEmail(
 }
 
 /**
- * 7. Password Reset OTP & Reset Link Email (for Customers & Delivery Agents)
+ * 6b. Official Welcome & Temporary Password Email for Delivery Agents Provisioned by Administrator
+ */
+export async function sendAgentWelcomeProvisionEmail(
+  agent: {
+    name: string;
+    email: string;
+    agentCode?: string;
+    deliveryZone?: string;
+    vehicleType?: string;
+    commissionRate?: number;
+  },
+  tempPassword: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const recipient = agent.email?.trim();
+  if (!recipient) return { success: false, error: 'Agent email is missing' };
+
+  const subject = `Welcome to the Fleet! You've Been Added as a ShopSphere Delivery Partner 🚚`;
+  const portalUrl = `${APP_URL}/delivery`;
+  const zoneLabel = agent.deliveryZone || 'Hyderabad Central Hub';
+  const vehicleLabel = agent.vehicleType || 'Motorcycle';
+  const payoutRate = agent.commissionRate ? `₹${Number(agent.commissionRate).toFixed(2)}` : '₹15.00';
+  const agentCode = agent.agentCode || 'AGT-PROV';
+
+  const html = wrapEmailHtml(
+    subject,
+    `
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="font-size: 44px;">🚚</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 12px 0 6px 0; font-weight: 800;">Welcome to the ShopSphere Delivery Fleet!</h2>
+        <p style="color: #64748b; font-size: 14px; margin: 0;">Official Delivery Partner Onboarding & Temporary Login Credentials</p>
+      </div>
+
+      <p style="font-size: 15px; color: #334155;">
+        Hi <strong>${agent.name}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #334155; line-height: 1.6;">
+        Congratulations! The Administrator has officially added you as a registered <strong>Delivery Partner</strong> for <strong>ShopSphere Logistics (${zoneLabel})</strong>. Your fleet account has been provisioned in the system and is ready for duty.
+      </p>
+
+      <!-- Fleet Partner Details Card -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
+        <h4 style="margin: 0 0 12px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #4f46e5; font-weight: 800;">Your Fleet Assignment</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 6px 0; color: #64748b; width: 40%;"><strong>Agent ID:</strong></td>
+            <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-weight: 700;">${agentCode}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;"><strong>Assigned Hub / Zone:</strong></td>
+            <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${zoneLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;"><strong>Registered Vehicle:</strong></td>
+            <td style="padding: 6px 0; color: #0f172a;">${vehicleLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b;"><strong>Payout Rate:</strong></td>
+            <td style="padding: 6px 0; color: #059669; font-weight: 700;">${payoutRate} per delivered order</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Temporary Credentials Card -->
+      <div style="background: #0f172a; color: #ffffff; border-radius: 14px; padding: 24px; text-align: center; margin: 24px 0; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; font-weight: 700; margin-bottom: 8px;">Your Temporary Login Credentials</div>
+        <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">
+          Registered Login Email: <strong style="color: #ffffff;">${agent.email}</strong>
+        </div>
+        <div style="margin: 12px 0;">
+          <span style="font-size: 24px; font-weight: 800; letter-spacing: 2px; color: #10b981; font-family: monospace; background: rgba(255, 255, 255, 0.08); padding: 10px 20px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); display: inline-block;">
+            ${tempPassword}
+          </span>
+        </div>
+        <p style="font-size: 12px; color: #fbbf24; margin: 10px 0 0 0; font-weight: 600; line-height: 1.5;">
+          🔒 <strong>Mandatory First-Login Security Setup:</strong> When you sign in with this temporary password, you will be prompted to set and confirm your own permanent password to unlock your live dispatch queue.
+        </p>
+      </div>
+
+      <!-- Direct Login CTA -->
+      <div style="text-align: center; margin: 28px 0 16px 0;">
+        <a href="${portalUrl}" class="btn" style="background: #4f46e5; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;">
+          Sign In to Delivery Partner Portal &rarr;
+        </a>
+      </div>
+
+      <p style="font-size: 12px; color: #64748b; text-align: center; margin-top: 14px;">
+        Direct Link: <a href="${portalUrl}" style="color: #4f46e5; text-decoration: underline;">${portalUrl}</a>
+      </p>
+
+      <div style="border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px; font-size: 12px; color: #64748b; line-height: 1.5;">
+        <p style="margin: 0;">
+          💡 <strong>What happens next?</strong> After updating your permanent password, your online presence will be activated in the Hyderabad FIFO queue, and available customer orders will be automatically assigned to your device.
+        </p>
+      </div>
+    `
+  );
+
+  return sendEmail(recipient, subject, html);
+}
  */
 export async function sendPasswordResetOtpEmail(params: {
   name: string;

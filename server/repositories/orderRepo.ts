@@ -442,6 +442,139 @@ export class OrderRepository {
     return orders;
   }
 
+  /**
+   * Guarantees an active delivery agent has orders in their queue upon sign-in.
+   * If they have 0 assigned active orders:
+   * 1. Checks for unassigned orders in "order" table and assigns up to 2 of them.
+   * 2. If no unassigned orders exist, auto-provisions 2 demonstration orders in their zone.
+   */
+  async ensureAgentHasOrders(agentId: string | number, agentName: string, deliveryZone?: string): Promise<Order[]> {
+    const idStr = String(agentId);
+    let existing = await this.getOrdersByAgent(idStr);
+    const activeOrders = existing.filter(o => o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled');
+    if (activeOrders.length > 0) {
+      return existing;
+    }
+
+    try {
+      // 1. Look for unassigned or processed orders in PostgreSQL
+      const unassignedRes = await query(
+        `SELECT id, order_number FROM "order" 
+         WHERE (assigned_agent_id IS NULL OR assigned_agent_id = '' OR assigned_agent_id = 'unassigned')
+           AND status IN ('processed', 'processing', 'confirmed', 'pending')
+         ORDER BY id ASC LIMIT 2`
+      );
+
+      if (unassignedRes.rows.length > 0) {
+        for (const row of unassignedRes.rows) {
+          await query(
+            `UPDATE "order" 
+             SET assigned_agent_id = $1, 
+                 assignment_status = 'ACCEPTED',
+                 status = 'processing',
+                 assigned_at = NOW()
+             WHERE id = $2`,
+            [idStr, row.id]
+          );
+        }
+        return await this.getOrdersByAgent(idStr);
+      }
+
+      // 2. If no unassigned orders exist, auto-create 2 realistic active orders for this agent
+      const zone = deliveryZone || 'Kukatpally, Hyderabad';
+      const ordNum1 = `ORD-${Math.floor(100000 + Math.random() * 900000)}-SP`;
+      const ordNum2 = `ORD-${Math.floor(100000 + Math.random() * 900000)}-SP`;
+      const tracking1 = `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      const tracking2 = `TRK-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      const otp1 = `${Math.floor(1000 + Math.random() * 9000)}`;
+      const otp2 = `${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // Fetch a product ID to attach as item
+      const prodRes = await query(`SELECT id, title, price, code FROM product LIMIT 2`);
+      const prod1 = prodRes.rows[0] || { id: 1, title: 'Luxury Leather Wallet', price: 99.00, code: 'PROD-WAL-01' };
+      const prod2 = prodRes.rows[1] || prod1;
+
+      // Order 1: Cash on Delivery (COD), Processing
+      const ins1 = await query(
+        `INSERT INTO "order" (
+           order_number, user_id, user_email, user_name, user_phone,
+           status, total_amount, subtotal, tax, shipping_fee, shipping_method,
+           payment_method, payment_status, address_line_1, address_postal_code,
+           address_city, address_state, address_country, assigned_agent_id,
+           delivery_fee, cod_payment_status, assignment_status, payment_mode,
+           payment_settlement_status, tracking_id, delivery_otp, created_at, assigned_at
+         ) VALUES (
+           $1, 'cust_demo_1', 'customer@practicesoftwaretesting.com', 'Pramod Kumar', '+91 98765 43210',
+           'processing', $2, $3, $4, 15.00, 'standard',
+           'cod', 'pending', $5, '500072',
+           'Hyderabad', 'Telangana', 'India', $6,
+           15.00, 'pending', 'ACCEPTED', 'COD',
+           'PENDING', $7, $8, NOW() - INTERVAL '15 minutes', NOW()
+         ) RETURNING id`,
+        [
+          ordNum1,
+          (Number(prod1.price) + 15.00).toFixed(2),
+          Number(prod1.price).toFixed(2),
+          (Number(prod1.price) * 0.18).toFixed(2),
+          `Flat 402, Cyber Heights, ${zone}`,
+          idStr,
+          tracking1,
+          otp1
+        ]
+      );
+
+      if (ins1.rows[0]) {
+        await query(
+          `INSERT INTO order_item (order_id, product_id, price, quantity)
+           VALUES ($1, $2, $3, 1) ON CONFLICT DO NOTHING`,
+          [ins1.rows[0].id, prod1.id, prod1.price]
+        );
+      }
+
+      // Order 2: Prepaid Online, Out for Delivery
+      const ins2 = await query(
+        `INSERT INTO "order" (
+           order_number, user_id, user_email, user_name, user_phone,
+           status, total_amount, subtotal, tax, shipping_fee, shipping_method,
+           payment_method, payment_status, address_line_1, address_postal_code,
+           address_city, address_state, address_country, assigned_agent_id,
+           delivery_fee, cod_payment_status, assignment_status, payment_mode,
+           payment_settlement_status, tracking_id, delivery_otp, created_at, assigned_at
+         ) VALUES (
+           $1, 'cust_demo_2', 'customer2@practicesoftwaretesting.com', 'Alex Rivera', '+91 98765 87654',
+           'out_for_delivery', $2, $3, $4, 15.00, 'express',
+           'credit_card', 'paid', $5, '500081',
+           'Hyderabad', 'Telangana', 'India', $6,
+           15.00, 'paid', 'ACCEPTED', 'PREPAID',
+           'PAID_ONLINE', $7, $8, NOW() - INTERVAL '45 minutes', NOW()
+         ) RETURNING id`,
+        [
+          ordNum2,
+          (Number(prod2.price) + 15.00).toFixed(2),
+          Number(prod2.price).toFixed(2),
+          (Number(prod2.price) * 0.18).toFixed(2),
+          `Villa 12, Rainbow Vistas, ${zone}`,
+          idStr,
+          tracking2,
+          otp2
+        ]
+      );
+
+      if (ins2.rows[0]) {
+        await query(
+          `INSERT INTO order_item (order_id, product_id, price, quantity)
+           VALUES ($1, $2, $3, 1) ON CONFLICT DO NOTHING`,
+          [ins2.rows[0].id, prod2.id, prod2.price]
+        );
+      }
+
+      return await this.getOrdersByAgent(idStr);
+    } catch (err) {
+      console.error('[ensureAgentHasOrders Error]:', err);
+      return existing;
+    }
+  }
+
   async assignAgent(orderId: string | number, agentId: string | null): Promise<Order | null> {
     const isNum = !isNaN(Number(orderId));
     let sql: string;

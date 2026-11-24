@@ -172,19 +172,14 @@ agentRouter.post('/login', async (req: Request, res: Response): Promise<void> =>
       },
     });
 
-    // Check if there are unassigned PROCESSED orders waiting for an active agent
+    // Check if there are unassigned orders waiting or ensure this agent has orders in their queue
     setImmediate(async () => {
       try {
-        const { query } = await import('../db/pool.js');
-        const waitingOrders = await query(
-          `SELECT id FROM "order" 
-           WHERE LOWER(status) = 'processed' 
-             AND (assigned_agent_id IS NULL OR assignment_status = 'UNASSIGNED')
-           ORDER BY created_at ASC LIMIT 1`
+        await orderRepo.ensureAgentHasOrders(
+          agentWithCreds.id,
+          agentWithCreds.name,
+          agentWithCreds.deliveryZone
         );
-        if (waitingOrders.rows.length > 0) {
-          await orderRepo.assignNextActiveAgentFIFO(waitingOrders.rows[0].id);
-        }
       } catch (err) {
         console.warn('[FIFO Post-Login Order Assignment Notice]:', err);
       }
@@ -390,6 +385,14 @@ agentRouter.patch('/profile/password', requireAgentAuth, async (req: Authenticat
 
     const newHash = bcrypt.hashSync(newPassword.trim(), 10);
     await agentRepo.updatePassword(req.agent!.id, newHash);
+    await agentRepo.setLoginStatus(req.agent!.id, true);
+
+    // Ensure the newly onboarded/password-updated agent has orders in their queue immediately
+    try {
+      await orderRepo.ensureAgentHasOrders(req.agent!.id, req.agent!.name, req.agent!.deliveryZone);
+    } catch (assignErr) {
+      console.warn('[Post-Password Update Ensure Orders Warning]:', assignErr);
+    }
 
     const updated = await agentRepo.findById(req.agent!.id);
     res.status(200).json({
