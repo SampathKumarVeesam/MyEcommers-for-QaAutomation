@@ -216,7 +216,7 @@ export class ProductRepository {
           orderBy = 'ORDER BY p.rating DESC';
           break;
         case 'newest':
-          orderBy = 'ORDER BY p.created_at DESC';
+          orderBy = 'ORDER BY p.featured DESC, p.created_at DESC, p.id ASC';
           break;
       }
 

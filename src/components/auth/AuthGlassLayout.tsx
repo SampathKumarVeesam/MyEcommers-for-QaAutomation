@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Shield, Truck, User } from 'lucide-react';
+import { ArrowLeft, Shield, Truck, User, X } from 'lucide-react';
 
 export type AuthRole = 'customer' | 'agent' | 'admin';
 
@@ -69,14 +69,14 @@ export const AuthGlassLayout: React.FC<AuthGlassLayoutProps> = ({
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
 
         {/* Modal Close Button */}
-        {isModal && onClose && (
+        {onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
             className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-20"
           >
-            &times;
+            <X className="w-4 h-4 text-slate-300 hover:text-white" />
           </button>
         )}
 

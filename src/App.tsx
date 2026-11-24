@@ -137,7 +137,7 @@ function ShopSphereMain() {
       } else if (hash === '#admin' || search.includes('admin')) {
         navigate('/admin');
       } else if (hash === '#agent' || hash === '#delivery' || search.includes('agent') || search.includes('delivery')) {
-        navigate('/delivery');
+        setIsAgentPortalOpen(true);
       }
     };
     handleUrlRoute();
@@ -261,7 +261,7 @@ function ShopSphereMain() {
         onOpenOrders={() => setIsOrdersOpen(true)}
         onOpenAdmin={() => navigate('/admin')}
         onOpenProfile={() => setIsProfileOpen(true)}
-        onOpenAgentPortal={() => navigate('/delivery')}
+        onOpenAgentPortal={() => setIsAgentPortalOpen(true)}
         onSelectProduct={p => setSelectedProduct(p)}
       />
 

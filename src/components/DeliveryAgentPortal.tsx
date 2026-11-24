@@ -1070,10 +1070,10 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   data-testid="select-agent-zone"
                   className="px-4 py-2.5 bg-slate-900 border border-white/20 rounded-full text-white text-xs"
                 >
-                  <option value="Hitech City Hub">Hitech City Hub</option>
-                  <option value="Madhapur / Jubilee Hills">Madhapur / Jubilee</option>
-                  <option value="Tellapur / Osman Nagar">Tellapur / Osman Nagar</option>
-                  <option value="Gachibowli Hub">Gachibowli Hub</option>
+                  <option value="Hitech City, Hyderabad">Hitech City, Hyderabad</option>
+                  <option value="Madhapur / Jubilee Hills, Hyderabad">Madhapur / Jubilee Hills, Hyderabad</option>
+                  <option value="Tellapur / Osman Nagar, Hyderabad">Tellapur / Osman Nagar, Hyderabad</option>
+                  <option value="Gachibowli Hub, Hyderabad">Gachibowli Hub, Hyderabad</option>
                 </select>
               </div>
               <button
