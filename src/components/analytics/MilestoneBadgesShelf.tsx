@@ -99,29 +99,36 @@ export const MilestoneBadgesShelf: React.FC<MilestoneBadgesShelfProps> = ({
           return (
             <div
               key={badge.id}
-              className={`p-3.5 rounded-2xl border ${styles.bg} ${styles.border} backdrop-blur-md flex items-start gap-3 transition-all duration-200`}
+              className={`p-3.5 rounded-2xl border ${styles.bg} ${styles.border} backdrop-blur-md flex flex-col justify-between transition-all duration-200 hover:border-white/20`}
             >
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${styles.badge}`}
-              >
+              {/* Card Header: Icon on left, Tier Pill on right - Never Collides */}
+              <div className="flex items-center justify-between w-full mb-2">
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${styles.badge}`}
+                >
+                  {badge.unlocked ? (
+                    <Icon className="w-4 h-4" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
+                </div>
+
                 {badge.unlocked ? (
-                  <Icon className="w-4 h-4" />
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/15 shrink-0 shadow-xs">
+                    {badge.tier}
+                  </span>
                 ) : (
-                  <Lock className="w-4 h-4" />
+                  <span className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-slate-500 border border-white/5 shrink-0">
+                    Locked
+                  </span>
                 )}
               </div>
 
-              <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1.5 min-w-0">
-                  <h5 className="text-xs font-bold text-white tracking-tight leading-snug truncate" title={badge.title}>
-                    {badge.title}
-                  </h5>
-                  {badge.unlocked && (
-                    <span className="shrink-0 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/15">
-                      {badge.tier}
-                    </span>
-                  )}
-                </div>
+              {/* Card Body: Full-Width Title and Description */}
+              <div className="space-y-1 min-w-0 w-full">
+                <h5 className="text-xs font-bold text-white tracking-tight leading-snug break-words">
+                  {badge.title}
+                </h5>
                 <p className="text-[11px] text-slate-400 leading-snug line-clamp-2">
                   {badge.description}
                 </p>

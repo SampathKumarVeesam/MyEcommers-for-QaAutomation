@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
+  Eye,
+  EyeOff,
   KeyRound,
   Lock,
   LogOut,
@@ -87,6 +89,8 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
   // Mandatory / voluntary password update
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
   // Portal dashboard (Defaults to Image 7 Assigned Deliveries)
@@ -926,10 +930,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               data-test="tab-agent-login"
               data-testid="tab-agent-login"
               onClick={() => setAuthTab('login')}
-              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${authTab === 'login'
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
+                authTab === 'login'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
-                }`}
+              }`}
             >
               Sign In
             </button>
@@ -938,10 +943,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               data-test="tab-agent-register"
               data-testid="tab-agent-register"
               onClick={() => setAuthTab('register')}
-              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${authTab === 'register'
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
+                authTab === 'register'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
-                }`}
+              }`}
             >
               Register
             </button>
@@ -950,10 +956,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               data-test="tab-agent-verify"
               data-testid="tab-agent-verify"
               onClick={() => setAuthTab('verify')}
-              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${authTab === 'verify'
+              className={`flex-1 py-1.5 rounded-full transition-all text-center cursor-pointer ${
+                authTab === 'verify'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
-                }`}
+              }`}
             >
               Verify Email
             </button>
@@ -1070,7 +1077,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   type="tel"
                   value={regPhone}
                   onChange={e => setRegPhone(e.target.value)}
-                  placeholder="+91 ***** *****"
+                  placeholder="+91 98765 43210"
                   data-test="input-agent-reg-phone"
                   data-testid="input-agent-reg-phone"
                   className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
@@ -1480,49 +1487,123 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
         </div>
 
         {agent.mustChangePassword ? (
-          /* Mandatory First-Login Password Change Prompt */
-          <div className="p-8 max-w-md mx-auto my-auto space-y-6 bg-[#0B132B]/90 border border-blue-500/30 rounded-3xl backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] text-white animate-in zoom-in-95 duration-200">
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 mx-auto flex items-center justify-center shadow-lg">
-                <Lock className="w-7 h-7 text-amber-400" />
+          /* Mandatory First-Login Password Change Prompt - Luxury Sapphire Frosted Glass */
+          <div className="p-8 sm:p-9 max-w-lg mx-auto my-auto space-y-6 bg-gradient-to-b from-[#0B1530]/95 via-[#070D1F]/95 to-[#040814]/95 border border-cyan-500/30 rounded-3xl backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(6,182,212,0.15)] text-white animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            {/* Ambient Top Glow Line */}
+            <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent pointer-events-none" />
+
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-black uppercase tracking-widest shadow-inner">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>First-Time Partner Onboarding</span>
               </div>
-              <h3 className="font-black text-white text-lg tracking-tight">Mandatory Security Setup</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/25 via-amber-600/20 to-transparent text-amber-400 border border-amber-500/40 mx-auto flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.25)]">
+                <Lock className="w-8 h-8 text-amber-400" />
+              </div>
+
+              <h3 className="font-black text-white text-xl tracking-tight">Mandatory Security Setup</h3>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
                 You logged in with your temporary onboarding password. Please set your permanent delivery agent password to unlock your live dispatch queue.
               </p>
             </div>
 
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                  New Permanent Password (min. 6 characters)
+                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>New Permanent Password</span>
+                  <span className="text-[10px] text-slate-400 font-normal lowercase">min. 6 characters</span>
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  data-test="input-new-permanent-password"
-                  data-testid="input-new-permanent-password"
-                  className="w-full px-4 py-3 bg-white/[0.08] border border-white/20 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl text-white text-sm outline-none transition-all placeholder:text-slate-500 font-medium"
-                />
+                <div className="relative flex items-center">
+                  <div className="absolute left-4 text-slate-400 pointer-events-none">
+                    <KeyRound className="w-4 h-4 text-cyan-400/80" />
+                  </div>
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="Enter new permanent password"
+                    data-test="input-new-permanent-password"
+                    data-testid="input-new-permanent-password"
+                    className="w-full pl-11 pr-11 py-3 bg-white/[0.06] border border-white/20 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl text-white text-sm outline-none transition-all placeholder:text-slate-500 font-medium"
+                  />
+                  <button
+                    type="button"
+                    data-test="new-password-toggle"
+                    data-testid="new-password-toggle"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                    className="absolute right-3.5 text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="w-4 h-4 text-cyan-400" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-slate-400 hover:text-white" />
+                    )}
+                  </button>
+                </div>
+                {newPassword.length > 0 && (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
+                    {newPassword.length >= 6 ? (
+                      <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                        <CheckCircle2 className="w-3 h-3" /> Minimum 6 characters met
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3 h-3" /> Needs {6 - newPassword.length} more character{6 - newPassword.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                   Confirm Permanent Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  data-test="input-confirm-permanent-password"
-                  data-testid="input-confirm-permanent-password"
-                  className="w-full px-4 py-3 bg-white/[0.08] border border-white/20 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl text-white text-sm outline-none transition-all placeholder:text-slate-500 font-medium"
-                />
+                <div className="relative flex items-center">
+                  <div className="absolute left-4 text-slate-400 pointer-events-none">
+                    <Lock className="w-4 h-4 text-cyan-400/80" />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your permanent password"
+                    data-test="input-confirm-permanent-password"
+                    data-testid="input-confirm-permanent-password"
+                    className="w-full pl-11 pr-11 py-3 bg-white/[0.06] border border-white/20 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl text-white text-sm outline-none transition-all placeholder:text-slate-500 font-medium"
+                  />
+                  <button
+                    type="button"
+                    data-test="confirm-password-toggle"
+                    data-testid="confirm-password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    className="absolute right-3.5 text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4 text-cyan-400" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-slate-400 hover:text-white" />
+                    )}
+                  </button>
+                </div>
+                {confirmPassword.length > 0 && (
+                  <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
+                    {confirmPassword === newPassword && newPassword.length >= 6 ? (
+                      <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                        <CheckCircle2 className="w-3 h-3" /> Passwords match perfectly
+                      </span>
+                    ) : confirmPassword !== newPassword ? (
+                      <span className="text-rose-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3 h-3" /> Passwords do not match
+                      </span>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               <button
@@ -1530,9 +1611,12 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 disabled={updatingPassword}
                 data-test="btn-save-permanent-password"
                 data-testid="btn-save-permanent-password"
-                className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-[0_4px_25px_rgba(6,182,212,0.35)] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {updatingPassword ? 'Saving Password...' : 'Save Permanent Password & Unlock Dashboard'}
+                <ShieldCheck className="w-4 h-4" />
+                <span>
+                  {updatingPassword ? 'Securing & Saving Password...' : 'Save Permanent Password & Unlock Dashboard'}
+                </span>
               </button>
             </form>
           </div>
@@ -1541,12 +1625,13 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Cash Deposit Lock Alert Banner */}
             {agent.hasPendingCashDeposit && (
-              <div className={`p-3 font-bold text-xs flex items-center justify-between gap-2 shadow-inner ${agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+              <div className={`p-3 font-bold text-xs flex items-center justify-between gap-2 shadow-inner ${
+                agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                   ? 'bg-rose-500 text-white'
                   : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                    ? 'bg-amber-400 text-slate-950'
-                    : 'bg-amber-500 text-slate-950'
-                }`}>
+                  ? 'bg-amber-400 text-slate-950'
+                  : 'bg-amber-500 text-slate-950'
+              }`}>
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 shrink-0" />
                   <span>
@@ -1654,8 +1739,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             <div
                               key={n.id}
                               onClick={() => !n.isRead && handleMarkAgentNotifRead(n.id)}
-                              className={`p-3 transition-colors cursor-pointer ${n.isRead ? 'bg-slate-900/40 text-slate-400' : 'bg-slate-800/60 text-slate-200'
-                                } hover:bg-slate-800`}
+                              className={`p-3 transition-colors cursor-pointer ${
+                                n.isRead ? 'bg-slate-900/40 text-slate-400' : 'bg-slate-800/60 text-slate-200'
+                              } hover:bg-slate-800`}
                             >
                               <div className="flex items-start justify-between gap-1">
                                 <span className="font-bold text-white">{n.title}</span>
@@ -1704,10 +1790,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-active-deliveries"
                 data-testid="tab-active-deliveries"
                 onClick={() => setActiveTab('deliveries')}
-                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'deliveries'
+                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'deliveries'
                     ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
                     : 'text-slate-400 hover:text-white'
-                  }`}
+                }`}
               >
                 <Package className="w-4 h-4" />
                 <span>Assigned Deliveries ({orders.length})</span>
@@ -1717,10 +1804,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-agent-performance"
                 data-testid="tab-agent-performance"
                 onClick={() => setActiveTab('analytics')}
-                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'analytics'
+                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'analytics'
                     ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
                     : 'text-slate-400 hover:text-white'
-                  }`}
+                }`}
               >
                 <TrendingUp className="w-4 h-4" />
                 <span>My Performance</span>
@@ -1730,10 +1818,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-earnings-wallet"
                 data-testid="tab-earnings-wallet"
                 onClick={() => setActiveTab('earnings')}
-                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'earnings'
+                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'earnings'
                     ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
                     : 'text-slate-400 hover:text-white'
-                  }`}
+                }`}
               >
                 <DollarSign className="w-4 h-4" />
                 <span>Earnings &amp; Payouts</span>
@@ -1743,10 +1832,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 data-test="tab-store-deposit"
                 data-testid="tab-store-deposit"
                 onClick={() => setActiveTab('store-deposit')}
-                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'store-deposit'
+                className={`py-2 px-3.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'store-deposit'
                     ? 'text-blue-400 border-b-2 border-blue-500 font-extrabold'
                     : 'text-slate-400 hover:text-white'
-                  }`}
+                }`}
               >
                 <Banknote className="w-4 h-4" />
                 <span>Store Cash Deposit</span>
@@ -1801,14 +1891,15 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             key={order.id}
                             data-test={`agent-order-card-${order.orderNumber}`}
                             data-testid={`agent-order-card-${order.orderNumber}`}
-                            className={`p-4 rounded-2xl border transition-all ${isDelivered
+                            className={`p-4 rounded-2xl border transition-all ${
+                              isDelivered
                                 ? 'bg-[#0B132B]/60 border-emerald-500/30 text-white shadow-lg'
                                 : isPendingAcceptance
-                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-200 shadow-lg ring-1 ring-amber-500/20'
-                                  : isOutForDelivery
-                                    ? 'bg-[#0E1A3D]/90 border-cyan-500/40 text-white shadow-lg shadow-cyan-500/10'
-                                    : 'bg-[#0B132B]/90 border-blue-500/25 text-white shadow-lg'
-                              }`}
+                                ? 'bg-amber-500/10 border-amber-500/40 text-amber-200 shadow-lg ring-1 ring-amber-500/20'
+                                : isOutForDelivery
+                                ? 'bg-[#0E1A3D]/90 border-cyan-500/40 text-white shadow-lg shadow-cyan-500/10'
+                                : 'bg-[#0B132B]/90 border-blue-500/25 text-white shadow-lg'
+                            }`}
                           >
                             {/* Card Header */}
                             <div className="flex items-center justify-between mb-2">
@@ -1823,12 +1914,13 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                                   </span>
                                 )}
                                 <span
-                                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${isDelivered
+                                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                                    isDelivered
                                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                                       : isOutForDelivery
-                                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                    }`}
+                                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  }`}
                                 >
                                   {order.orderStatus.replace(/_/g, ' ')}
                                 </span>
@@ -1942,10 +2034,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               </div>
                               <div className="text-right">
                                 <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isCod
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                    isCod
                                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                                       : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                    }`}
+                                  }`}
                                 >
                                   {isCod ? 'Cash on Delivery (COD)' : 'Prepaid (Card/Online)'}
                                 </span>
@@ -2106,10 +2199,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                                               }
                                               data-test={`btn-select-cash-${order.orderNumber}`}
                                               data-testid={`btn-select-cash-${order.orderNumber}`}
-                                              className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${selectedPaymentMode[order.orderNumber] === 'CASH'
+                                              className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                                                selectedPaymentMode[order.orderNumber] === 'CASH'
                                                   ? 'bg-amber-600/30 border-amber-400 text-amber-200 shadow-md ring-1 ring-amber-400'
                                                   : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/30 hover:text-white'
-                                                }`}
+                                              }`}
                                             >
                                               <Banknote className="w-4 h-4 text-amber-400" />
                                               <span>Paid by Cash</span>
@@ -2125,10 +2219,11 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                                               }
                                               data-test={`btn-select-upi-${order.orderNumber}`}
                                               data-testid={`btn-select-upi-${order.orderNumber}`}
-                                              className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${selectedPaymentMode[order.orderNumber] === 'UPI'
+                                              className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                                                selectedPaymentMode[order.orderNumber] === 'UPI'
                                                   ? 'bg-cyan-600/30 border-cyan-400 text-cyan-200 shadow-md ring-1 ring-cyan-400'
                                                   : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/30 hover:text-white'
-                                                }`}
+                                              }`}
                                             >
                                               <QrCode className="w-4 h-4 text-cyan-400" />
                                               <span>Paid by UPI</span>
@@ -2324,33 +2419,35 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               {activeTab === 'store-deposit' && (
                 <div className="space-y-4">
                   {/* Status Banner */}
-                  <div className={`p-4 rounded-2xl border ${agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                  <div className={`p-4 rounded-2xl border ${
+                    agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                       ? 'bg-rose-500/10 border-rose-500/30'
                       : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                        ? 'bg-amber-500/10 border-amber-500/30'
-                        : agent.hasPendingCashDeposit
-                          ? 'bg-amber-500/10 border-amber-500/30'
-                          : 'bg-emerald-500/10 border-emerald-500/30'
-                    }`}>
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : agent.hasPendingCashDeposit
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : 'bg-emerald-500/10 border-emerald-500/30'
+                  }`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Banknote className={`w-5 h-5 ${agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                          <Banknote className={`w-5 h-5 ${
+                            agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                               ? 'text-rose-400'
                               : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                                ? 'text-amber-400'
-                                : agent.hasPendingCashDeposit
-                                  ? 'text-amber-400'
-                                  : 'text-emerald-400'
-                            }`} />
+                              ? 'text-amber-400'
+                              : agent.hasPendingCashDeposit
+                              ? 'text-amber-400'
+                              : 'text-emerald-400'
+                          }`} />
                           <h4 className="font-extrabold text-white text-sm">
                             {agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                               ? 'Deposit Rejected by Store Admin'
                               : agent.cashDepositStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                                ? 'Deposit Submitted — Awaiting Store Admin Approval'
-                                : agent.hasPendingCashDeposit
-                                  ? 'Cash Store-Deposit Required (Account Locked)'
-                                  : 'Account Unlocked & Ready for Orders'}
+                              ? 'Deposit Submitted — Awaiting Store Admin Approval'
+                              : agent.hasPendingCashDeposit
+                              ? 'Cash Store-Deposit Required (Account Locked)'
+                              : 'Account Unlocked & Ready for Orders'}
                           </h4>
                         </div>
                         <p className="text-xs text-slate-300 mt-1">
@@ -2376,8 +2473,9 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
 
                       <div className="text-right shrink-0">
                         <div className="text-[10px] uppercase font-bold text-slate-400">Cash Balance</div>
-                        <div className={`font-mono text-xl font-extrabold ${agent.hasPendingCashDeposit ? 'text-rose-400' : 'text-emerald-400'
-                          }`}>
+                        <div className={`font-mono text-xl font-extrabold ${
+                          agent.hasPendingCashDeposit ? 'text-rose-400' : 'text-emerald-400'
+                        }`}>
                           ₹{(agent.pendingCashAmount || 0).toFixed(2)}
                         </div>
                       </div>
@@ -2398,18 +2496,19 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                             onClick={handleSubmitStoreDeposit}
                             data-test="btn-submit-store-deposit"
                             data-testid="btn-submit-store-deposit"
-                            className={`w-full py-2.5 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-2 ${agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
+                            className={`w-full py-2.5 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-2 ${
+                              agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
                                 ? 'bg-rose-600 hover:bg-rose-700'
                                 : 'bg-emerald-600 hover:bg-emerald-700'
-                              }`}
+                            }`}
                           >
                             <Check className="w-4 h-4" />
                             <span>
                               {submittingDeposit
                                 ? 'Submitting Confirmation...'
                                 : agent.cashDepositStatus === 'REJECTED_RESUBMIT_REQUIRED'
-                                  ? 'Re-submit Store Cash Deposit Confirmation'
-                                  : 'Mark Cash Deposited at Store (Submit for Approval)'}
+                                ? 'Re-submit Store Cash Deposit Confirmation'
+                                : 'Mark Cash Deposited at Store (Submit for Approval)'}
                             </span>
                           </button>
                         )}
@@ -2445,12 +2544,13 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                               <div>
                                 <p className="font-mono font-bold text-white">#{o.orderNumber}</p>
                                 <p className="text-slate-400 text-[11px]">{o.userName} • {o.shippingAddress.city}</p>
-                                <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.2 rounded-full font-bold ${o.paymentSettlementStatus === 'CASH_DEPOSITED_AT_STORE' || o.paymentSettlementStatus === 'SETTLED'
+                                <span className={`inline-block mt-0.5 text-[10px] px-2 py-0.2 rounded-full font-bold ${
+                                  o.paymentSettlementStatus === 'CASH_DEPOSITED_AT_STORE' || o.paymentSettlementStatus === 'SETTLED'
                                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                     : o.paymentSettlementStatus === 'DEPOSIT_SUBMITTED_FOR_APPROVAL'
-                                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                  }`}>
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                }`}>
                                   {o.paymentSettlementStatus || 'CASH_COLLECTED'}
                                 </span>
                               </div>

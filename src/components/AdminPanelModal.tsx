@@ -790,19 +790,19 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-7xl max-h-[94vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Top Navbar Row 1: Title & Action Tools (Exit button always visible) */}
-        <div className="px-5 sm:px-6 py-4 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800 shrink-0 relative z-20 min-h-[68px]">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* Top Navbar Row 1: Title & Action Tools (Exit button always visible and prominent) */}
+        <div className="px-5 sm:px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800 shrink-0 relative z-20 min-h-[64px]">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shadow-inner shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <div className="min-w-0 flex flex-col justify-center">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-white tracking-tight">ShopSphere Administrator Console</h2>
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+            <div className="min-w-0 flex-1 flex flex-col justify-center">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">ShopSphere Administrator Console</h2>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
                   Role: {user?.role || 'Admin'}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   PostgreSQL 18
                 </span>
@@ -813,7 +813,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 z-30">
             {/* Notification Bell Dropdown */}
             <div className="relative">
               <button
@@ -887,7 +887,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               onClick={handleSendTestEmail}
               disabled={testEmailStatus === 'sending'}
               title="Send Zoho Mail SMTP Test Verification Email"
-              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-semibold border border-slate-700 transition-colors cursor-pointer shrink-0"
             >
               <Mail className="w-3.5 h-3.5 text-indigo-400" />
               <span className="hidden sm:inline">
@@ -900,7 +900,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               data-testid="admin-refresh-all-button"
               onClick={handleRefreshAll}
               title="Refresh all metrics from PostgreSQL"
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <RefreshCw className={`w-4 h-4 ${loadingSummary ? 'animate-spin' : ''}`} />
             </button>
@@ -910,9 +910,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               data-testid="admin-close-button"
               onClick={onClose}
               title="Exit Admin Console"
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0"
             >
               <X className="w-4 h-4" />
+              <span className="hidden md:inline">Exit Console</span>
             </button>
           </div>
         </div>
@@ -1011,21 +1012,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         {/* =========================================================================
             SECTION 2: OVERALL SUMMARY CARDS (Top Section - Fetched Live from PostgreSQL)
            ========================================================================= */}
-        <div className="px-5 sm:px-6 py-3.5 bg-slate-50 border-b border-slate-200 shrink-0">
+        <div className="px-5 sm:px-6 py-3.5 bg-[#080E21] border-b border-slate-800 shrink-0">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
             {/* 1. Total Customers */}
             <div
               data-test="summary-card-customers"
               data-testid="summary-card-customers"
-              className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3"
+              className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-3 text-white"
             >
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold shrink-0">
                 <Users className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Total Customers</p>
-                <p className="font-extrabold text-slate-900 text-base">
-                  {summary ? summary.totalCustomers : <span className="text-slate-400">...</span>}
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider truncate">Total Customers</p>
+                <p className="font-extrabold text-white text-base truncate">
+                  {summary ? summary.totalCustomers : <span className="text-slate-500">...</span>}
                 </p>
               </div>
             </div>
@@ -1034,15 +1035,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div
               data-test="summary-card-orders"
               data-testid="summary-card-orders"
-              className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3"
+              className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-3 text-white"
             >
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold">
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold shrink-0">
                 <Package className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Total Orders</p>
-                <p className="font-extrabold text-slate-900 text-base">
-                  {summary ? summary.totalOrders : <span className="text-slate-400">...</span>}
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider truncate">Total Orders</p>
+                <p className="font-extrabold text-white text-base truncate">
+                  {summary ? summary.totalOrders : <span className="text-slate-500">...</span>}
                 </p>
               </div>
             </div>
@@ -1051,15 +1052,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div
               data-test="summary-card-revenue"
               data-testid="summary-card-revenue"
-              className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3"
+              className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-3 text-white"
             >
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold">
-                <DollarSign className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold shrink-0">
+                <Banknote className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Platform Revenue</p>
-                <p className="font-extrabold text-slate-900 text-base">
-                  {summary ? `$${summary.totalSales.toFixed(2)}` : <span className="text-slate-400">...</span>}
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider truncate">Platform Revenue</p>
+                <p className="font-extrabold text-emerald-400 font-mono text-base truncate">
+                  {summary ? `₹${Number(summary.totalSales || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <span className="text-slate-500">...</span>}
                 </p>
               </div>
             </div>
@@ -1068,15 +1069,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div
               data-test="summary-card-cart-items"
               data-testid="summary-card-cart-items"
-              className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3"
+              className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-3 text-white"
             >
-              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center font-bold">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold shrink-0">
                 <ShoppingBag className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Total Cart Items</p>
-                <p className="font-extrabold text-slate-900 text-base">
-                  {summary ? summary.totalCartItems : <span className="text-slate-400">...</span>}
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider truncate">Total Cart Items</p>
+                <p className="font-extrabold text-white text-base truncate">
+                  {summary ? summary.totalCartItems : <span className="text-slate-500">...</span>}
                 </p>
               </div>
             </div>
@@ -1085,15 +1086,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             <div
               data-test="summary-card-wishlist-items"
               data-testid="summary-card-wishlist-items"
-              className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3 col-span-2 sm:col-span-1"
+              className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-3 text-white col-span-2 sm:col-span-1"
             >
-              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center justify-center font-bold shrink-0">
                 <Heart className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider">Total Wishlist</p>
-                <p className="font-extrabold text-slate-900 text-base">
-                  {summary ? summary.totalWishlistItems : <span className="text-slate-400">...</span>}
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider truncate">Total Wishlist</p>
+                <p className="font-extrabold text-white text-base truncate">
+                  {summary ? summary.totalWishlistItems : <span className="text-slate-500">...</span>}
                 </p>
               </div>
             </div>
