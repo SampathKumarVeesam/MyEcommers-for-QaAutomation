@@ -183,10 +183,14 @@ export interface Order {
   transferredFromAgentId?: string | null;
   assignmentTier?: 'IDLE_NEAREST' | 'BUSY_NEAREST' | null;
   deliveryFee?: number;
-  codPaymentMethod?: 'cash' | 'upi' | null;
+  codPaymentMethod?: 'cash' | 'upi' | 'CASH' | 'UPI' | null;
+  cod_payment_method?: 'cash' | 'upi' | 'CASH' | 'UPI' | null;
   codPaymentStatus?: 'pending' | 'paid' | null;
   deliveryOtp?: string | null;
+  delivery_otp?: string | null;
   otpVerified?: boolean;
+  isOtpVerified?: boolean;
+  is_otp_verified?: boolean;
   deliveredAt?: string | null;
   depositSubmittedAt?: string | null;
   depositVerifiedAt?: string | null;

@@ -766,7 +766,7 @@ export async function sendAgentWelcomeProvisionEmail(
 
   return sendEmail(recipient, subject, html);
 }
- */
+
 export async function sendPasswordResetOtpEmail(params: {
   name: string;
   email: string;

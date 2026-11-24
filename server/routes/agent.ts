@@ -553,6 +553,49 @@ agentRouter.post('/orders/:id/verify-otp', requireAgentAuth, async (req: Authent
   }
 });
 
+// POST /api/agent/orders/:id/complete-cod-delivery (Strict COD completion via CASH or UPI)
+agentRouter.post('/orders/:id/complete-cod-delivery', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { paymentMethod } = req.body || {};
+
+    const order = await orderRepo.getOrderById(id);
+    if (!order) {
+      res.status(404).json({ success: false, message: 'Order not found' });
+      return;
+    }
+
+    if (!order.isOtpVerified && !order.otpVerified) {
+      res.status(403).json({
+        success: false,
+        message: 'OTP must be verified before collecting payment or marking delivered',
+      });
+      return;
+    }
+
+    const normMethod = String(paymentMethod || '').trim().toUpperCase();
+    if (normMethod !== 'CASH' && normMethod !== 'UPI') {
+      res.status(400).json({
+        success: false,
+        message: "Payment method must be strictly either 'CASH' or 'UPI'",
+      });
+      return;
+    }
+
+    const result = await orderRepo.completeCodDelivery(id, normMethod, req.agent!.id);
+    if (!result.success) {
+      const code = result.statusCode || 400;
+      res.status(code).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Agent Complete COD Delivery Error]:', error);
+    res.status(500).json({ success: false, message: `Failed to complete COD delivery: ${error.message}` });
+  }
+});
+
 // POST /api/agent/orders/:id/complete-delivery (Complete PREPAID delivery once OTP is verified)
 agentRouter.post('/orders/:id/complete-delivery', requireAgentAuth, async (req: AuthenticatedAgentRequest, res: Response): Promise<void> => {
   try {

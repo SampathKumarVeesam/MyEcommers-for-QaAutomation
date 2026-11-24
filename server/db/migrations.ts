@@ -88,6 +88,7 @@ export async function ensureSchemaMigrations(): Promise<void> {
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_payment_status VARCHAR(50) DEFAULT \'pending\'',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_otp VARCHAR(10)',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_otp_verified BOOLEAN DEFAULT FALSE',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS feedback_status VARCHAR(50) DEFAULT \'pending\'',
         'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS next_feedback_reminder_at TIMESTAMP WITH TIME ZONE',

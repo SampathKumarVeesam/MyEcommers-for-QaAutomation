@@ -423,6 +423,14 @@ ordersRouter.post('/:id/paid-to-delivery-boy', optionalAuth, async (req: Authent
       return;
     }
 
+    if (!order.isOtpVerified && !order.otpVerified) {
+      res.status(403).json({
+        success: false,
+        message: 'Delivery agent OTP must be verified before payment can be recorded',
+      });
+      return;
+    }
+
     const updated = await orderRepo.markPaidToDeliveryBoy(id);
     if (!updated) {
       res.status(500).json({ success: false, message: 'Failed to update payment status' });
@@ -452,6 +460,80 @@ ordersRouter.post('/:id/paid-to-delivery-boy', optionalAuth, async (req: Authent
       success: false,
       message: `Failed to mark paid to delivery boy: ${error.message || 'Server error'}`,
     });
+  }
+});
+
+// POST /api/orders/:id/verify-otp (Verify delivery OTP submitted by delivery agent)
+ordersRouter.post('/:id/verify-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { otp } = req.body || {};
+
+    if (!otp || typeof otp !== 'string' || !otp.trim()) {
+      res.status(400).json({
+        success: false,
+        message: '6-digit Delivery OTP is required',
+      });
+      return;
+    }
+
+    const result = await orderRepo.verifyDeliveryOtp(id, otp.trim());
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Verify OTP Route Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to verify delivery OTP: ${err.message}` });
+  }
+});
+
+// POST /api/orders/:id/complete-cod-delivery (Collect COD payment and mark delivered)
+ordersRouter.post('/:id/complete-cod-delivery', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { paymentMethod, agentId } = req.body || {};
+
+    const order = await orderRepo.getOrderById(id);
+    if (!order) {
+      res.status(404).json({ success: false, message: 'Order not found' });
+      return;
+    }
+
+    // Strict Backend Validation:
+    // If !order.is_otp_verified, block request with 403 Forbidden
+    if (!order.isOtpVerified && !order.otpVerified) {
+      res.status(403).json({
+        success: false,
+        message: 'OTP must be verified before collecting payment or marking delivered',
+      });
+      return;
+    }
+
+    // paymentMethod must be strictly 'CASH' or 'UPI'
+    const normMethod = String(paymentMethod || '').trim().toUpperCase();
+    if (normMethod !== 'CASH' && normMethod !== 'UPI') {
+      res.status(400).json({
+        success: false,
+        message: "Payment method must be strictly either 'CASH' or 'UPI'",
+      });
+      return;
+    }
+
+    const effectiveAgentId = agentId || order.assignedAgentId;
+    const result = await orderRepo.completeCodDelivery(id, normMethod, effectiveAgentId);
+    if (!result.success) {
+      const code = result.statusCode || 400;
+      res.status(code).json(result);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[Complete COD Delivery Route Error]:', err);
+    res.status(500).json({ success: false, message: `Failed to complete COD delivery: ${err.message}` });
   }
 });
 

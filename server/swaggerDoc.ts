@@ -3184,6 +3184,99 @@ export const SWAGGER_SPEC = {
         }
       }
     },
+    "/orders/{id}/verify-otp": {
+      "post": {
+        "tags": [
+          "Delivery Partner Portal",
+          "Customer - Orders"
+        ],
+        "summary": "Verify 6-digit Delivery OTP upon doorstep arrival",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["otp"],
+                "properties": {
+                  "otp": { "type": "string", "example": "489201" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Delivery OTP verified successfully! COD payment collection unlocked."
+          },
+          "400": {
+            "description": "Invalid 6-digit Delivery OTP"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        }
+      }
+    },
+    "/orders/{id}/complete-cod-delivery": {
+      "post": {
+        "tags": [
+          "Delivery Partner Portal",
+          "Customer - Orders"
+        ],
+        "summary": "Collect COD payment (CASH or UPI) and mark order DELIVERED",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "ORD-2026-78491"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["paymentMethod"],
+                "properties": {
+                  "paymentMethod": {
+                    "type": "string",
+                    "enum": ["CASH", "UPI"],
+                    "example": "UPI"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment collected and order marked delivered"
+          },
+          "400": {
+            "description": "Payment method must be strictly either 'CASH' or 'UPI'"
+          },
+          "403": {
+            "description": "OTP must be verified before collecting payment or marking delivered"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        }
+      }
+    },
     "/admin/products": {
       "post": {
         "tags": [

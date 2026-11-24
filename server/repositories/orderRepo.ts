@@ -81,9 +81,13 @@ export function mapOrderRow(row: any, items: BasketItem[] = [], assignedAgent: D
     assignmentTier: (row.assignment_tier as any) || null,
     deliveryFee: row.delivery_fee ? parseFloat(row.delivery_fee) : 15.00,
     codPaymentMethod: row.cod_payment_method || null,
+    cod_payment_method: row.cod_payment_method || null,
     codPaymentStatus: row.cod_payment_status || (row.payment_method === 'cod' ? (row.payment_status === 'paid' ? 'paid' : 'pending') : null),
     deliveryOtp: row.delivery_otp || null,
-    otpVerified: Boolean(row.otp_verified),
+    delivery_otp: row.delivery_otp || null,
+    otpVerified: Boolean(row.otp_verified || row.is_otp_verified),
+    isOtpVerified: Boolean(row.is_otp_verified || row.otp_verified),
+    is_otp_verified: Boolean(row.is_otp_verified || row.otp_verified),
     deliveredAt: row.delivered_at ? new Date(row.delivered_at).toISOString() : null,
     depositSubmittedAt: row.deposit_submitted_at ? new Date(row.deposit_submitted_at).toISOString() : null,
     depositVerifiedAt: row.deposit_verified_at ? new Date(row.deposit_verified_at).toISOString() : null,
@@ -1295,7 +1299,8 @@ export class OrderRepository {
     const isNum = !isNaN(Number(orderId));
     const res = await query(
       `UPDATE "order"
-       SET otp_verified = TRUE
+       SET otp_verified = TRUE,
+           is_otp_verified = TRUE
        WHERE (order_number = $1 ${isNum ? 'OR id = $2' : ''})
        RETURNING *`,
       isNum ? [String(orderId), Number(orderId)] : [String(orderId)]
@@ -1306,6 +1311,73 @@ export class OrderRepository {
       success: true,
       message: 'Delivery OTP verified successfully! COD payment collection unlocked.',
       order: mapOrderRow(row, items),
+    };
+  }
+
+  async completeCodDelivery(
+    orderId: string | number,
+    paymentMethod: string,
+    agentId?: string
+  ): Promise<{ success: boolean; statusCode?: number; message: string; order?: Order }> {
+    const order = await this.getOrderById(orderId);
+    if (!order) {
+      return { success: false, statusCode: 404, message: 'Order not found' };
+    }
+
+    if (!order.otpVerified && !order.isOtpVerified) {
+      return {
+        success: false,
+        statusCode: 403,
+        message: 'OTP must be verified before collecting payment or marking delivered',
+      };
+    }
+
+    const normMethod = String(paymentMethod || '').trim().toUpperCase();
+    if (normMethod !== 'CASH' && normMethod !== 'UPI') {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Payment method must be strictly either 'CASH' or 'UPI'",
+      };
+    }
+
+    const isNum = !isNaN(Number(orderId));
+    const res = await query(
+      `UPDATE "order"
+       SET status = 'delivered',
+           payment_status = 'paid',
+           cod_payment_method = $1,
+           cod_payment_status = 'paid',
+           delivered_at = NOW(),
+           next_feedback_reminder_at = NOW() + INTERVAL '15 minutes',
+           feedback_status = 'pending'
+       WHERE (order_number = $2 ${isNum ? 'OR id = $3' : ''})
+       RETURNING *`,
+      isNum ? [normMethod, String(orderId), Number(orderId)] : [normMethod, String(orderId)]
+    );
+
+    if (res.rows.length === 0) {
+      return { success: false, statusCode: 500, message: 'Failed to update order settlement status' };
+    }
+
+    const row = res.rows[0];
+    const effectiveAgentId = agentId || row.assigned_agent_id;
+    if (effectiveAgentId) {
+      try {
+        const fee = parseFloat(row.delivery_fee || '15.00');
+        await agentRepo.creditEarnings(effectiveAgentId, fee);
+      } catch (e) {
+        console.warn('[Credit Agent Error]:', e);
+      }
+    }
+
+    const items = await this.getOrderItems(row.id);
+    const updated = mapOrderRow(row, items);
+    return {
+      success: true,
+      statusCode: 200,
+      message: `Payment collected via ${normMethod}. Order marked DELIVERED and earnings credited.`,
+      order: updated,
     };
   }
 

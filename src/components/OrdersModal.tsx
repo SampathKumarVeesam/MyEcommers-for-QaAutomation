@@ -628,39 +628,63 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose }) => 
                   )}
 
                   {/* COD Payment Notification & Action */}
-                  {selectedOrder.paymentMethod === 'cod' && (
-                    <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <Banknote className="w-4 h-4 text-amber-600 shrink-0" />
-                        <div>
-                          <p className="font-bold text-amber-900">Cash on Delivery (COD)</p>
-                          <p className="text-[11px] text-amber-700">
-                            {selectedOrder.paymentStatus === 'paid_to_delivery_agent'
-                              ? '✓ You marked this as paid to delivery boy. Waiting for admin payment approval.'
-                              : normalizeOrderStatus(selectedOrder.orderStatus) === 'delivered'
-                              ? '✓ Order delivered and payment verified.'
-                              : normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery'
-                              ? 'Out for delivery! Pay with Cash or UPI to the delivery executive upon arrival.'
-                              : 'Payment is collected only once the order is Out for Delivery. Pay via Cash or UPI to the delivery executive upon arrival.'}
-                          </p>
-                        </div>
-                      </div>
+                  {selectedOrder.paymentMethod === 'cod' && (() => {
+                    const isOtpVerified = Boolean(selectedOrder.isOtpVerified || selectedOrder.otpVerified);
+                    const codMethodFormatted = selectedOrder.codPaymentMethod
+                      ? String(selectedOrder.codPaymentMethod).toUpperCase() === 'CASH' ? 'Paid by Cash' : 'Paid by UPI'
+                      : null;
 
-                      {selectedOrder.paymentStatus !== 'paid_to_delivery_agent' &&
-                        normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery' && (
-                          <button
-                            type="button"
-                            data-test="btn-paid-to-delivery-boy"
-                            data-testid="btn-paid-to-delivery-boy"
-                            disabled={markingPaid}
-                            onClick={() => handleMarkPaidToDeliveryBoy(selectedOrder.orderNumber)}
-                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-xs transition-colors cursor-pointer"
-                          >
-                            {markingPaid ? 'Updating...' : 'Paid to Delivery Boy (Cash/UPI)'}
-                          </button>
-                        )}
-                    </div>
-                  )}
+                    return (
+                      <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Banknote className="w-4 h-4 text-amber-600 shrink-0" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-amber-900">Cash on Delivery (COD)</p>
+                              {codMethodFormatted && (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold text-[10px]">
+                                  {codMethodFormatted}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-amber-700">
+                              {selectedOrder.paymentStatus === 'paid_to_delivery_agent'
+                                ? '✓ You marked this as paid to delivery boy. Waiting for admin payment approval.'
+                                : normalizeOrderStatus(selectedOrder.orderStatus) === 'delivered' || selectedOrder.paymentStatus === 'paid'
+                                ? `✓ Order delivered and payment completed ${codMethodFormatted ? `(${codMethodFormatted})` : ''}.`
+                                : normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery'
+                                ? isOtpVerified
+                                  ? 'Delivery OTP verified by partner! Complete your Cash or UPI payment.'
+                                  : 'Out for delivery! Share your OTP with the delivery agent upon arrival to verify.'
+                                : 'Payment is collected only once the order is Out for Delivery. Pay via Cash or UPI to the delivery executive upon arrival.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedOrder.paymentStatus !== 'paid_to_delivery_agent' &&
+                          selectedOrder.paymentStatus !== 'paid' &&
+                          normalizeOrderStatus(selectedOrder.orderStatus) === 'out_for_delivery' && (
+                            <div className="flex flex-col items-end gap-1">
+                              <button
+                                type="button"
+                                data-test="btn-paid-to-delivery-boy"
+                                data-testid="btn-paid-to-delivery-boy"
+                                disabled={markingPaid || !isOtpVerified}
+                                onClick={() => handleMarkPaidToDeliveryBoy(selectedOrder.orderNumber)}
+                                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                              >
+                                {markingPaid ? 'Updating...' : 'Paid to Delivery Boy (Cash/UPI)'}
+                              </button>
+                              {!isOtpVerified && (
+                                <span className="text-[10px] text-amber-700 italic">
+                                  * Awaiting delivery agent OTP verification upon doorstep arrival
+                                </span>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })()}
 
                   {paidSuccessMsg && (
                     <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
