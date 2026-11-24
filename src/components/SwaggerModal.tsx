@@ -535,7 +535,7 @@ export const SwaggerModal: React.FC<SwaggerModalProps> = ({ isOpen, onClose, ini
                                     type="text"
                                     value={getParam(ep.id, paramKey, defVal)}
                                     onChange={e => setParam(ep.id, paramKey, e.target.value)}
-                                    className="flex-1 font-mono text-xs bg-slate-50 px-2 py-1 rounded border border-slate-200 outline-none focus:border-indigo-500"
+                                    className="flex-1 font-mono text-xs bg-slate-50 text-slate-900 focus:text-slate-900 px-2 py-1 rounded border border-slate-200 outline-none focus:border-indigo-500 font-medium"
                                   />
                                 </div>
                               ))}

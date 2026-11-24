@@ -322,7 +322,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                   value={promoCode}
                   onChange={e => setPromoCode(e.target.value)}
                   disabled={Boolean(appliedPromo)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-white text-xs text-slate-800 border border-slate-200 rounded-lg outline-none focus:border-indigo-500"
+                  className="w-full pl-8 pr-3 py-1.5 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:text-slate-900 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 font-medium"
                 />
               </div>
               {appliedPromo ? (

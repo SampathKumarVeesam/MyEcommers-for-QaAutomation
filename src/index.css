@@ -12,6 +12,95 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
+
+  /* =========================================================================
+     GLOBAL FORM CONTROL TYPED TEXT & PLACEHOLDER LEGIBILITY RULES
+     Enforces dark, crisp text (#0f172a / text-slate-900) on all light-background
+     inputs, textareas, and selects regardless of dark container cascading.
+     ========================================================================= */
+
+  /* 1. Default text color for form controls unless explicitly dark */
+  input,
+  textarea,
+  select {
+    color: #0f172a;
+  }
+
+  /* 2. Light background inputs, textareas, and selects: explicitly force dark text */
+  input:where(
+    [class*="bg-white"]:not([class*="bg-white/"]):not([class*="bg-white/["]),
+    [class*="bg-slate-50"],
+    [class*="bg-slate-100"],
+    [class*="bg-gray-50"],
+    [class*="bg-gray-100"],
+    [class*="bg-rose-50"]
+  ),
+  textarea:where(
+    [class*="bg-white"]:not([class*="bg-white/"]):not([class*="bg-white/["]),
+    [class*="bg-slate-50"],
+    [class*="bg-slate-100"],
+    [class*="bg-gray-50"],
+    [class*="bg-gray-100"]
+  ),
+  select:where(
+    [class*="bg-white"]:not([class*="bg-white/"]):not([class*="bg-white/["]),
+    [class*="bg-slate-50"],
+    [class*="bg-slate-100"],
+    [class*="bg-gray-50"],
+    [class*="bg-gray-100"]
+  ) {
+    color: #0f172a !important;
+  }
+
+  /* 3. Legible placeholder styling for light background inputs */
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+  }
+
+  /* 4. Preserve intentionally styled dark / frosted inputs (e.g. text-white in dark glass auth pods) */
+  input[class*="text-white"],
+  input[class*="text-slate-100"],
+  input[class*="text-slate-200"],
+  input[class*="text-slate-300"],
+  textarea[class*="text-white"],
+  textarea[class*="text-slate-100"],
+  textarea[class*="text-slate-200"],
+  textarea[class*="text-slate-300"],
+  select[class*="text-white"],
+  select[class*="text-slate-100"],
+  select[class*="text-slate-200"] {
+    color: currentColor !important;
+  }
+
+  input[class*="text-white"]::placeholder,
+  textarea[class*="text-white"]::placeholder {
+    color: #94a3b8 !important;
+    opacity: 0.7 !important;
+  }
+
+  /* 5. Browser Autofill normalization: prevent browser from painting white text on light backgrounds */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Autofill for dark theme inputs */
+  input[class*="bg-white/"]:-webkit-autofill,
+  input[class*="bg-white/["]:-webkit-autofill,
+  input[class*="text-white"]:-webkit-autofill,
+  textarea[class*="text-white"]:-webkit-autofill {
+    -webkit-text-fill-color: #ffffff !important;
+  }
 }
 
 /* Custom sleek scrollbar */

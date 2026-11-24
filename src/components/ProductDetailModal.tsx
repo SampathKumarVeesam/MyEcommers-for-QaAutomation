@@ -874,7 +874,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           placeholder="Your Name (e.g. Jane D.)"
                           value={reviewName}
                           onChange={e => setReviewName(e.target.value)}
-                          className="w-full text-xs p-2.5 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500"
+                          className="w-full text-xs p-2.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:text-slate-900"
                           required
                         />
 
@@ -885,7 +885,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           placeholder="Share details of your experience with this item..."
                           value={reviewComment}
                           onChange={e => setReviewComment(e.target.value)}
-                          className="w-full text-xs p-2.5 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500"
+                          className="w-full text-xs p-2.5 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:text-slate-900"
                           required
                         />
 

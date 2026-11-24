@@ -260,7 +260,7 @@ export const EmergencyTransferModal: React.FC<EmergencyTransferModalProps> = ({
                 setReason(e.target.value);
                 if (validationError) setValidationError(null);
               }}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-amber-500 transition-all font-medium text-slate-800"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white focus:border-amber-500 focus:text-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-400"
             />
             {validationError && (
               <p

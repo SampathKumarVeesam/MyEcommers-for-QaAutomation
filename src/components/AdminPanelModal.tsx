@@ -1407,7 +1407,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     placeholder="Search customers by name, email, or username..."
                     value={customerSearch}
                     onChange={e => setCustomerSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 focus:border-indigo-500 transition-all font-medium"
                   />
                 </div>
 
@@ -1593,7 +1593,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     placeholder="Filter products..."
                     value={productSearch}
                     onChange={e => setProductSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs outline-none focus:bg-white focus:border-indigo-500"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 focus:border-indigo-500 font-medium"
                   />
                 </div>
 
@@ -1659,7 +1659,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               min={0}
                               value={p.stock}
                               onChange={e => handleUpdateStock(p.id, parseInt(e.target.value, 10) || 0)}
-                              className="w-16 p-1 text-center font-mono font-bold bg-slate-50 rounded border border-slate-200 text-xs"
+                              className="w-16 p-1 text-center font-mono font-bold bg-slate-50 text-slate-900 rounded border border-slate-200 text-xs focus:bg-white focus:text-slate-900 outline-none"
                             />
                             {p.stock <= 10 && (
                               <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5">
@@ -1788,7 +1788,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       placeholder="e.g. Samsung Galaxy Watch 8 Pro (46mm, Bluetooth)"
                       value={newProduct.title}
                       onChange={e => setNewProduct({ ...newProduct, title: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     />
                   </div>
 
@@ -1802,7 +1802,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       data-testid="add-product-category"
                       value={newProduct.category}
                       onChange={e => setNewProduct({ ...newProduct, category: e.target.value as ProductCategory })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white cursor-pointer"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white cursor-pointer"
                     >
                       <option value="electronics">Electronics</option>
                       <option value="fashion">Fashion</option>
@@ -1823,7 +1823,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       placeholder="e.g. Smartwatches, Over-Ear, Outerwear"
                       value={newProduct.subcategory}
                       onChange={e => setNewProduct({ ...newProduct, subcategory: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     />
                   </div>
 
@@ -1842,7 +1842,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       placeholder="e.g. 249.99"
                       value={newProduct.price}
                       onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     />
                   </div>
 
@@ -1860,7 +1860,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       placeholder="e.g. 299.99 (Strikethrough discount)"
                       value={newProduct.compareAtPrice}
                       onChange={e => setNewProduct({ ...newProduct, compareAtPrice: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     />
                   </div>
 
@@ -1877,7 +1877,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       placeholder="e.g. 25"
                       value={newProduct.stock}
                       onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     />
                   </div>
 
@@ -1909,7 +1909,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         placeholder="https://images.unsplash.com/..."
                         value={newProduct.imageUrl}
                         onChange={e => setNewProduct({ ...newProduct, imageUrl: e.target.value })}
-                        className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                        className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                       />
                       {newProduct.imageUrl && (
                         <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden bg-slate-100 shrink-0">
@@ -1939,7 +1939,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       placeholder="Detailed product specifications, materials, warranty, and features..."
                       value={newProduct.description}
                       onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     />
                   </div>
 
@@ -2259,7 +2259,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         value={newAgentName}
                         onChange={e => setNewAgentName(e.target.value)}
                         placeholder="Ramesh Reddy"
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                     <div>
@@ -2270,7 +2270,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         value={newAgentEmail}
                         onChange={e => setNewAgentEmail(e.target.value)}
                         placeholder="ramesh@shopsphere.test"
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                     <div>
@@ -2280,7 +2280,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         value={newAgentPhone}
                         onChange={e => setNewAgentPhone(e.target.value)}
                         placeholder="+91 98765 43210"
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
@@ -2290,7 +2290,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <select
                         value={newAgentGender}
                         onChange={e => setNewAgentGender(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                       >
                         <option value="male">Male</option>
                         <option value="female">Female</option>
@@ -2303,7 +2303,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <select
                         value={newAgentVehicle}
                         onChange={e => setNewAgentVehicle(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                       >
                         <option value="Motorcycle">Motorcycle</option>
                         <option value="Electric Scooter">Electric Scooter</option>
@@ -2316,7 +2316,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <select
                         value={newAgentZone}
                         onChange={e => setNewAgentZone(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                       >
                         <option value="Hitech City, Hyderabad">Hitech City, Hyderabad</option>
                         <option value="Madhapur, Hyderabad">Madhapur, Hyderabad</option>
@@ -2333,7 +2333,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         step="10"
                         value={newAgentRate}
                         onChange={e => setNewAgentRate(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 font-bold focus:bg-white focus:text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
@@ -2416,7 +2416,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               type="number"
                               defaultValue={ag.commissionRate || 150}
                               onBlur={e => handleUpdateCommissionRate(ag.id, parseFloat(e.target.value))}
-                              className="w-16 px-1.5 py-0.5 border border-slate-200 rounded text-xs bg-slate-50"
+                              className="w-16 px-1.5 py-0.5 border border-slate-200 rounded text-xs bg-slate-50 text-slate-900 font-bold focus:bg-white focus:text-slate-900 outline-none"
                             />
                           </div>
                         </td>
@@ -2783,7 +2783,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   data-test="input-deposit-rejection-reason"
                   data-testid="input-deposit-rejection-reason"
                   placeholder="e.g. Short of ₹200 at store counter, counterfeit note detected, or deposit slip mismatch."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-rose-500 focus:bg-white"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-rose-500 focus:bg-white focus:text-slate-900 outline-none"
                 />
               </div>
             </div>

@@ -296,8 +296,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-testid="checkout-fullname"
                     value={address.fullName}
                     onChange={e => setAddress({ ...address, fullName: e.target.value })}
-                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
-                      addressErrors.fullName ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    placeholder="Enter your full name"
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 ${
+                      addressErrors.fullName ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-indigo-500'
                     }`}
                   />
                   {addressErrors.fullName && <p className="text-rose-500 mt-1 font-medium">{addressErrors.fullName}</p>}
@@ -316,8 +317,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       delete (next as any).lng;
                       setAddress(next);
                     }}
-                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
-                      addressErrors.street ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    placeholder="Street name, house/flat number, landmark"
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 ${
+                      addressErrors.street ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-indigo-500'
                     }`}
                   />
                   {addressErrors.street && <p className="text-rose-500 mt-1 font-medium">{addressErrors.street}</p>}
@@ -336,8 +338,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       delete (next as any).lng;
                       setAddress(next);
                     }}
-                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
-                      addressErrors.city ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    placeholder="City / District"
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 ${
+                      addressErrors.city ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-indigo-500'
                     }`}
                   />
                   {addressErrors.city && <p className="text-rose-500 mt-1 font-medium">{addressErrors.city}</p>}
@@ -351,7 +354,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-testid="checkout-state"
                     value={address.state}
                     onChange={e => setAddress({ ...address, state: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:border-indigo-500"
+                    placeholder="State"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 focus:border-indigo-500"
                   />
                 </div>
 
@@ -368,8 +372,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       delete (next as any).lng;
                       setAddress(next);
                     }}
-                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
-                      addressErrors.postalCode ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    placeholder="PIN / ZIP Code"
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 ${
+                      addressErrors.postalCode ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-indigo-500'
                     }`}
                   />
                   {addressErrors.postalCode && <p className="text-rose-500 mt-1 font-medium">{addressErrors.postalCode}</p>}
@@ -384,8 +389,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     value={address.country}
                     onChange={e => setAddress({ ...address, country: e.target.value })}
                     placeholder="e.g. United States, India"
-                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
-                      addressErrors.country ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 ${
+                      addressErrors.country ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-indigo-500'
                     }`}
                   />
                   {addressErrors.country && <p className="text-rose-500 mt-1 font-medium">{addressErrors.country}</p>}
@@ -399,8 +404,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     data-testid="checkout-phone"
                     value={address.phone}
                     onChange={e => setAddress({ ...address, phone: e.target.value })}
-                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 outline-none focus:bg-white ${
-                      addressErrors.phone ? 'border-rose-400 bg-rose-50/40' : 'border-slate-200 focus:border-indigo-500'
+                    placeholder="+91 98765 43210"
+                    className={`w-full p-2.5 rounded-xl border bg-slate-50/50 text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:text-slate-900 ${
+                      addressErrors.phone ? 'border-rose-400 bg-rose-50/40 text-rose-900' : 'border-slate-200 focus:border-indigo-500'
                     }`}
                   />
                   {addressErrors.phone && <p className="text-rose-500 mt-1 font-medium">{addressErrors.phone}</p>}
@@ -557,7 +563,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                         data-testid="checkout-card-number"
                         value={cardDetails.number}
                         onChange={e => setCardDetails({ ...cardDetails, number: e.target.value })}
-                        className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs"
+                        placeholder="•••• •••• •••• ••••"
+                        className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:text-slate-900"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -569,7 +576,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                           data-testid="checkout-card-expiry"
                           value={cardDetails.expiry}
                           onChange={e => setCardDetails({ ...cardDetails, expiry: e.target.value })}
-                          className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs"
+                          placeholder="MM/YY"
+                          className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:text-slate-900"
                         />
                       </div>
                       <div>
@@ -580,7 +588,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                           data-testid="checkout-card-cvv"
                           value={cardDetails.cvv}
                           onChange={e => setCardDetails({ ...cardDetails, cvv: e.target.value })}
-                          className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs"
+                          placeholder="123"
+                          className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:text-slate-900"
                         />
                       </div>
                     </div>
@@ -598,7 +607,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       value={upiId}
                       onChange={e => setUpiId(e.target.value)}
                       placeholder="username@okhdfcbank"
-                      className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs"
+                      className="w-full p-2 bg-white rounded-lg border border-slate-200 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:text-slate-900"
                     />
                     <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
                       <QrCode className="w-4 h-4 text-indigo-600" />
@@ -615,7 +624,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       data-testid="checkout-bank-select"
                       value={selectedBank}
                       onChange={e => setSelectedBank(e.target.value)}
-                      className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs font-medium"
+                      className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-indigo-500"
                     >
                       <option>JPMorgan Chase Bank</option>
                       <option>Bank of America</option>

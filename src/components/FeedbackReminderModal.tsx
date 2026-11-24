@@ -251,7 +251,7 @@ export const FeedbackReminderModal: React.FC = () => {
               placeholder="Tell others what you loved about this product or delivery experience..."
               data-test="textarea-feedback-comment"
               data-testid="textarea-feedback-comment"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white resize-none"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white focus:text-slate-900 resize-none"
             />
           </div>
 

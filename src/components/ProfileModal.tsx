@@ -202,7 +202,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       <div
         data-test="profile-settings-modal"
         data-testid="profile-settings-modal"
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]"
+        className="bg-white text-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]"
       >
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-indigo-50 via-white to-blue-50">
@@ -381,7 +381,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 required
                 data-test="input-profile-name"
                 data-testid="input-profile-name"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                placeholder="Your Full Name"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:text-slate-900"
               />
             </div>
             <div>
@@ -392,7 +393,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 type="email"
                 value={targetEmail || ''}
                 disabled
-                className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 font-medium cursor-not-allowed"
+                className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium cursor-not-allowed"
               />
             </div>
           </div>
@@ -408,7 +409,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               placeholder="+1 (555) 000-0000"
               data-test="input-profile-phone"
               data-testid="input-profile-phone"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:text-slate-900"
             />
           </div>
 

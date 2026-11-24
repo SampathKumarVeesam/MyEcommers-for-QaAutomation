@@ -151,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
                 value={searchQuery}
                 onFocus={() => setIsSearchFocused(true)}
                 onChange={e => onSearchChange(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-sm text-slate-900 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/15 outline-none transition-all shadow-2xs"
+                className="w-full pl-10 pr-9 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:text-slate-900 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/15 outline-none transition-all shadow-2xs font-medium"
               />
               {searchQuery && (
                 <button
@@ -506,7 +506,7 @@ export const Header: React.FC<HeaderProps> = ({
               placeholder="Search products, phones, dresses..."
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-slate-50 text-xs text-slate-900 rounded-xl border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none transition-all shadow-2xs"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:text-slate-900 rounded-xl border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none transition-all shadow-2xs font-medium"
             />
             {searchQuery && (
               <button
