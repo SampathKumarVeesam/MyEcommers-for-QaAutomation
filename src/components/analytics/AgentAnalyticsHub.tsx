@@ -301,7 +301,7 @@ export const AgentAnalyticsHub: React.FC<AgentAnalyticsHubProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-500/10 font-medium">
-                  {zoneList.map((z, idx) => (
+                  {zoneList.map((z: any, idx: number) => (
                     <tr key={idx} className="hover:bg-blue-600/10 transition-colors">
                       <td className="py-3 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />

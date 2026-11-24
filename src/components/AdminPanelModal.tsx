@@ -786,122 +786,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
     >
       <div
-        className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[94vh] overflow-hidden flex flex-col"
+        className="relative bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-7xl max-h-[94vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Top Navbar */}
-        <div className="px-5 sm:px-6 py-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shadow-inner">
+        {/* Top Navbar Row 1: Title & Action Tools (Exit button always visible) */}
+        <div className="px-5 sm:px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shadow-inner shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-white tracking-tight">ShopSphere Administrator Console</h2>
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
                   Role: {user?.role || 'Admin'}
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   PostgreSQL 18
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 truncate">
                 Logged in as <strong className="text-white">{user?.name}</strong> ({user?.email})
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Primary Tab Switcher */}
-            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs overflow-x-auto scrollbar-none max-w-full">
-              <button
-                data-test="admin-tab-overview"
-                data-testid="admin-tab-overview"
-                onClick={() => {
-                  setActiveTab('overview');
-                  setSelectedCustomerId(null);
-                }}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Overview &amp; Analytics</span>
-              </button>
-              <button
-                data-test="admin-tab-analytics"
-                data-testid="admin-tab-analytics"
-                onClick={() => {
-                  setActiveTab('analytics');
-                  setSelectedCustomerId(null);
-                }}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'analytics' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <span className="hidden sm:inline">Customer </span>Activity ({customers.length})
-              </button>
-              <button
-                data-test="admin-tab-inventory"
-                data-testid="admin-tab-inventory"
-                onClick={() => setActiveTab('inventory')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'inventory' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                Inventory ({products.length})
-              </button>
-              <button
-                data-test="admin-tab-add-product"
-                data-testid="admin-tab-add-product"
-                onClick={() => setActiveTab('add-product')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                  activeTab === 'add-product' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>Add Product</span>
-              </button>
-              <button
-                data-test="admin-tab-orders"
-                data-testid="admin-tab-orders"
-                onClick={() => setActiveTab('orders')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'orders' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <span className="hidden sm:inline">Global </span>Orders ({orders.length})
-              </button>
-              <button
-                data-test="admin-tab-agents"
-                data-testid="admin-tab-agents"
-                onClick={() => setActiveTab('agents')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                  activeTab === 'agents' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Truck className="w-3.5 h-3.5" />
-                <span>Delivery Agents ({agents.length})</span>
-              </button>
-              <button
-                data-test="admin-tab-amount-handling"
-                data-testid="admin-tab-amount-handling"
-                onClick={() => setActiveTab('amount-handling')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'amount-handling' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <Banknote className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Amount Handling</span>
-                {(((amountSummary?.depositApprovalAgents?.length || 0) + (amountSummary?.qrPendingOrders?.length || 0)) > 0) && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
-                    {(amountSummary?.depositApprovalAgents?.length || 0) + (amountSummary?.qrPendingOrders?.length || 0)}
-                  </span>
-                )}
-              </button>
-            </div>
-
+          <div className="flex items-center gap-2 shrink-0">
             {/* Notification Bell Dropdown */}
             <div className="relative">
               <button
@@ -997,9 +908,101 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               data-test="admin-close-button"
               data-testid="admin-close-button"
               onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+              title="Exit Admin Console"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Top Navbar Row 2: Full-Width Primary Navigation Tabs Bar */}
+        <div className="px-5 sm:px-6 py-2.5 bg-slate-950 border-b border-slate-800 shrink-0 overflow-x-auto">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              data-test="admin-tab-overview"
+              data-testid="admin-tab-overview"
+              onClick={() => {
+                setActiveTab('overview');
+                setSelectedCustomerId(null);
+              }}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 text-xs ${
+                activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Overview &amp; Analytics</span>
+            </button>
+            <button
+              data-test="admin-tab-analytics"
+              data-testid="admin-tab-analytics"
+              onClick={() => {
+                setActiveTab('analytics');
+                setSelectedCustomerId(null);
+              }}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-xs ${
+                activeTab === 'analytics' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <span className="hidden sm:inline">Customer </span>Activity ({customers.length})
+            </button>
+            <button
+              data-test="admin-tab-inventory"
+              data-testid="admin-tab-inventory"
+              onClick={() => setActiveTab('inventory')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-xs ${
+                activeTab === 'inventory' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              Inventory ({products.length})
+            </button>
+            <button
+              data-test="admin-tab-add-product"
+              data-testid="admin-tab-add-product"
+              onClick={() => setActiveTab('add-product')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 text-xs ${
+                activeTab === 'add-product' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Add Product</span>
+            </button>
+            <button
+              data-test="admin-tab-orders"
+              data-testid="admin-tab-orders"
+              onClick={() => setActiveTab('orders')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-xs ${
+                activeTab === 'orders' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <span className="hidden sm:inline">Global </span>Orders ({orders.length})
+            </button>
+            <button
+              data-test="admin-tab-agents"
+              data-testid="admin-tab-agents"
+              onClick={() => setActiveTab('agents')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 text-xs ${
+                activeTab === 'agents' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              <span>Delivery Agents ({agents.length})</span>
+            </button>
+            <button
+              data-test="admin-tab-amount-handling"
+              data-testid="admin-tab-amount-handling"
+              onClick={() => setActiveTab('amount-handling')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 text-xs ${
+                activeTab === 'amount-handling' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Banknote className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Amount Handling</span>
+              {(((amountSummary?.depositApprovalAgents?.length || 0) + (amountSummary?.qrPendingOrders?.length || 0)) > 0) && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
+                  {(amountSummary?.depositApprovalAgents?.length || 0) + (amountSummary?.qrPendingOrders?.length || 0)}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -1130,28 +1133,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   className="mb-6 bg-slate-50 border-2 border-indigo-200 rounded-3xl p-5 shadow-sm space-y-4 animate-in fade-in duration-150"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-md overflow-hidden">
-                        {customerDetail?.customer.avatar ? (
-                          <img src={customerDetail.customer.avatar} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          customerDetail?.customer.name.charAt(0) || 'C'
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-extrabold text-slate-900">
-                            {customerDetail?.customer.name || 'Loading Customer Details...'}
-                          </h3>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold">
-                            {customerDetail?.customer.id}
-                          </span>
+                    {(() => {
+                      const customerObj = customerDetail?.customer || (customerDetail as any)?.profile;
+                      return (
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-md overflow-hidden">
+                            {customerObj?.avatar ? (
+                              <img src={customerObj.avatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              customerObj?.name?.charAt(0) || 'C'
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-extrabold text-slate-900">
+                                {customerObj?.name || 'Loading Customer Details...'}
+                              </h3>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold">
+                                {customerObj?.id || selectedCustomerId}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              {customerObj?.email} {customerObj?.phone ? `• ${customerObj.phone}` : ''}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          {customerDetail?.customer.email} {customerDetail?.customer.phone ? `• ${customerDetail.customer.phone}` : ''}
-                        </p>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     <div className="flex items-center gap-2">
                       {/* Drill-down Sub-tab Switcher */}
@@ -1164,7 +1172,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             detailTab === 'orders' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
-                          Orders ({customerDetail?.orders.length ?? 0})
+                          Orders ({customerDetail?.orders?.length ?? 0})
                         </button>
                         <button
                           data-test="customer-detail-tab-cart"
@@ -1174,7 +1182,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             detailTab === 'cart' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
-                          Cart Items ({customerDetail?.cartItems.length ?? 0})
+                          Cart Items ({customerDetail?.cartItems?.length ?? 0})
                         </button>
                         <button
                           data-test="customer-detail-tab-wishlist"
@@ -1184,7 +1192,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             detailTab === 'wishlist' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
-                          Wishlist ({customerDetail?.wishlistItems.length ?? 0})
+                          Wishlist ({customerDetail?.wishlistItems?.length ?? 0})
                         </button>
                       </div>
 
@@ -1210,8 +1218,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       {/* Sub-tab 1: Orders */}
                       {detailTab === 'orders' && (
                         <div className="space-y-3">
-                          {customerDetail && customerDetail.orders.length > 0 ? (
-                            customerDetail.orders.map(order => (
+                          {customerDetail && (customerDetail.orders?.length ?? 0) > 0 ? (
+                            (customerDetail.orders ?? []).map(order => (
                               <div
                                 key={order.id}
                                 data-test={`customer-order-card-${order.orderNumber}`}
@@ -1262,7 +1270,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                                 {/* Order Line Items */}
                                 <div className="space-y-1.5 pt-1">
-                                  {order.items.map(item => (
+                                  {(order.items ?? []).map(item => (
                                     <div key={item.id} className="flex items-center justify-between text-[11px] text-slate-600">
                                       <div className="flex items-center gap-2">
                                         {item.productImage && (
@@ -1295,7 +1303,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       {/* Sub-tab 2: Cart Items */}
                       {detailTab === 'cart' && (
                         <div className="space-y-3">
-                          {customerDetail && customerDetail.cartItems.length > 0 ? (
+                          {customerDetail && (customerDetail.cartItems?.length ?? 0) > 0 ? (
                             <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto text-xs">
                               <table className="w-full text-left divide-y divide-slate-200 min-w-[500px]">
                                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
@@ -1308,7 +1316,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                  {customerDetail.cartItems.map(item => (
+                                  {(customerDetail.cartItems ?? []).map(item => (
                                     <tr key={item.id} className="hover:bg-slate-50/50">
                                       <td className="p-3">
                                         <div className="flex items-center gap-2.5">
@@ -1341,7 +1349,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       {/* Sub-tab 3: Wishlist */}
                       {detailTab === 'wishlist' && (
                         <div className="space-y-3">
-                          {customerDetail && customerDetail.wishlistItems.length > 0 ? (
+                          {customerDetail && (customerDetail.wishlistItems?.length ?? 0) > 0 ? (
                             <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto text-xs">
                               <table className="w-full text-left divide-y divide-slate-200 min-w-[500px]">
                                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
@@ -1353,18 +1361,21 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                  {customerDetail.wishlistItems.map(item => (
+                                  {(customerDetail.wishlistItems ?? []).map(item => (
                                     <tr key={item.id} className="hover:bg-slate-50/50">
                                       <td className="p-3">
                                         <div className="flex items-center gap-2.5">
                                           {item.productImage && (
                                             <img src={item.productImage} alt="" className="w-8 h-8 rounded-lg object-cover border" />
                                           )}
-                                          <p className="font-bold text-slate-900">{item.productName}</p>
+                                          <div>
+                                            <p className="font-bold text-slate-900">{item.productName}</p>
+                                            <span className="text-[10px] text-slate-400 capitalize">{item.category}</span>
+                                          </div>
                                         </div>
                                       </td>
-                                      <td className="p-3 text-slate-600 capitalize">{item.category}</td>
-                                      <td className="p-3 font-extrabold text-slate-900">${item.price.toFixed(2)}</td>
+                                      <td className="p-3 font-semibold text-slate-700 capitalize">{item.category}</td>
+                                      <td className="p-3 font-extrabold text-indigo-700">${item.price.toFixed(2)}</td>
                                       <td className="p-3 text-slate-400 text-[11px]">{new Date(item.createdAt).toLocaleDateString()}</td>
                                     </tr>
                                   ))}
@@ -1373,7 +1384,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </div>
                           ) : (
                             <div className="p-6 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
-                              This customer has not saved any items to their wishlist.
+                              No saved products in this customer&apos;s wishlist.
                             </div>
                           )}
                         </div>
@@ -2167,10 +2178,22 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   <span className="font-bold text-slate-800">
                                     🗺️ Real-Time Delivery Route for Order {o.orderNumber}
                                   </span>
-                                  <span className="text-slate-500 text-[11px]">
-                                    Origin: Hyderabad Store (Hitech City) ➔ Destination: {o.shippingAddress.street},{' '}
-                                    {o.shippingAddress.city}
-                                  </span>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-slate-500 text-[11px]">
+                                      Origin: Hyderabad Store (Hitech City) ➔ Destination: {o.shippingAddress.street},{' '}
+                                      {o.shippingAddress.city}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      data-test={`btn-close-map-${o.orderNumber}`}
+                                      data-testid={`btn-close-map-${o.orderNumber}`}
+                                      onClick={() => setViewMapOrderId(null)}
+                                      className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                                      title="Close route map"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </div>
                                 <LiveRouteMap
                                   destinationLat={o.deliveryLat || 17.4375}

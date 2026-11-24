@@ -81,45 +81,48 @@ export async function ensureSchemaMigrations(): Promise<void> {
       `, 'delivery_agents columns');
 
       // 4. Ensure order table columns exist (including emergency transfer & live routing fields)
-      await safeExec(`
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assigned_agent_id VARCHAR(100);
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC(10,2) DEFAULT 15.00;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_payment_method VARCHAR(50);
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_payment_status VARCHAR(50) DEFAULT 'pending';
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_otp VARCHAR(10);
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS feedback_status VARCHAR(50) DEFAULT 'pending';
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS next_feedback_reminder_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_status VARCHAR(50) DEFAULT 'UNASSIGNED';
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS acceptance_deadline TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS rejected_or_expired_agent_ids JSONB DEFAULT '[]'::jsonb;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'COD';
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_collection_method VARCHAR(50);
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_settlement_status VARCHAR(50) DEFAULT 'PENDING';
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lat DOUBLE PRECISION DEFAULT 17.4375;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lng DOUBLE PRECISION DEFAULT 78.4482;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lat DOUBLE PRECISION DEFAULT 17.4375;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lng DOUBLE PRECISION DEFAULT 78.4482;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lat DOUBLE PRECISION DEFAULT 17.4486;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lng DOUBLE PRECISION DEFAULT 78.3908;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS order_proceeded_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER DEFAULT 1200;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_delivery_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_delayed BOOLEAN DEFAULT FALSE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delay_started_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS extra_delay_seconds INTEGER DEFAULT 0;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transfer_reason TEXT;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_name VARCHAR(255);
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_id VARCHAR(100);
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_tier VARCHAR(50) DEFAULT 'IDLE_NEAREST';
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_accepted_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_submitted_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_verified_at TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_rejection_note TEXT;
-      `, 'order columns');
+      const orderColumns = [
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assigned_agent_id VARCHAR(100)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC(10,2) DEFAULT 15.00',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_payment_method VARCHAR(50)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_payment_status VARCHAR(50) DEFAULT \'pending\'',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_otp VARCHAR(10)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS otp_verified BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS feedback_status VARCHAR(50) DEFAULT \'pending\'',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS next_feedback_reminder_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_status VARCHAR(50) DEFAULT \'UNASSIGNED\'',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS acceptance_deadline TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS rejected_or_expired_agent_ids JSONB DEFAULT \'[]\'::jsonb',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT \'COD\'',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS cod_collection_method VARCHAR(50)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_settlement_status VARCHAR(50) DEFAULT \'PENDING\'',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lat DOUBLE PRECISION DEFAULT 17.4375',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS customer_lng DOUBLE PRECISION DEFAULT 78.4482',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lat DOUBLE PRECISION DEFAULT 17.4375',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delivery_lng DOUBLE PRECISION DEFAULT 78.4482',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lat DOUBLE PRECISION DEFAULT 17.4486',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_lng DOUBLE PRECISION DEFAULT 78.3908',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS order_proceeded_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER DEFAULT 1200',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS estimated_delivery_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_delayed BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS delay_started_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS extra_delay_seconds INTEGER DEFAULT 0',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transfer_reason TEXT',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_name VARCHAR(255)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS transferred_from_agent_id VARCHAR(100)',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS assignment_tier VARCHAR(50) DEFAULT \'IDLE_NEAREST\'',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS agent_accepted_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_submitted_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_verified_at TIMESTAMP WITH TIME ZONE',
+        'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS deposit_rejection_note TEXT',
+      ];
+      for (const colSql of orderColumns) {
+        await safeExec(colSql, 'order column');
+      }
 
       // 5. Ensure order_transfers table exists
       await safeExec(`

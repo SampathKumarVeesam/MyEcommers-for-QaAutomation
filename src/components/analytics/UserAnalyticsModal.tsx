@@ -329,9 +329,9 @@ export const UserAnalyticsModal: React.FC<UserAnalyticsModalProps> = ({
                       </h4>
                       <div className="h-60 w-full min-h-[240px]">
                         <ResponsiveContainer width="100%" height={240}>
-                          <RadarChart data={categoryRadar}>
+                          <RadarChart data={categoryRadar} outerRadius="62%" margin={{ top: 10, right: 25, bottom: 10, left: 25 }}>
                             <PolarGrid stroke="#334155" opacity={0.3} />
-                            <PolarAngleAxis dataKey="category" stroke="#94A3B8" fontSize={10} />
+                            <PolarAngleAxis dataKey="category" stroke="#94A3B8" fontSize={9} />
                             <Radar
                               name="Orders"
                               dataKey="score"

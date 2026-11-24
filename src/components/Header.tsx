@@ -226,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div
                   data-test="demo-accounts-dropdown"
                   data-testid="demo-accounts-dropdown"
-                  className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 mt-2 w-72 sm:w-80 min-w-[290px] bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onMouseLeave={() => setIsDemoMenuOpen(false)}
                 >
                   <div className="px-3 py-2 border-b border-slate-100">
@@ -242,13 +242,13 @@ export const Header: React.FC<HeaderProps> = ({
                         await quickLogin('customer1');
                         setIsDemoMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-indigo-50/70 text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                      className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-indigo-50/70 text-slate-800 transition-colors flex items-center justify-between gap-2 cursor-pointer"
                     >
-                      <div>
-                        <p className="font-semibold text-slate-900">Jane Customer (User 1)</p>
-                        <p className="text-[10px] text-slate-500 font-mono">customer@practicesoftwaretesting.com</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-900 truncate">Jane Customer (User 1)</p>
+                        <p className="text-[10px] text-slate-500 font-mono truncate">customer@practicesoftwaretesting.com</p>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 font-bold text-slate-600">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 font-bold text-slate-600 shrink-0">
                         Customer
                       </span>
                     </button>
@@ -260,13 +260,13 @@ export const Header: React.FC<HeaderProps> = ({
                         await quickLogin('customer2');
                         setIsDemoMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-indigo-50/70 text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                      className="w-full text-left px-3 py-2 text-xs rounded-xl hover:bg-indigo-50/70 text-slate-800 transition-colors flex items-center justify-between gap-2 cursor-pointer"
                     >
-                      <div>
-                        <p className="font-semibold text-slate-900">Alex Rivera (User 2)</p>
-                        <p className="text-[10px] text-slate-500 font-mono">customer2@practicesoftwaretesting.com</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-900 truncate">Alex Rivera (User 2)</p>
+                        <p className="text-[10px] text-slate-500 font-mono truncate">customer2@practicesoftwaretesting.com</p>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 font-bold text-slate-600">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 font-bold text-slate-600 shrink-0">
                         Customer
                       </span>
                     </button>

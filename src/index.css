@@ -29,3 +29,17 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Fix Leaflet map zoom controls so + and - are never clipped or obscured by top banners */
+.leaflet-top.leaflet-left {
+  top: 56px !important;
+  left: 12px !important;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1000 !important;
+}

@@ -1588,6 +1588,26 @@ export class OrderRepository {
 
     const client = await getClient();
     try {
+      // Auto-heal / ensure order transfer columns exist before executing transfer
+      const requiredCols = [
+        'assigned_agent_id VARCHAR(100)',
+        'transfer_reason TEXT',
+        'transferred_from_agent_name VARCHAR(255)',
+        'transferred_from_agent_id VARCHAR(100)',
+        'assignment_tier VARCHAR(50) DEFAULT \'IDLE_NEAREST\'',
+        'agent_lat DOUBLE PRECISION DEFAULT 17.4486',
+        'agent_lng DOUBLE PRECISION DEFAULT 78.3908',
+        'location_updated_at TIMESTAMP WITH TIME ZONE',
+        'estimated_delivery_at TIMESTAMP WITH TIME ZONE',
+      ];
+      for (const colDef of requiredCols) {
+        try {
+          await client.query(`ALTER TABLE "order" ADD COLUMN IF NOT EXISTS ${colDef}`);
+        } catch {
+          // ignore already existing column or permission check
+        }
+      }
+
       await client.query('BEGIN');
 
       const isNum = !isNaN(Number(orderId));

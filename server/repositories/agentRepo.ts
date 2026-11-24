@@ -562,6 +562,8 @@ export class AgentRepository {
          SET password_hash = $1,
              is_active = TRUE,
              is_logged_in = TRUE,
+             must_change_password = FALSE,
+             is_email_verified = TRUE,
              last_active_at = NOW(),
              phone = COALESCE(phone, '+91 98490 88776'),
              delivery_zone = 'Hitech City / Madhapur, Hyderabad',
@@ -570,6 +572,7 @@ export class AgentRepository {
          WHERE id = $2`,
         [hash123, existing.id]
       );
+      await this.ensureUdayAgent();
       return existing;
     }
 
@@ -598,7 +601,56 @@ export class AgentRepository {
       [agent.id]
     );
 
+    await this.ensureUdayAgent();
     return agent;
+  }
+
+  async ensureUdayAgent(): Promise<void> {
+    try {
+      const udayExisting = await this.findByEmail('agent.uday@shopsphere.test');
+      const hashUday = bcrypt.hashSync('Agent@123', 10);
+      if (!udayExisting) {
+        await query(
+          `INSERT INTO delivery_agents (
+             id, agent_code, name, email, password_hash, phone, gender,
+             avatar_url, role, vehicle_type, delivery_zone, is_email_verified,
+             email_verification_token, must_change_password, is_active, is_logged_in,
+             commission_rate, total_earnings, delivered_orders_count, current_lat, current_lng
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NULL, FALSE, TRUE, TRUE, 15.00, 60.00, 4, 17.4486, 78.3908)
+           ON CONFLICT (email) DO NOTHING`,
+          [
+            'agent_uday_hyderabad',
+            'AGT-6787',
+            'Uday',
+            'agent.uday@shopsphere.test',
+            hashUday,
+            '+91 98985 89680',
+            'male',
+            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+            'delivery_agent',
+            'Motorcycle',
+            'Downtown, Hyderabad',
+          ]
+        );
+      } else {
+        await query(
+          `UPDATE delivery_agents
+           SET password_hash = $1,
+               agent_code = 'AGT-6787',
+               is_active = TRUE,
+               is_logged_in = TRUE,
+               must_change_password = FALSE,
+               is_email_verified = TRUE,
+               total_earnings = 60.00,
+               delivered_orders_count = 4,
+               delivery_zone = 'Downtown, Hyderabad'
+           WHERE id = $2`,
+          [hashUday, udayExisting.id]
+        );
+      }
+    } catch (e: any) {
+      console.warn('[Ensure Uday Agent]:', e.message);
+    }
   }
 }
 

@@ -391,20 +391,161 @@ export const adminAnalyticsController = {
         { bracket: '₹1.5L+', count: hRow.b5 || 0, active: totalSpent >= 150000 },
       ];
 
+      // 8. Fetch Detailed Orders, Cart Items, and Wishlist Items for Activity Inspector
+      const ordersSql = `
+        SELECT 
+          o.id,
+          o.order_number,
+          o.user_id,
+          o.user_email,
+          o.user_name,
+          o.status,
+          o.total_amount,
+          o.subtotal,
+          o.tax,
+          o.shipping_fee,
+          o.shipping_method,
+          o.payment_method,
+          o.payment_status,
+          o.address_line_1,
+          o.address_city,
+          o.address_state,
+          o.address_postal_code,
+          o.address_country,
+          o.created_at,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', oi.id,
+                'productId', p.product_code,
+                'productName', p.name,
+                'productImage', p.image_url,
+                'price', oi.price,
+                'quantity', oi.quantity,
+                'selectedVariant', oi.selected_variant,
+                'selectedColor', oi.selected_color,
+                'selectedSize', oi.selected_size
+              )
+            ) FILTER (WHERE oi.id IS NOT NULL), '[]'::json
+          ) AS items
+        FROM "order" o
+        LEFT JOIN order_item oi ON o.id = oi.order_id
+        LEFT JOIN product p ON oi.product_id = p.id
+        WHERE o.user_id = $1 OR LOWER(o.user_email) = LOWER($2)
+        GROUP BY o.id
+        ORDER BY o.created_at DESC;
+      `;
+
+      const cartSql = `
+        SELECT 
+          c.id,
+          c.basket_id,
+          c.quantity,
+          c.selected_options,
+          c.created_at,
+          p.id AS product_id,
+          p.product_code,
+          p.name AS product_name,
+          p.price,
+          p.image_url,
+          p.category
+        FROM cart c
+        JOIN product p ON c.product_id = p.id
+        WHERE c.user_id = $1
+        ORDER BY c.created_at DESC;
+      `;
+
+      const wishlistSql = `
+        SELECT 
+          w.id,
+          w.created_at,
+          p.id AS product_id,
+          p.product_code,
+          p.name AS product_name,
+          p.price,
+          p.image_url,
+          p.category
+        FROM wishlist w
+        JOIN product p ON w.product_id = p.id
+        WHERE w.user_id = $1
+        ORDER BY w.created_at DESC;
+      `;
+
+      const [ordersRes, cartRes, wishlistRes] = await Promise.all([
+        query(ordersSql, [numericUserId, user.email]),
+        query(cartSql, [numericUserId]),
+        query(wishlistSql, [numericUserId]),
+      ]);
+
+      const formattedOrders = ordersRes.rows.map((o) => ({
+        id: String(o.id),
+        orderNumber: o.order_number,
+        status: o.status,
+        totalAmount: parseFloat(o.total_amount),
+        subtotal: parseFloat(o.subtotal),
+        tax: parseFloat(o.tax),
+        shippingFee: parseFloat(o.shipping_fee),
+        shippingMethod: o.shipping_method,
+        paymentMethod: o.payment_method,
+        paymentStatus: o.payment_status,
+        shippingAddress: {
+          street: o.address_line_1 || '',
+          city: o.address_city || '',
+          state: o.address_state || '',
+          postalCode: o.address_postal_code || '',
+          country: o.address_country || '',
+        },
+        createdAt: o.created_at ? new Date(o.created_at).toISOString() : new Date().toISOString(),
+        items: o.items || [],
+      }));
+
+      const formattedCart = cartRes.rows.map((c) => {
+        const unitPrice = parseFloat(c.price);
+        const qty = parseInt(c.quantity, 10);
+        return {
+          id: String(c.id),
+          productId: c.product_code || String(c.product_id),
+          productName: c.product_name,
+          productImage: c.image_url,
+          category: c.category,
+          quantity: qty,
+          unitPrice,
+          totalPrice: unitPrice * qty,
+          selectedOptions: c.selected_options || null,
+          createdAt: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
+        };
+      });
+
+      const formattedWishlist = wishlistRes.rows.map((w) => ({
+        id: String(w.id),
+        productId: w.product_code || String(w.product_id),
+        productName: w.product_name,
+        productImage: w.image_url,
+        category: w.category,
+        price: parseFloat(w.price),
+        createdAt: w.created_at ? new Date(w.created_at).toISOString() : new Date().toISOString(),
+      }));
+
+      const customerProfile = {
+        id: user.user_code || String(user.id),
+        name: user.name,
+        email: user.email,
+        phone: user.phone || 'N/A',
+        avatar: user.avatar_url || user.avatar || '',
+        role: user.role,
+        memberSince: user.created_at,
+        topPercentile: `Top ${topPercentile}% Customer`,
+        rawPercentile: topPercentile,
+      };
+
       res.status(200).json({
         success: true,
         data: {
-          profile: {
-            id: user.user_code || String(user.id),
-            name: user.name,
-            email: user.email,
-            phone: user.phone || 'N/A',
-            avatar: user.avatar_url || user.avatar || '',
-            role: user.role,
-            memberSince: user.created_at,
-            topPercentile: `Top ${topPercentile}% Customer`,
-            rawPercentile: topPercentile,
-          },
+          profile: customerProfile,
+          customer: customerProfile,
+          orders: formattedOrders,
+          cartItems: formattedCart,
+          wishlistItems: formattedWishlist,
           spendTrend: spendRes.rows.map(r => ({
             month: r.month,
             spend: parseFloat(r.spend),
