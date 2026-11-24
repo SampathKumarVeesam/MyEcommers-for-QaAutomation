@@ -544,7 +544,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
         setVerifyEmail(regEmail);
         setVerifyToken(''); // Never auto-populate OTP in the verification box!
         setAuthTab('verify');
-        setSuccessMsg('Registration submitted! A 6-digit verification code (OTP) has been sent to your registered email address. Please check your mailbox and enter it below.');
+        setSuccessMsg('Registration submitted! A 6-digit verification code (OTP) has been sent to your email address. Please check your registered mailbox and enter it below.');
       } else {
         setErrorMsg(data.message || 'Registration failed');
       }
@@ -1092,7 +1092,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
           {authTab === 'verify' && (
             <form onSubmit={handleVerifyEmail} className="space-y-3">
               <p className="text-[11px] text-slate-300 text-center">
-                Enter the 6-digit verification code sent to your email to receive your password.
+                Please check your registered mailbox for the 6-digit verification code sent to your email to receive your password.
               </p>
               <div>
                 <input
