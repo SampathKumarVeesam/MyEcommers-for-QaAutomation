@@ -121,7 +121,7 @@ export class AgentRepository {
   async verifyEmail(email: string, token: string): Promise<{ success: boolean; message: string; agent?: DeliveryAgent }> {
     const agent = await this.findByEmail(email);
     if (!agent) {
-      return { success: false, message: 'Delivery agent account not found' };
+      return { success: false, message: 'Invalid email address or verification failed: agent account not found' };
     }
     if (agent.isEmailVerified) {
       return { success: true, message: 'Email is already verified', agent };

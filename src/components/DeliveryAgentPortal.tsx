@@ -1044,7 +1044,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                   type="tel"
                   value={regPhone}
                   onChange={e => setRegPhone(e.target.value)}
-                  placeholder="Phone Number (+91)"
+                  placeholder="+91 98765 43210"
                   data-test="input-agent-reg-phone"
                   data-testid="input-agent-reg-phone"
                   className="w-full px-5 py-3 bg-white/[0.08] border border-white/20 rounded-full text-white text-xs outline-none"
@@ -1554,7 +1554,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-white text-sm sm:text-base tracking-tight">{agent.name}</span>
+                    <span className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight">{agent.name}</span>
                     {agent.agentCode && (
                       <span className="font-mono text-[10px] bg-white/10 text-slate-300 border border-white/15 px-2 py-0.5 rounded-full font-bold">
                         {agent.agentCode}
@@ -1577,7 +1577,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
               <div className="flex items-center gap-2.5">
                 <div className="bg-emerald-500/15 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-right">
                   <div className="text-[10px] uppercase font-bold text-emerald-400">Wallet Earnings</div>
-                  <div className="text-sm font-extrabold font-mono text-emerald-300">
+                  <div className="text-sm font-extrabold font-mono text-emerald-900 dark:text-emerald-300">
                     ₹{Number(agent.totalEarnings ?? 0).toFixed(2)}
                   </div>
                 </div>
@@ -1617,7 +1617,7 @@ export const DeliveryAgentPortal: React.FC<DeliveryAgentPortalProps> = ({ isOpen
                       </div>
                       <div className="max-h-72 overflow-y-auto divide-y divide-slate-800">
                         {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-slate-500">No alerts yet</div>
+                          <div className="p-6 text-center text-slate-500">No notifications yet</div>
                         ) : (
                           notifications.map(n => (
                             <div
